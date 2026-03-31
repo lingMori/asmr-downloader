@@ -253,13 +253,14 @@ func PromptConfirm(message string) bool {
 // Byte2FileSize 将字节数转换为人类可读的文件大小字符串
 func Byte2FileSize(size int64) string {
 	units := []string{"B", "KB", "MB", "GB", "TB"}
+	sizeFloat := float64(size)
 	for _, unit := range units {
-		if size < 1024 {
-			return fmt.Sprintf("%.2f %s", size, unit)
+		if sizeFloat < 1024 {
+			return fmt.Sprintf("%.2f %s", sizeFloat, unit)
 		}
-		size /= 1024
+		sizeFloat /= 1024
 	}
-	return fmt.Sprintf("%.2f %s", size, units[len(units)-1])
+	return fmt.Sprintf("%.2f %s", sizeFloat, units[len(units)-1])
 }
 
 // GetDirSize 递归计算目录大小（包含子目录）

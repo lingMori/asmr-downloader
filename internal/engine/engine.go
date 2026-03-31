@@ -398,7 +398,7 @@ func (m *EngineManager) GetVoiceTracks(id string) ([]model.Track, error) {
 		return nil, err
 	}
 	if !resp.IsSuccess() {
-		return nil, errors.New("Request error,status code: " + string(resp.StatusCode()))
+		return nil, errors.New("Request error,status code: " + strconv.Itoa(resp.StatusCode()))
 	}
 	return result, nil
 }
@@ -420,7 +420,7 @@ func (m *EngineManager) GetWorkInfo(id string) (model.WorkInfo, error) {
 		return result, err
 	}
 	if !resp.IsSuccess() {
-		return result, errors.New("Request error,status code: " + string(resp.StatusCode()))
+		return result, errors.New("Request error,status code: " + strconv.Itoa(resp.StatusCode()))
 	}
 	return result, nil
 }
@@ -629,7 +629,7 @@ func (m *EngineManager) downloadFile(url string, path string, fileName string) e
 		return err
 	}
 	if !resp.IsSuccess() {
-		return errors.New("Request error,status code: " + string(resp.StatusCode()))
+		return errors.New("Request error,status code: " + strconv.Itoa(resp.StatusCode()))
 	}
 	return nil
 }
@@ -651,7 +651,7 @@ func (m *EngineManager) SearchForCountResult(asmrOneQueryStr string, count int) 
 		return result, err
 	}
 	if !resp.IsSuccess() {
-		return result, errors.New("Request error,status code: " + string(resp.StatusCode()))
+		return result, errors.New("Request error,status code: " + strconv.Itoa(resp.StatusCode()))
 	}
 	// 如果结果比较少
 	if result.Pagination.TotalCount > count && count < result.Pagination.PageSize {
@@ -683,7 +683,7 @@ func (m *EngineManager) SearchForCountResult(asmrOneQueryStr string, count int) 
 				return newResult, err
 			}
 			if !resp.IsSuccess() {
-				return newResult, errors.New("Request error,status code: " + string(resp.StatusCode()))
+				return newResult, errors.New("Request error,status code: " + strconv.Itoa(resp.StatusCode()))
 			}
 			// 合并结果
 			result.Works = append(result.Works, newResult.Works...)
@@ -816,7 +816,7 @@ func (m *EngineManager) DownloadHot100(count int, dir string) error {
 	}
 	if !resp.IsSuccess() {
 		logger.RecordFailure("DownloadHot100"+" ", url, resp.Status())
-		return errors.New("Request error,status code: " + string(resp.StatusCode()))
+		return errors.New("Request error,status code: " + strconv.Itoa(resp.StatusCode()))
 	}
 	if count <= 0 {
 		return errors.New("下载数量选择必须大于0")

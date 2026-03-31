@@ -1,0 +1,13 @@
+{
+  "name": "asmroner-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "lint": "echo 'TODO: lint'",
+    "test:web": "npm run test --workspace apps/web -- --run",
+    "build:web": "npm run build --workspace apps/web",
+    "dev:web": "npm run dev --workspace apps/web"
+  }
+}
