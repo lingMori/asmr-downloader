@@ -122,7 +122,7 @@ func (p *QueryParams) ParseQueryStr() error {
 		pageInfo := parsePageInfo(split[1])
 		p.PageInfo = &pageInfo
 	}
-	if p.PlainTexts == nil || len(p.PlainTexts) == 0 {
+	if (p.PlainTexts == nil || len(p.PlainTexts) == 0) && (p.SearchPair == nil || searchPairEmpty(*p.SearchPair)) {
 		p.PlainTexts = []string{queryStr}
 	}
 
@@ -235,6 +235,18 @@ func parseSearchPair(s string) SearchPair {
 	}
 
 	return pair
+}
+
+func searchPairEmpty(pair SearchPair) bool {
+	return pair.Tag == "" &&
+		pair.Circle == "" &&
+		pair.Va == "" &&
+		pair.Duration == "" &&
+		pair.Rate == "" &&
+		pair.Price == "" &&
+		pair.Sell == "" &&
+		pair.Age == "" &&
+		pair.Lang == ""
 }
 
 // ---------------------------------------

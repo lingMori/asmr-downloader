@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCcw, RotateCcw, ServerCrash } from "lucide-react";
+import { Download, RefreshCcw, RotateCcw, ServerCrash } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +31,29 @@ export function Sync() {
     onSuccess: (res, mode) => {
       toast.success(`Queued ${mode} task #${res.taskId}`);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
+    onError: (error) => {
+      toast.error(String(error));
+    },
+  });
+
+  const exportMutation = useMutation({
+    mutationFn: async ({
+      status,
+      format,
+    }: {
+      status: "failed" | "success";
+      format: "csv" | "json";
+    }) => {
+      const result = await apiClient.exportSync(status, format);
+      triggerBlobDownload(
+        result.blob,
+        result.filename ?? `sync_${status}.${format}`,
+      );
+      return { status, format };
+    },
+    onSuccess: ({ status, format }) => {
+      toast.success(`Exported ${status} sync records as ${format.toUpperCase()}`);
     },
     onError: (error) => {
       toast.error(String(error));
@@ -77,6 +100,10 @@ export function Sync() {
           <Stat label="Metadata works" value={reportQuery.data?.totals.metadata ?? 0} />
           <Stat label="Subtitle works" value={reportQuery.data?.totals.subtitle ?? 0} />
           <Stat
+            label="No-subtitle works"
+            value={reportQuery.data?.totals.withoutSubtitle ?? 0}
+          />
+          <Stat
             label="Completed downloads"
             value={reportQuery.data?.downloads.completed ?? 0}
           />
@@ -86,6 +113,54 @@ export function Sync() {
             label="Overall progress"
             value={`${Math.round((reportQuery.data?.progress.overall ?? 0) * 100)}%`}
           />
+          <Stat
+            label="Subtitle progress"
+            value={`${Math.round((reportQuery.data?.progress.withSubtitle ?? 0) * 100)}%`}
+          />
+          <Stat
+            label="No-subtitle progress"
+            value={`${Math.round((reportQuery.data?.progress.withoutSubtitle ?? 0) * 100)}%`}
+          />
+        </CardContent>
+      </Card>
+
+      <Card className="border-white/10 bg-white/6 backdrop-blur-xl">
+        <CardHeader>
+          <CardTitle>Sync export</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <Button
+            variant="secondary"
+            onClick={() => exportMutation.mutate({ status: "failed", format: "csv" })}
+            disabled={exportMutation.isPending}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Failed CSV
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => exportMutation.mutate({ status: "failed", format: "json" })}
+            disabled={exportMutation.isPending}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Failed JSON
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => exportMutation.mutate({ status: "success", format: "csv" })}
+            disabled={exportMutation.isPending}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Success CSV
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => exportMutation.mutate({ status: "success", format: "json" })}
+            disabled={exportMutation.isPending}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Success JSON
+          </Button>
         </CardContent>
       </Card>
     </section>
@@ -126,4 +201,13 @@ function Stat({ label, value }: { label: string; value: string | number }) {
       <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
     </div>
   );
+}
+
+function triggerBlobDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 }

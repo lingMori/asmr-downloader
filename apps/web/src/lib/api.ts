@@ -71,6 +71,7 @@ export type SyncReport = {
   totals: {
     metadata: number;
     subtitle: number;
+    withoutSubtitle: number;
   };
   downloads: {
     completed: number;
@@ -80,6 +81,7 @@ export type SyncReport = {
   progress: {
     overall: number;
     withSubtitle: number;
+    withoutSubtitle: number;
   };
 };
 
@@ -178,6 +180,27 @@ export type DiscoverWorkDetail = {
   tracks: TrackNode[];
 };
 
+export type SearchWorkSummary = {
+  sourceId: string;
+  title: string;
+  circle: string;
+  release: string;
+  dlCount: number;
+  rate: number;
+  duration: number;
+  hasSubtitle: boolean;
+  vas: string[];
+  tags: string[];
+  thumbnailUrl?: string;
+  mainCoverUrl?: string;
+};
+
+export type SearchListResponse = {
+  items: SearchWorkSummary[];
+  total: number;
+  count: number;
+};
+
 export type TrackNode = {
   type: string;
   title: string;
@@ -236,6 +259,31 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error(await res.text());
   }
   return res.json() as Promise<T>;
+}
+
+async function requestBlob(
+  path: string,
+  options?: RequestInit,
+): Promise<{ blob: Blob; filename?: string }> {
+  const headers = new Headers(options?.headers);
+  if (options?.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers,
+  });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+
+  const disposition = res.headers.get("Content-Disposition") || "";
+  const match = disposition.match(/filename="([^"]+)"/i);
+  return {
+    blob: await res.blob(),
+    filename: match?.[1],
+  };
 }
 
 async function requestData<T>(path: string, options?: RequestInit): Promise<T> {
@@ -375,6 +423,20 @@ function normalizeLibraryDetail(detail: LibraryWorkDetail): LibraryWorkDetail {
   };
 }
 
+function normalizeSearchWorkSummary(
+  work: SearchWorkSummary,
+): SearchWorkSummary {
+  return {
+    ...work,
+    thumbnailUrl: work.thumbnailUrl
+      ? toAbsoluteMediaUrl(work.thumbnailUrl)
+      : undefined,
+    mainCoverUrl: work.mainCoverUrl
+      ? toAbsoluteMediaUrl(work.mainCoverUrl)
+      : undefined,
+  };
+}
+
 function buildQueryString(params: Record<string, string | number | boolean | undefined>) {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -444,6 +506,62 @@ export const apiClient = {
   async getConfig(): Promise<ConfigResponse> {
     const raw = await requestData<RawConfigResponse>("/config");
     return normalizeConfig(raw);
+  },
+
+  async updateConfig(payload: ConfigResponse): Promise<ConfigResponse> {
+    const raw = await requestData<RawConfigResponse>("/config", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+    return normalizeConfig(raw);
+  },
+
+  async searchWorks(params: {
+    query: string;
+    count?: number;
+  }): Promise<SearchListResponse> {
+    const data = await requestData<SearchListResponse>(
+      `/search${buildQueryString({
+        q: params.query,
+        count: params.count,
+      })}`,
+    );
+    return {
+      ...data,
+      items: data.items.map(normalizeSearchWorkSummary),
+    };
+  },
+
+  queueSearchDownload(payload: {
+    query: string;
+    count?: number;
+    outputDir?: string;
+    name?: string;
+  }) {
+    return request<ActionResponse>("/search/download", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  exportSearch(payload: {
+    query: string;
+    count?: number;
+    format: "csv" | "json";
+  }) {
+    return requestBlob("/search/export", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  exportSync(status: "failed" | "success", format: "csv" | "json") {
+    return requestBlob(
+      `/sync/export${buildQueryString({
+        status,
+        format,
+      })}`,
+    );
   },
 
   searchDiscover(params: {

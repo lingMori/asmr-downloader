@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -54,6 +55,40 @@ func NewLibraryService() *LibraryService {
 
 func (s *LibraryService) BaseDir() string {
 	return s.baseDir
+}
+
+func (s *LibraryService) SetBaseDir(baseDir string) {
+	s.baseDir = baseDir
+}
+
+func (s *LibraryService) ResolveMediaPath(relPath string) (string, error) {
+	if s.baseDir == "" {
+		return "", os.ErrNotExist
+	}
+
+	cleanPath := filepath.Clean(strings.TrimPrefix(relPath, "/"))
+	if cleanPath == "." || cleanPath == "" {
+		return "", os.ErrNotExist
+	}
+	if cleanPath == ".." || strings.HasPrefix(cleanPath, ".."+string(os.PathSeparator)) {
+		return "", errors.New("invalid media path")
+	}
+
+	absBase, err := filepath.Abs(s.baseDir)
+	if err != nil {
+		return "", err
+	}
+	absTarget, err := filepath.Abs(filepath.Join(absBase, cleanPath))
+	if err != nil {
+		return "", err
+	}
+	if absTarget != absBase && !strings.HasPrefix(absTarget, absBase+string(os.PathSeparator)) {
+		return "", errors.New("invalid media path")
+	}
+	if _, err := os.Stat(absTarget); err != nil {
+		return "", err
+	}
+	return absTarget, nil
 }
 
 func (s *LibraryService) ListWorks(_ context.Context, page, pageSize int, search string) (LibraryListResponse, error) {

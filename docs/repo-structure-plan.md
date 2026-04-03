@@ -1,5 +1,7 @@
 # Repository Structure & Scaffolding Plan
 
+> Historical planning document. The repository has since been simplified around `main.go` + `internal/*` + `apps/web`.
+
 ```
 asmr-downloader/
 ├── apps/

@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"asmroner/internal/engine"
 	"asmroner/internal/model"
 	"asmroner/internal/utils"
 
@@ -19,7 +18,13 @@ var ErrInvalidDiscoverRequest = errors.New("invalid discover request")
 
 type DiscoverService struct {
 	db     *gorm.DB
-	engine *engine.EngineManager
+	engine DiscoverEngine
+}
+
+type DiscoverEngine interface {
+	SearchForCountResult(asmrOneQueryStr string, count int) (model.SearchResult, error)
+	GetWorkInfo(id string) (model.WorkInfo, error)
+	GetVoiceTracks(id string) ([]model.Track, error)
 }
 
 type DiscoverSearchRequest struct {
@@ -81,8 +86,12 @@ type DiscoverWorkDetail struct {
 	Tracks     []model.Track       `json:"tracks"`
 }
 
-func NewDiscoverService(db *gorm.DB, eng *engine.EngineManager) *DiscoverService {
+func NewDiscoverService(db *gorm.DB, eng DiscoverEngine) *DiscoverService {
 	return &DiscoverService{db: db, engine: eng}
+}
+
+func (s *DiscoverService) SetEngine(engine DiscoverEngine) {
+	s.engine = engine
 }
 
 func (s *DiscoverService) Search(ctx context.Context, req DiscoverSearchRequest) (DiscoverSearchResponse, error) {

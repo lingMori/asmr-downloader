@@ -26,6 +26,10 @@ func NewSystemHandler(cfg *model.Config) *SystemHandler {
 	return &SystemHandler{cfg: cfg}
 }
 
+func (h *SystemHandler) SetConfig(cfg *model.Config) {
+	h.cfg = cfg
+}
+
 // Config returns sanitized configuration values.
 func (h *SystemHandler) Config(ctx *gin.Context) {
 	if h.cfg == nil {

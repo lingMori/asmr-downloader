@@ -9,12 +9,16 @@ import (
 	"strings"
 	"time"
 
-	"asmroner/internal/engine"
 	"asmroner/internal/events"
 	"asmroner/internal/model"
 	"asmroner/internal/store"
 	"asmroner/internal/utils"
 )
+
+type DownloadEngine interface {
+	SimpleDownload(ids []string, storeBaseDir string) error
+	DownloadHot100(count int, dir string) error
+}
 
 // ErrInvalidDownloadRequest indicates an invalid payload.
 var ErrInvalidDownloadRequest = errors.New("invalid download request")
@@ -22,7 +26,7 @@ var ErrInvalidDownloadRequest = errors.New("invalid download request")
 // DownloadService coordinates asynchronous download operations.
 type DownloadService struct {
 	taskStore *store.TaskStore
-	engine    *engine.EngineManager
+	engine    DownloadEngine
 	hub       *events.Hub
 }
 
@@ -36,12 +40,16 @@ type DownloadRequest struct {
 }
 
 // NewDownloadService constructs a service with dependencies.
-func NewDownloadService(taskStore *store.TaskStore, engine *engine.EngineManager, hub *events.Hub) *DownloadService {
+func NewDownloadService(taskStore *store.TaskStore, engine DownloadEngine, hub *events.Hub) *DownloadService {
 	return &DownloadService{
 		taskStore: taskStore,
 		engine:    engine,
 		hub:       hub,
 	}
+}
+
+func (s *DownloadService) SetEngine(engine DownloadEngine) {
+	s.engine = engine
 }
 
 // EnqueueDownload enqueues a download job and returns its task ID.

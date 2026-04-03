@@ -1,12 +1,16 @@
 package services
 
 import (
+	"bytes"
 	"context"
+	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
-	"asmroner/internal/engine"
 	"asmroner/internal/events"
 	"asmroner/internal/model"
 	"asmroner/internal/store"
@@ -14,12 +18,19 @@ import (
 	"gorm.io/gorm"
 )
 
+var ErrInvalidSyncExportRequest = errors.New("invalid sync export request")
+
 // SyncService manages metadata sync tasks.
 type SyncService struct {
 	taskStore *store.TaskStore
-	engine    *engine.EngineManager
+	engine    SyncEngine
 	runner    *SyncDownloadRunner
 	hub       *events.Hub
+}
+
+type SyncEngine interface {
+	SyncMetadata() error
+	DownloadOne(id string, storeBaseDir string) error
 }
 
 // SyncRequest describes metadata sync options.
@@ -33,8 +44,9 @@ type SyncDownloadRequest struct {
 
 type SyncReport struct {
 	Totals struct {
-		Metadata int64 `json:"metadata"`
-		Subtitle int64 `json:"subtitle"`
+		Metadata        int64 `json:"metadata"`
+		Subtitle        int64 `json:"subtitle"`
+		WithoutSubtitle int64 `json:"withoutSubtitle"`
 	} `json:"totals"`
 	Downloads struct {
 		Completed int64 `json:"completed"`
@@ -42,18 +54,26 @@ type SyncReport struct {
 		Pending   int64 `json:"pending"`
 	} `json:"downloads"`
 	Progress struct {
-		Overall      float64 `json:"overall"`
-		WithSubtitle float64 `json:"withSubtitle"`
+		Overall         float64 `json:"overall"`
+		WithSubtitle    float64 `json:"withSubtitle"`
+		WithoutSubtitle float64 `json:"withoutSubtitle"`
 	} `json:"progress"`
 }
 
 // NewSyncService builds the service.
-func NewSyncService(db *gorm.DB, taskStore *store.TaskStore, engine *engine.EngineManager, hub *events.Hub) *SyncService {
+func NewSyncService(db *gorm.DB, taskStore *store.TaskStore, engine SyncEngine, hub *events.Hub) *SyncService {
 	return &SyncService{
 		taskStore: taskStore,
 		engine:    engine,
 		runner:    NewSyncDownloadRunner(db, engine),
 		hub:       hub,
+	}
+}
+
+func (s *SyncService) SetEngine(engine SyncEngine) {
+	s.engine = engine
+	if s.runner != nil {
+		s.runner.Engine = engine
 	}
 }
 
@@ -202,26 +222,126 @@ func (s *SyncService) Report(ctx context.Context) (SyncReport, error) {
 	}
 
 	type downloadStats struct {
-		Completed int64
-		Failed    int64
-		Pending   int64
+		Completed                int64
+		Failed                   int64
+		Pending                  int64
+		CompletedWithSubtitle    int64
+		CompletedWithoutSubtitle int64
 	}
 	var downloads downloadStats
 	if err := s.runner.DB.WithContext(ctx).
 		Table("work_sync_infos").
-		Select("COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) AS completed, COUNT(CASE WHEN status = 'FAILED' THEN 1 END) AS failed, COUNT(CASE WHEN status = 'PENDING' THEN 1 END) AS pending").
+		Joins("LEFT JOIN metadata_works ON work_sync_infos.metadata_work_id = metadata_works.id").
+		Select("COUNT(CASE WHEN work_sync_infos.status = 'COMPLETED' THEN 1 END) AS completed, COUNT(CASE WHEN work_sync_infos.status = 'FAILED' THEN 1 END) AS failed, COUNT(CASE WHEN work_sync_infos.status = 'PENDING' THEN 1 END) AS pending, COUNT(CASE WHEN work_sync_infos.status = 'COMPLETED' AND metadata_works.has_subtitle THEN 1 END) AS completed_with_subtitle, COUNT(CASE WHEN work_sync_infos.status = 'COMPLETED' AND NOT metadata_works.has_subtitle THEN 1 END) AS completed_without_subtitle").
 		Scan(&downloads).Error; err != nil {
 		return report, err
 	}
 
 	report.Totals.Metadata = meta.Total
 	report.Totals.Subtitle = meta.WithSubtitle
+	report.Totals.WithoutSubtitle = meta.Total - meta.WithSubtitle
 	report.Downloads.Completed = downloads.Completed
 	report.Downloads.Failed = downloads.Failed
 	report.Downloads.Pending = downloads.Pending
 	if meta.Total > 0 {
 		report.Progress.Overall = float64(downloads.Completed) / float64(meta.Total)
-		report.Progress.WithSubtitle = float64(meta.WithSubtitle) / float64(meta.Total)
+		if meta.WithSubtitle > 0 {
+			report.Progress.WithSubtitle = float64(downloads.CompletedWithSubtitle) / float64(meta.WithSubtitle)
+		}
+		if report.Totals.WithoutSubtitle > 0 {
+			report.Progress.WithoutSubtitle = float64(downloads.CompletedWithoutSubtitle) / float64(report.Totals.WithoutSubtitle)
+		}
 	}
 	return report, nil
+}
+
+func (s *SyncService) Export(ctx context.Context, status string, format string) ([]byte, string, string, error) {
+	if s.runner == nil || s.runner.DB == nil {
+		return nil, "", "", errors.New("database not initialized")
+	}
+
+	normalizedStatus, err := normalizeSyncExportStatus(status)
+	if err != nil {
+		return nil, "", "", err
+	}
+	format = strings.ToLower(strings.TrimSpace(format))
+	if format == "" {
+		format = "csv"
+	}
+
+	var syncInfos []model.WorkSyncInfo
+	if err := s.runner.DB.WithContext(ctx).
+		Table("work_sync_infos").
+		Where("status = ?", normalizedStatus).
+		Order("updated_at DESC").
+		Find(&syncInfos).Error; err != nil {
+		return nil, "", "", err
+	}
+
+	filename := fmt.Sprintf("sync_%s.%s", strings.ToLower(normalizedStatus), format)
+	switch format {
+	case "csv":
+		content, err := encodeSyncExportCSV(syncInfos)
+		return content, "text/csv; charset=utf-8", filename, err
+	case "json":
+		content, err := json.MarshalIndent(syncInfos, "", "  ")
+		return content, "application/json; charset=utf-8", filename, err
+	default:
+		return nil, "", "", fmt.Errorf("%w: unsupported export format %s", ErrInvalidSyncExportRequest, format)
+	}
+}
+
+func normalizeSyncExportStatus(status string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "failed":
+		return "FAILED", nil
+	case "success", "completed":
+		return "COMPLETED", nil
+	default:
+		return "", fmt.Errorf("%w: status must be failed or success", ErrInvalidSyncExportRequest)
+	}
+}
+
+func encodeSyncExportCSV(syncInfos []model.WorkSyncInfo) ([]byte, error) {
+	buf := &bytes.Buffer{}
+	writer := csv.NewWriter(buf)
+	if err := writer.Write([]string{
+		"id",
+		"metadata_work_id",
+		"source_id",
+		"dir_size",
+		"status",
+		"file_path",
+		"updated_at",
+		"fail_reason",
+		"retry_count",
+		"failed_at",
+		"has_subtitle",
+	}); err != nil {
+		return nil, err
+	}
+
+	for _, info := range syncInfos {
+		if err := writer.Write([]string{
+			strconv.Itoa(info.ID),
+			strconv.Itoa(info.MetadataWorkId),
+			info.SourceId,
+			strconv.FormatInt(info.DirSize, 10),
+			info.Status,
+			info.FilePath,
+			info.UpdatedAt.Format(time.RFC3339),
+			info.FailReason,
+			strconv.Itoa(info.RetryCount),
+			info.FailedAt.Format(time.RFC3339),
+			strconv.FormatBool(info.HasSubtitle),
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }

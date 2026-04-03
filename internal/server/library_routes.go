@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -15,12 +14,7 @@ func (s *Server) registerLibraryRoutes(group *gin.RouterGroup) {
 		return
 	}
 
-	if baseDir := s.librarySvc.BaseDir(); baseDir != "" {
-		if absDir, err := filepath.Abs(baseDir); err == nil {
-			s.engine.StaticFS("/media", gin.Dir(absDir, true))
-		}
-	}
-
+	s.engine.GET("/media/*filepath", s.handleLibraryMedia)
 	group.GET("/library/works", s.handleLibraryList)
 	group.GET("/library/works/:id", s.handleLibraryDetail)
 }
@@ -48,4 +42,17 @@ func (s *Server) handleLibraryDetail(ctx *gin.Context) {
 		return
 	}
 	respondOK(ctx, result)
+}
+
+func (s *Server) handleLibraryMedia(ctx *gin.Context) {
+	absPath, err := s.librarySvc.ResolveMediaPath(ctx.Param("filepath"))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			ctx.Status(http.StatusNotFound)
+			return
+		}
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+	ctx.File(absPath)
 }

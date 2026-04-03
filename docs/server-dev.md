@@ -1,22 +1,38 @@
 # HTTP Server Development Notes
 
-## Run Locally
+## Run locally
+
 ```bash
-# ensure config exists under ~/.asmroner-data/config.toml via `asmroner config`
 cd $(git rev-parse --show-toplevel)
-go run ./cmd/server --addr :8080
+go run . --addr :8080
 ```
 
-Environment overrides:
-- `ASMRO_HTTP_ADDR`: default bind address if `--addr` not provided.
-- `GIN_MODE`: defaults to `release`; set `debug` for verbose logs.
+如果 `.asmroner-data/config.toml` 不存在，服务会自动生成默认配置。
 
-## Endpoints (current)
-- `GET /api/healthz`: returns status/version/timestamp.
-- `GET /api/config`: returns sanitized configuration (password masked).
-- `GET /api/tasks`: list tasks with filters; `GET /api/tasks/:id` fetch detail.
-- `POST /api/downloads`: enqueues a download job (mode `single|batch|hot100`) and returns `taskId`.
-- `POST /api/sync`: triggers metadata sync as a task.
-- `GET /api/events`: SSE stream emitting `task` events and 25s heartbeats.
+环境变量：
 
-More routes will be added as API spec is implemented.
+- `ASMRO_HTTP_ADDR`
+- `GIN_MODE`
+
+## Current routes
+
+- `GET /api/healthz`
+- `GET /api/config`
+- `PUT /api/config`
+- `GET /api/search`
+- `POST /api/search/download`
+- `POST /api/search/export`
+- `GET /api/discover/search`
+- `GET /api/discover/works/:sourceId`
+- `POST /api/downloads`
+- `GET /api/library/works`
+- `GET /api/library/works/:id`
+- `GET /media/*filepath`
+- `POST /api/sync`
+- `POST /api/sync/download`
+- `POST /api/sync/retry`
+- `GET /api/sync/report`
+- `GET /api/sync/export`
+- `GET /api/tasks`
+- `GET /api/tasks/:id`
+- `GET /api/events`

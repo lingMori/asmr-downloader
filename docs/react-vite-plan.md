@@ -1,5 +1,7 @@
 # React + Vite + TanStack Router/Query 改造规划
 
+> Historical planning document. The migration has been folded into the current runtime architecture described in `README.md` and `docs/current-project-map.md`.
+
 ## 目标与范围
 - 将现有 CLI/WebUI 能力迁移为现代化前端：React 19 + Vite 6 + TanStack Router/Query + shadcn/ui。
 - 通过 Go 后端提供统一 REST/任务 API，前端只负责渲染、交互与任务编排。

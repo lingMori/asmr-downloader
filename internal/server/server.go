@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -30,6 +31,7 @@ type Server struct {
 	db            *gorm.DB
 	taskStore     *store.TaskStore
 	taskSvc       *services.TaskService
+	searchSvc     *services.SearchService
 	downloadSvc   *services.DownloadService
 	syncSvc       *services.SyncService
 	discoverSvc   *services.DiscoverService
@@ -73,6 +75,7 @@ func New() (*Server, error) {
 	}
 	hub := events.NewHub()
 	downloadSvc := services.NewDownloadService(taskStore, engManager, hub)
+	searchSvc := services.NewSearchService(engManager, downloadSvc)
 	syncSvc := services.NewSyncService(db, taskStore, engManager, hub)
 	discoverSvc := services.NewDiscoverService(db, engManager)
 	librarySvc := services.NewLibraryService()
@@ -83,6 +86,7 @@ func New() (*Server, error) {
 		db:            db,
 		taskStore:     taskStore,
 		taskSvc:       taskSvc,
+		searchSvc:     searchSvc,
 		downloadSvc:   downloadSvc,
 		syncSvc:       syncSvc,
 		discoverSvc:   discoverSvc,
@@ -107,6 +111,14 @@ func loadConfig() (*model.Config, error) {
 	viper.AddConfigPath(consts.MetaDataDir)
 
 	if err := viper.ReadInConfig(); err != nil {
+		var notFound viper.ConfigFileNotFoundError
+		if errors.As(err, &notFound) {
+			cfg := model.NewDefaultConfig()
+			if saveErr := model.SaveConfig(cfg); saveErr != nil {
+				return nil, saveErr
+			}
+			return cfg, nil
+		}
 		return nil, err
 	}
 
@@ -122,12 +134,47 @@ func loadConfig() (*model.Config, error) {
 func (s *Server) registerRoutes() {
 	api := s.engine.Group("/api")
 	s.registerSystemRoutes(api)
+	s.registerSearchRoutes(api)
 	s.registerDiscoverRoutes(api)
 	s.registerLibraryRoutes(api)
 	s.registerDownloadRoutes(api)
 	s.registerSyncRoutes(api)
 	s.registerTaskRoutes(api)
 	s.registerEventRoutes(api)
+}
+
+func (s *Server) applyConfig(cfg *model.Config) error {
+	if cfg == nil {
+		return fmt.Errorf("config is nil")
+	}
+
+	model.AppConfig = cfg
+	s.config = cfg
+	if s.systemHandler != nil {
+		s.systemHandler.SetConfig(cfg)
+	}
+	if s.librarySvc != nil {
+		s.librarySvc.SetBaseDir(cfg.Downloader.SyncDataFolder)
+	}
+
+	engManager := engine.NewEngineManager()
+	if engManager == nil {
+		return fmt.Errorf("init engine manager failed")
+	}
+	s.enManager = engManager
+	if s.downloadSvc != nil {
+		s.downloadSvc.SetEngine(engManager)
+	}
+	if s.searchSvc != nil {
+		s.searchSvc.SetEngine(engManager)
+	}
+	if s.syncSvc != nil {
+		s.syncSvc.SetEngine(engManager)
+	}
+	if s.discoverSvc != nil {
+		s.discoverSvc.SetEngine(engManager)
+	}
+	return nil
 }
 
 // HTTPError propagates errors in a consistent JSON shape.

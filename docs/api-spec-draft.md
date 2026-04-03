@@ -1,5 +1,7 @@
 # API Spec Draft (v0)
 
+> Historical draft. Use `README.md` and `docs/server-dev.md` for the current route surface.
+
 > Scope: backend Go service powering React + Vite frontend. All endpoints under `/api`. Auth TBD (token header placeholder).
 
 ## Common Definitions

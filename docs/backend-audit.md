@@ -1,5 +1,7 @@
 # Backend Audit & API Requirements
 
+> Historical document: this audit describes the pre-migration CLI/webui state and the original migration target. The current runtime architecture is documented in `README.md` and `docs/current-project-map.md`.
+
 ## Current Command Responsibilities
 - **config (`cmd/config.go`)**: interactive setup of downloader credentials, proxy, rate limiting, directories; writes `~/.asmroner-data/config.toml`.
 - **search (`cmd/search.go`)**: parses advanced query syntax, hits asmr.one search API via `engine.EngineManager`, renders CLI table, supports `download` and `export` subcommands.

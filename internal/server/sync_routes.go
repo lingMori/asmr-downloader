@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"io"
 	"net/http"
 
@@ -14,6 +15,7 @@ func (s *Server) registerSyncRoutes(group *gin.RouterGroup) {
 		return
 	}
 	group.GET("/sync/report", s.handleSyncReport)
+	group.GET("/sync/export", s.handleSyncExport)
 	group.POST("/sync", s.handleSyncMetadata)
 	group.POST("/sync/download", s.handleSyncDownload)
 	group.POST("/sync/retry", s.handleSyncRetry)
@@ -66,4 +68,24 @@ func (s *Server) handleSyncRetry(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusAccepted, gin.H{"code": "ACCEPTED", "taskId": taskID})
+}
+
+func (s *Server) handleSyncExport(ctx *gin.Context) {
+	content, contentType, filename, err := s.syncSvc.Export(
+		ctx.Request.Context(),
+		ctx.Query("status"),
+		ctx.DefaultQuery("format", "csv"),
+	)
+	if err != nil {
+		if errors.Is(err, services.ErrInvalidSyncExportRequest) {
+			respondError(ctx, http.StatusBadRequest, "INVALID_SYNC_EXPORT_REQUEST", err)
+			return
+		}
+		respondError(ctx, http.StatusInternalServerError, "SYNC_EXPORT_FAILED", err)
+		return
+	}
+
+	ctx.Header("Content-Type", contentType)
+	ctx.Header("Content-Disposition", "attachment; filename=\""+filename+"\"")
+	ctx.Data(http.StatusOK, contentType, content)
 }

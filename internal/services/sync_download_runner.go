@@ -22,10 +22,14 @@ import (
 // SyncDownloadRunner encapsulates sync download/retry logic.
 type SyncDownloadRunner struct {
 	DB     *gorm.DB
-	Engine *engine.EngineManager
+	Engine DownloadOneEngine
 }
 
-func NewSyncDownloadRunner(db *gorm.DB, eng *engine.EngineManager) *SyncDownloadRunner {
+type DownloadOneEngine interface {
+	DownloadOne(id string, storeBaseDir string) error
+}
+
+func NewSyncDownloadRunner(db *gorm.DB, eng DownloadOneEngine) *SyncDownloadRunner {
 	if db == nil {
 		db = database.Database
 	}
