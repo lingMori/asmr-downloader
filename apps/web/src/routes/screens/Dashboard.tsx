@@ -22,27 +22,27 @@ export function Dashboard() {
     <section className="space-y-6">
       <header className="space-y-2">
         <p className="font-mono text-xs uppercase tracking-[0.35em] text-amber-300">
-          Dashboard
+          总览
         </p>
         <h1 className="text-4xl font-semibold tracking-tight text-white">
-          Product overview
+          项目运行概览
         </h1>
         <p className="max-w-3xl text-sm text-slate-400">
-          Start from discovery, queue downloads, watch sync health, and browse your local library.
+          从作品发现开始，到下载队列、同步健康度和本地媒体库浏览，这里给出当前系统状态。
         </p>
       </header>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <MetricCard
-          label="Metadata indexed"
+          label="已索引元数据"
           value={reportQuery.data?.totals.metadata ?? 0}
         />
         <MetricCard
-          label="Jobs in queue"
+          label="任务总数"
           value={tasksQuery.data?.total ?? 0}
         />
         <MetricCard
-          label="Library works"
+          label="媒体库作品"
           value={libraryQuery.data?.total ?? 0}
         />
       </div>
@@ -51,27 +51,27 @@ export function Dashboard() {
         <QuickLink
           to="/discover"
           icon={Search}
-          title="Discover works"
-          description="Search by keyword, tags, circle, and VA."
+          title="搜索作品"
+          description="按关键词、标签、社团和声优查找作品。"
         />
         <QuickLink
           to="/queue"
           icon={Workflow}
-          title="Open queue"
-          description="Inspect downloads, sync jobs, and failures."
+          title="查看任务"
+          description="检查下载任务、同步任务和失败记录。"
         />
         <QuickLink
           to="/library"
           icon={FolderOpen}
-          title="Browse library"
-          description="Inspect downloaded works and local files."
+          title="浏览媒体库"
+          description="查看已下载作品、本地文件和播放器。"
         />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
         <Card className="border-white/10 bg-white/6 backdrop-blur-xl">
           <CardHeader>
-            <CardTitle>Recent queue</CardTitle>
+            <CardTitle>最近任务</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {(tasksQuery.data?.items ?? []).slice(0, 5).map((task) => (
@@ -80,11 +80,11 @@ export function Dashboard() {
                 className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
               >
                 <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <div className="text-sm font-medium text-white">{task.name}</div>
-                    <div className="text-xs text-slate-400">{task.type}</div>
-                  </div>
-                  <div className="text-sm text-amber-300">{task.status}</div>
+                    <div>
+                      <div className="text-sm font-medium text-white">{task.name}</div>
+                    <div className="text-xs text-slate-400">{translateTaskType(task.type)}</div>
+                    </div>
+                  <div className="text-sm text-amber-300">{translateTaskStatus(task.status)}</div>
                 </div>
               </div>
             ))}
@@ -93,24 +93,24 @@ export function Dashboard() {
 
         <Card className="border-white/10 bg-white/6 backdrop-blur-xl">
           <CardHeader>
-            <CardTitle>Sync health</CardTitle>
+            <CardTitle>同步健康度</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <ProgressRow
-              label="Overall progress"
+              label="总体进度"
               value={reportQuery.data?.progress.overall ?? 0}
             />
             <ProgressRow
-              label="Subtitle coverage"
+              label="字幕作品进度"
               value={reportQuery.data?.progress.withSubtitle ?? 0}
             />
             <div className="grid grid-cols-2 gap-3 text-sm">
               <Summary
-                label="Completed"
+                label="已完成"
                 value={reportQuery.data?.downloads.completed ?? 0}
               />
               <Summary
-                label="Failed"
+                label="失败"
                 value={reportQuery.data?.downloads.failed ?? 0}
               />
             </div>
@@ -184,4 +184,38 @@ function Summary({ label, value }: { label: string; value: number }) {
       <div className="mt-2 text-xl font-semibold text-white">{value}</div>
     </div>
   );
+}
+
+function translateTaskType(type: string) {
+  switch (type) {
+    case "download":
+      return "下载";
+    case "sync":
+      return "元数据同步";
+    case "sync-download":
+      return "同步下载";
+    case "sync-retry":
+      return "同步重试";
+    default:
+      return type;
+  }
+}
+
+function translateTaskStatus(status: string) {
+  switch (status) {
+    case "QUEUED":
+      return "排队中";
+    case "RUNNING":
+      return "运行中";
+    case "SUCCESS":
+      return "成功";
+    case "FAILED":
+      return "失败";
+    case "CANCELED":
+      return "已取消";
+    case "TERMINATED":
+      return "已终止";
+    default:
+      return status;
+  }
 }

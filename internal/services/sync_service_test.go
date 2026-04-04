@@ -13,7 +13,7 @@ import (
 
 type fakeSyncEngine struct{}
 
-func (fakeSyncEngine) SyncMetadata() error              { return nil }
+func (fakeSyncEngine) SyncMetadata(string) error        { return nil }
 func (fakeSyncEngine) DownloadOne(string, string) error { return nil }
 
 func TestSyncServiceReportAndExport(t *testing.T) {
@@ -94,5 +94,16 @@ func TestSyncServiceReportAndExport(t *testing.T) {
 	}
 	if !strings.Contains(string(content), "network") {
 		t.Fatalf("expected csv to contain fail reason, got %q", string(content))
+	}
+
+	allContent, _, allFilename, err := service.Export(context.Background(), "all", "json")
+	if err != nil {
+		t.Fatalf("Export(all) error = %v", err)
+	}
+	if !strings.HasPrefix(allFilename, "sync_all.") {
+		t.Fatalf("expected all export filename, got %q", allFilename)
+	}
+	if !strings.Contains(string(allContent), "RJ01000001") || !strings.Contains(string(allContent), "RJ01000002") {
+		t.Fatalf("expected all export to include all sync records, got %q", string(allContent))
 	}
 }

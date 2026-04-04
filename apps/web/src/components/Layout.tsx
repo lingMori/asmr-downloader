@@ -20,12 +20,12 @@ type NavTo =
   | "/settings";
 
 const navItems = [
-  { to: "/", label: "Dashboard", icon: Gauge },
-  { to: "/discover", label: "Discover", icon: Compass },
-  { to: "/queue", label: "Queue", icon: ListTodo },
-  { to: "/library", label: "Library", icon: FolderOpen },
-  { to: "/sync", label: "Sync", icon: RefreshCcw },
-  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/", label: "总览", icon: Gauge },
+  { to: "/discover", label: "发现", icon: Compass },
+  { to: "/queue", label: "任务", icon: ListTodo },
+  { to: "/library", label: "媒体库", icon: FolderOpen },
+  { to: "/sync", label: "同步", icon: RefreshCcw },
+  { to: "/settings", label: "设置", icon: Settings },
 ] satisfies Array<{ to: NavTo; label: string; icon: typeof Gauge }>;
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -35,18 +35,18 @@ export function Layout({ children }: { children: ReactNode }) {
         <div className="flex items-center justify-between lg:block">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.35em] text-amber-300">
-              Product Console
+              控制台
             </p>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">
               ASMRoner
             </h1>
           </div>
           <Badge className="bg-amber-500/15 text-amber-200 border-amber-500/30">
-            beta
+            测试版
           </Badge>
         </div>
         <p className="mt-4 hidden text-sm leading-6 text-slate-400 lg:block">
-          Discover works, queue downloads, manage your local library, and control sync.
+          搜索作品、加入下载任务、管理本地媒体库，并控制同步流程。
         </p>
         <nav className="mt-6 grid grid-cols-2 gap-2 lg:grid-cols-1">
           {navItems.map((item) => {

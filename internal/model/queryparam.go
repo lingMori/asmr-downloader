@@ -21,7 +21,7 @@ type SearchPair struct {
 	// $va:床貓$ $duration:40m$ $sell:100$ 下面的字段都支持反选
 
 	//搜索标签
-	Tag string `json:"tag"`
+	Tags []string `json:"tags"`
 	//搜索社团
 	Circle string `json:"circle"`
 	//搜索声优
@@ -116,7 +116,9 @@ func (p *QueryParams) ParseQueryStr() error {
 	searchPairStr := split[0]
 	if searchPairStr != "" {
 		searchPair := parseSearchPair(searchPairStr)
-		p.SearchPair = &searchPair
+		if !searchPairEmpty(searchPair) {
+			p.SearchPair = &searchPair
+		}
 	}
 	if len(split) > 1 {
 		pageInfo := parsePageInfo(split[1])
@@ -144,8 +146,10 @@ func (p *QueryParams) BuildAsmrOneQueryStr() (string, error) {
 	}
 	if p.SearchPair != nil {
 		// 构建搜索参数
-		if p.SearchPair.Tag != "" {
-			builder.WriteString(" " + "$" + p.SearchPair.Tag + "$")
+		for _, tag := range p.SearchPair.Tags {
+			if tag != "" {
+				builder.WriteString(" " + "$" + tag + "$")
+			}
 		}
 		if p.SearchPair.Circle != "" {
 			builder.WriteString(" " + "$" + p.SearchPair.Circle + "$")
@@ -214,7 +218,7 @@ func parseSearchPair(s string) SearchPair {
 		// 保持原样，不拆 key/value，只识别 key 对应字段
 		switch {
 		case strings.HasPrefix(item, "tag:") || strings.HasPrefix(item, "-tag:"):
-			pair.Tag = item
+			pair.Tags = append(pair.Tags, item)
 		case strings.HasPrefix(item, "circle:") || strings.HasPrefix(item, "-circle:"):
 			pair.Circle = item
 		case strings.HasPrefix(item, "va:") || strings.HasPrefix(item, "-va:"):
@@ -238,7 +242,7 @@ func parseSearchPair(s string) SearchPair {
 }
 
 func searchPairEmpty(pair SearchPair) bool {
-	return pair.Tag == "" &&
+	return len(pair.Tags) == 0 &&
 		pair.Circle == "" &&
 		pair.Va == "" &&
 		pair.Duration == "" &&

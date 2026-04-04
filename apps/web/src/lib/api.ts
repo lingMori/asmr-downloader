@@ -67,6 +67,15 @@ export type TaskListResponse = {
   size: number;
 };
 
+export type TaskListQuery = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  source?: string;
+  type?: string;
+  status?: string;
+};
+
 export type SyncReport = {
   totals: {
     metadata: number;
@@ -199,6 +208,8 @@ export type SearchListResponse = {
   items: SearchWorkSummary[];
   total: number;
   count: number;
+  page?: number;
+  pageSize?: number;
 };
 
 export type TrackNode = {
@@ -428,12 +439,51 @@ function normalizeSearchWorkSummary(
 ): SearchWorkSummary {
   return {
     ...work,
+    tags: Array.isArray(work.tags) ? work.tags : [],
+    vas: Array.isArray(work.vas) ? work.vas : [],
     thumbnailUrl: work.thumbnailUrl
       ? toAbsoluteMediaUrl(work.thumbnailUrl)
       : undefined,
     mainCoverUrl: work.mainCoverUrl
       ? toAbsoluteMediaUrl(work.mainCoverUrl)
       : undefined,
+  };
+}
+
+function normalizeTrackNode(track: TrackNode): TrackNode {
+  return {
+    ...track,
+    children: Array.isArray(track.children)
+      ? track.children.map(normalizeTrackNode)
+      : [],
+  };
+}
+
+function normalizeDiscoverWorkSummary(
+  work: DiscoverWorkSummary,
+): DiscoverWorkSummary {
+  return {
+    ...work,
+    tags: Array.isArray(work.tags) ? work.tags : [],
+    vas: Array.isArray(work.vas) ? work.vas : [],
+    thumbnailUrl: work.thumbnailUrl
+      ? toAbsoluteMediaUrl(work.thumbnailUrl)
+      : undefined,
+    mainCoverUrl: work.mainCoverUrl
+      ? toAbsoluteMediaUrl(work.mainCoverUrl)
+      : undefined,
+  };
+}
+
+function normalizeDiscoverDetail(
+  detail: DiscoverWorkDetail,
+): DiscoverWorkDetail {
+  return {
+    ...detail,
+    summary: normalizeDiscoverWorkSummary(detail.summary),
+    tracks: Array.isArray(detail.tracks)
+      ? detail.tracks.map(normalizeTrackNode)
+      : [],
   };
 }
 
@@ -450,19 +500,46 @@ function buildQueryString(params: Record<string, string | number | boolean | und
 }
 
 export const apiClient = {
-  async getTasks(): Promise<TaskListResponse> {
+  async getTasks(params?: TaskListQuery): Promise<TaskListResponse> {
     const raw = await requestData<{
       items: RawTask[];
       total: number;
       page: number;
       size: number;
-    }>("/tasks");
+    }>(
+      `/tasks${buildQueryString({
+        page: params?.page,
+        pageSize: params?.pageSize,
+        search: params?.search,
+        source: params?.source,
+        type: params?.type,
+        status: params?.status,
+      })}`,
+    );
     return normalizeTaskList(raw);
   },
 
   async getTask(id: number): Promise<Task> {
     const raw = await requestData<RawTask>(`/tasks/${id}`);
     return normalizeTask(raw);
+  },
+
+  retryTask(id: number) {
+    return request<ActionResponse>(`/tasks/${id}/retry`, {
+      method: "POST",
+    });
+  },
+
+  deleteTask(id: number) {
+    return requestData<{ deleted: boolean }>(`/tasks/${id}`, {
+      method: "DELETE",
+    });
+  },
+
+  cancelTask(id: number) {
+    return requestData<{ canceled: boolean }>(`/tasks/${id}/cancel`, {
+      method: "POST",
+    });
   },
 
   createDownload(payload: {
@@ -519,11 +596,21 @@ export const apiClient = {
   async searchWorks(params: {
     query: string;
     count?: number;
+    page?: number;
+    pageSize?: number;
+    order?: string;
+    sort?: string;
+    subtitle?: string | number;
   }): Promise<SearchListResponse> {
     const data = await requestData<SearchListResponse>(
       `/search${buildQueryString({
         q: params.query,
         count: params.count,
+        page: params.page,
+        pageSize: params.pageSize,
+        order: params.order,
+        sort: params.sort,
+        subtitle: params.subtitle,
       })}`,
     );
     return {
@@ -555,7 +642,10 @@ export const apiClient = {
     });
   },
 
-  exportSync(status: "failed" | "success", format: "csv" | "json") {
+  exportSync(
+    status: "failed" | "success" | "pending" | "all",
+    format: "csv" | "json",
+  ) {
     return requestBlob(
       `/sync/export${buildQueryString({
         status,
@@ -575,7 +665,7 @@ export const apiClient = {
     order?: string;
     sort?: string;
   }): Promise<DiscoverSearchResponse> {
-    return requestData(
+    return requestData<DiscoverSearchResponse>(
       `/discover/search${buildQueryString({
         q: params.q,
         tag: params.tag,
@@ -587,11 +677,24 @@ export const apiClient = {
         order: params.order,
         sort: params.sort,
       })}`,
-    );
+    ).then((data) => ({
+      ...data,
+      items: Array.isArray(data.items)
+        ? data.items.map(normalizeDiscoverWorkSummary)
+        : [],
+      facets: {
+        tags: Array.isArray(data.facets?.tags) ? data.facets.tags : [],
+        circles: Array.isArray(data.facets?.circles) ? data.facets.circles : [],
+        vas: Array.isArray(data.facets?.vas) ? data.facets.vas : [],
+      },
+    }));
   },
 
-  getDiscoverWork(sourceId: string): Promise<DiscoverWorkDetail> {
-    return requestData(`/discover/works/${encodeURIComponent(sourceId)}`);
+  async getDiscoverWork(sourceId: string): Promise<DiscoverWorkDetail> {
+    const data = await requestData<DiscoverWorkDetail>(
+      `/discover/works/${encodeURIComponent(sourceId)}`,
+    );
+    return normalizeDiscoverDetail(data);
   },
 
   async getLibraryWorks(params?: {

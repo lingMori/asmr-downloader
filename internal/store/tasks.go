@@ -61,7 +61,7 @@ func (s *TaskStore) UpdateStatus(ctx context.Context, id uint, status model.Task
 	now := time.Now()
 	switch status {
 	case model.TaskStatusRunning:
-		updates["started_at"] = now
+		updates["started_at"] = gorm.Expr("COALESCE(started_at, ?)", now)
 	case model.TaskStatusSuccess, model.TaskStatusFailed, model.TaskStatusCanceled, model.TaskStatusTerminated:
 		updates["completed_at"] = now
 	}
@@ -112,6 +112,23 @@ func (s *TaskStore) Get(ctx context.Context, id uint) (*model.Task, error) {
 		return nil, err
 	}
 	return &task, nil
+}
+
+// Delete removes a task and its logs.
+func (s *TaskStore) Delete(ctx context.Context, id uint) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("task_id = ?", id).Delete(&model.TaskLog{}).Error; err != nil {
+			return err
+		}
+		result := tx.Delete(&model.Task{}, id)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrTaskNotFound
+		}
+		return nil
+	})
 }
 
 // List returns tasks matching the filter alongside the total count.

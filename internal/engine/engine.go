@@ -30,8 +30,8 @@ import (
 
 // EngineManager 下载器
 type EngineManager struct {
-	DB *gorm.DB
-	//SyncLimiter *SmartLimiter // 专门用于同步列表
+	DB           *gorm.DB
+	SyncLimiter  *SmartLimiter // 专门用于同步列表
 	DownLimiter  *SmartLimiter // 专门用于下载文件
 	Config       *model.Config
 	WorkerPool   *pond.Pool
@@ -98,10 +98,18 @@ func NewEngineManager() *EngineManager {
 
 	engine := &EngineManager{
 		DB: database.Database,
-		// 同步限流器：较快 1s 2个
-		//SyncLimiter: NewSmartLimiter(1, 1, 100, 300),
-		// 下载限流器：较慢，因为下载是大动作 2s 一个
-		DownLimiter: NewSmartLimiter(0.5, 1, 200, 400),
+		SyncLimiter: NewSmartLimiter(
+			config.Limit.SyncQPS,
+			1,
+			config.Limit.SyncJitterMin,
+			config.Limit.SyncJitterMax,
+		),
+		DownLimiter: NewSmartLimiter(
+			config.Limit.DownloadQPS,
+			1,
+			config.Limit.DownloadJitterMin,
+			config.Limit.DownloadJitterMax,
+		),
 		//配置
 		Config:       config,
 		WorkerPool:   &pool,
@@ -221,32 +229,50 @@ func (m *EngineManager) AuthLogin() error {
 
 // SimpleDownload 简单下载 可传入RJId 或者RJID列表
 func (m *EngineManager) SimpleDownload(ids []string, storeBaseDir string) error {
-	pool := *m.WorkerPool
-	group := pool.NewGroup()
-	for _, id := range ids {
-		// 提交任务到 Worker Pool
-		group.SubmitErr(func() error {
-			return m.DownloadOne(id, storeBaseDir)
-		})
-	}
-	err := group.Wait()
-	return err
+	return m.SimpleDownloadWithContext(context.Background(), ids, storeBaseDir, nil)
 }
 
 func (m *EngineManager) DownloadOne(id string, storeBaseDir string) error {
+	return m.DownloadOneWithContext(context.Background(), id, storeBaseDir)
+}
+
+func (m *EngineManager) SimpleDownloadWithContext(ctx context.Context, ids []string, storeBaseDir string, progress func(done, total int, message string)) error {
+	total := len(ids)
+	done := 0
+	for _, id := range ids {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := m.DownloadOneWithContext(ctx, id, storeBaseDir); err != nil {
+			return err
+		}
+		done++
+		if progress != nil {
+			progress(done, total, fmt.Sprintf("downloaded %s", id))
+		}
+	}
+	return nil
+}
+
+func (m *EngineManager) DownloadOneWithContext(ctx context.Context, id string, storeBaseDir string) error {
 	//检查是否是合格的id
 	valid, prefix, number, err := utils.IsValidDlsiteID(id)
 	if err != nil || !valid {
 		return err
 	}
+	if m.DownLimiter != nil {
+		if err := m.DownLimiter.Wait(ctx); err != nil {
+			return err
+		}
+	}
 	//获取作品信息
-	workInfo, err := m.GetWorkInfo(number)
+	workInfo, err := m.GetWorkInfoWithContext(ctx, number)
 	if err != nil {
 		return err
 	}
 	log.Printf("Get WorkInfo  %s...\n", workInfo.Title)
 	//获取所有的tracks
-	tracks, err := m.GetVoiceTracks(number)
+	tracks, err := m.GetVoiceTracksWithContext(ctx, number)
 	if err != nil {
 		return err
 	}
@@ -272,6 +298,10 @@ func (m *EngineManager) DownloadOne(id string, storeBaseDir string) error {
 	log.Println("Download folderName:", folderName)
 	//根据配置需求下载tracks  比如只要mp3格式的
 	storeFileDir := filepath.Join(storeBaseDir, folderName)
+	if hasFiles, err := dirHasFiles(storeFileDir); err == nil && hasFiles {
+		log.Printf("skip existing download: %s", storeFileDir)
+		return nil
+	}
 	needDownloadUrls, err := m.ensureDirExists(tracks, storeFileDir)
 	if err != nil {
 		return err
@@ -282,9 +312,10 @@ func (m *EngineManager) DownloadOne(id string, storeBaseDir string) error {
 	pool := *m.DownloadPool
 	group := pool.NewGroup()
 	for _, url := range needDownloadUrls {
+		fileURL := url
 		//log.Println("Download file:", url[2])
 		group.SubmitErr(func() error {
-			return m.downloadFile(url[0], url[1], url[2])
+			return m.downloadFileWithContext(ctx, fileURL[0], fileURL[1], fileURL[2])
 			//return nil
 		})
 	}
@@ -382,12 +413,17 @@ func (m *EngineManager) ensureDirExists(tracks []model.Track, storeBaseDir strin
 }
 
 func (m *EngineManager) GetVoiceTracks(id string) ([]model.Track, error) {
+	return m.GetVoiceTracksWithContext(context.Background(), id)
+}
+
+func (m *EngineManager) GetVoiceTracksWithContext(ctx context.Context, id string) ([]model.Track, error) {
 	url := m.ApiUrl + consts.AsmrApiPath.TracksPath + id
 	headers := defaultHeaders
 
 	var result []model.Track
 
 	resp, err := m.Client.R().
+		SetContext(ctx).
 		SetHeader("Authorization", m.JWTToken).
 		SetHeaders(headers).
 		SetResult(&result).
@@ -404,12 +440,17 @@ func (m *EngineManager) GetVoiceTracks(id string) ([]model.Track, error) {
 }
 
 func (m *EngineManager) GetWorkInfo(id string) (model.WorkInfo, error) {
+	return m.GetWorkInfoWithContext(context.Background(), id)
+}
+
+func (m *EngineManager) GetWorkInfoWithContext(ctx context.Context, id string) (model.WorkInfo, error) {
 	url := m.ApiUrl + consts.AsmrApiPath.WorkinfoPath + id
 	headers := defaultHeaders
 
 	var result = model.WorkInfo{}
 
 	resp, err := m.Client.R().
+		SetContext(ctx).
 		SetHeader("Authorization", m.JWTToken).
 		SetHeaders(headers).
 		SetResult(&result).
@@ -425,88 +466,107 @@ func (m *EngineManager) GetWorkInfo(id string) (model.WorkInfo, error) {
 	return result, nil
 }
 
-func (m *EngineManager) SyncMetadata() error {
-	url := m.ApiUrl + consts.AsmrApiPath.SyncMetaPath
+func (m *EngineManager) SyncMetadata(scope string) error {
+	return m.SyncMetadataWithContext(context.Background(), scope, nil)
+}
 
-	allPageFuture := m.fetchMetaDataRespFuture(url)
-	allPageResult := <-allPageFuture
-	if allPageResult == nil {
-		return errors.New("获取所有元数据首页信息失败")
+func (m *EngineManager) SyncMetadataWithContext(ctx context.Context, scope string, progress func(done, total int, message string)) error {
+	scope = strings.ToLower(strings.TrimSpace(scope))
+	if scope == "" {
+		scope = "all"
 	}
 
-	allSubPageFuture := m.fetchMetaDataRespFuture(url + "&subtitle=1")
-	allSubPageResult := <-allSubPageFuture
-	if allSubPageResult == nil {
-		return errors.New("获取带字幕元数据首页信息失败")
+	basePath := consts.AsmrApiPath.SyncMetaPath
+	firstURL := m.ApiUrl + basePath
+	if scope == "subtitle" {
+		firstURL += "&subtitle=1"
 	}
-	//打印一些统计信息
-	siteAll, localAll := m.printSyncMetadataStatics(allPageResult, allSubPageResult)
-	if siteAll == localAll {
-		log.Println("✅ 网页数据与本地数据一致,无需同步")
-		return nil
+
+	firstResult, err := m.fetchMetaDataRespWithContext(ctx, firstURL)
+	if err != nil {
+		return err
 	}
-	if siteAll < localAll {
-		log.Println("本地数据存在逻辑错误,请检查数据库是否存在重复数据")
-	}
-	if siteAll > localAll {
-		//提示网页数据有更新,是否进行同步操作
-		confirm := utils.PromptConfirm("网页数据有更新,是否进行同步操作?")
-		if !confirm {
+
+	switch scope {
+	case "subtitle":
+		var localSubtitleCount int64
+		if err := m.DB.Model(&model.MetadataWork{}).
+			Where("has_subtitle = ?", true).
+			Count(&localSubtitleCount).Error; err != nil {
+			return err
+		}
+		if int64(firstResult.Pagination.TotalCount) == localSubtitleCount {
+			log.Println("✅ 带字幕元数据与本地数据一致,无需同步")
 			return nil
 		}
+		log.Printf("同步带字幕元数据: 远端=%d 本地=%d", firstResult.Pagination.TotalCount, localSubtitleCount)
+		return m.syncMetadataPagesWithContext(ctx, basePath+"&subtitle=1", firstResult.Pagination.TotalCount, progress)
+	case "all":
+		allSubPageResult, err := m.fetchMetaDataRespWithContext(ctx, firstURL+"&subtitle=1")
+		if err != nil {
+			return errors.New("获取带字幕元数据首页信息失败")
+		}
+		siteAll, localAll := m.printSyncMetadataStatics(firstResult, allSubPageResult)
+		if siteAll == localAll {
+			log.Println("✅ 网页数据与本地数据一致,无需同步")
+			return nil
+		}
+		if siteAll < localAll {
+			log.Println("本地数据存在逻辑错误,请检查数据库是否存在重复数据")
+		}
+		return m.syncMetadataPagesWithContext(ctx, basePath, firstResult.Pagination.TotalCount, progress)
+	default:
+		return fmt.Errorf("unsupported sync scope %s", scope)
 	}
+}
 
-	//构建url列表 通过限流器 先请求数据  然后发送到 syncDataChan
-	urls := m.buildMetaDataWorkUrls(allPageResult.Pagination.TotalCount, 100)
-	//从syncDataChan 取出来 处理之后  发送到storeChan
-	//errorgroup 可以实现携程级联退出
-	// 请求阶段
-	pool := *m.SyncWorkerPool
-	//先启动存储 防止存储没有被goroutine来执行
-	go func() {
-		m.storeSyncMetadata(len(urls))
-	}()
-
-	retryMetadataWorkChan := make(chan string, 30)
-
-	go func() {
-		m.handleSyncMetadataRetry(retryMetadataWorkChan)
-	}()
-	group := pool.NewGroup()
-	for _, u := range urls {
-		url := u
-		group.Submit(func() {
-			// 限流
-			resp, err := m.fetchMetaDataResp(url)
-			if err != nil {
-				log.Println("请求作品元数据分页失败,已做重试处理... ", err.Error())
-				retryMetadataWorkChan <- url
-				return
-			}
-			log.Println("正在处理元数据分页: ", url)
-			metadataWork := resp.BuildMetadataWork()
-			//metadataWork := []model.MetadataWork{}
-			m.MetadataWorkBatchChan <- metadataWork
-
-		})
+func (m *EngineManager) syncMetadataPagesWithContext(ctx context.Context, basePath string, totalCount int, progress func(done, total int, message string)) error {
+	urls := m.buildMetaDataWorkUrls(basePath, totalCount, 100)
+	for index, url := range urls {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		resp, err := m.fetchMetaDataRespWithContext(ctx, url)
+		if err != nil {
+			return err
+		}
+		if err := m.upsertMetadataWorks(resp.BuildMetadataWork()); err != nil {
+			return err
+		}
+		if progress != nil {
+			progress(index+1, len(urls), fmt.Sprintf("synced metadata page %d/%d", index+1, len(urls)))
+		}
 	}
-	group.Wait()
-
-	//for _, url := range urls {
-	//	// 限流
-	//	resp, err := m.fetchMetaDataResp(url)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	fmt.Println(url)
-	//	metadataWork := resp.BuildMetadataWork()
-	//	//metadataWork := []model.MetadataWork{}
-	//	m.MetadataWorkBatchChan <- metadataWork
-	//	time.Sleep(1 * time.Second)
-	//}
-	close(m.MetadataWorkBatchChan)
-	close(retryMetadataWorkChan)
 	return nil
+}
+
+func (m *EngineManager) upsertMetadataWorks(works []model.MetadataWork) error {
+	for i := range works {
+		works[i].UpdatedAt = time.Now()
+	}
+	tx := m.DB.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "source_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{
+			"title",
+			"circle_id",
+			"name",
+			"nsfw",
+			"release",
+			"dl_count",
+			"price",
+			"review_count",
+			"rate_count",
+			"rate_average_2dp",
+			"has_subtitle",
+			"create_date",
+			"vas",
+			"tags",
+			"duration",
+			"source_type",
+			"updated_at",
+		}),
+	}).Create(&works)
+	return tx.Error
 }
 
 // 重试获取分页元数据
@@ -541,10 +601,34 @@ func (m *EngineManager) handleSyncMetadataRetry(retryChan chan string) {
 func (m *EngineManager) storeSyncMetadata(batchSize int) error {
 	counter := 0
 	for works := range m.MetadataWorkBatchChan {
+		for i := range works {
+			works[i].UpdatedAt = time.Now()
+		}
 		//log.Println("批量保存元数据: ", len(works))
 		counter += 1
 		log.Printf("已保存批次数: %d 总批次: %d 进度: %.2f%%\n", counter, batchSize, float64(counter)/float64(batchSize)*100)
-		tx := m.DB.Clauses(clause.OnConflict{DoNothing: true}).Create(&works)
+		tx := m.DB.Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "source_id"}},
+			DoUpdates: clause.AssignmentColumns([]string{
+				"title",
+				"circle_id",
+				"name",
+				"nsfw",
+				"release",
+				"dl_count",
+				"price",
+				"review_count",
+				"rate_count",
+				"rate_average_2dp",
+				"has_subtitle",
+				"create_date",
+				"vas",
+				"tags",
+				"duration",
+				"source_type",
+				"updated_at",
+			}),
+		}).Create(&works)
 		if tx.Error != nil {
 			return tx.Error
 		}
@@ -553,11 +637,21 @@ func (m *EngineManager) storeSyncMetadata(batchSize int) error {
 }
 
 func (m *EngineManager) fetchMetaDataResp(url string) (*model.MetadataWorkResponse, error) {
+	return m.fetchMetaDataRespWithContext(context.Background(), url)
+}
+
+func (m *EngineManager) fetchMetaDataRespWithContext(ctx context.Context, url string) (*model.MetadataWorkResponse, error) {
+	if m.SyncLimiter != nil {
+		if err := m.SyncLimiter.Wait(ctx); err != nil {
+			return nil, err
+		}
+	}
 	headers := defaultHeaders
 
 	var result = model.MetadataWorkResponse{}
 
 	resp, err := m.Client.R().
+		SetContext(ctx).
 		SetHeader("Authorization", m.JWTToken).
 		SetHeaders(headers).
 		SetResult(&result).
@@ -588,19 +682,25 @@ func (m *EngineManager) fetchMetaDataRespFuture(url string) chan *model.Metadata
 	return responses
 }
 
-func (m *EngineManager) buildMetaDataWorkUrls(totalCount int, pageSize int) []string {
+func (m *EngineManager) buildMetaDataWorkUrls(basePath string, totalCount int, pageSize int) []string {
 	urls := make([]string, 0)
-	//page := totalCount / pageSize
-	//if totalCount%pageSize != 0 {
-	//	page++
-	//}
+	if pageSize <= 0 {
+		pageSize = 100
+	}
+	pageCount := totalCount / pageSize
+	if totalCount%pageSize != 0 {
+		pageCount++
+	}
+	if pageCount == 0 {
+		pageCount = 1
+	}
 
-	for i := 1; i <= (totalCount/pageSize)+1; i++ {
-		pageStr := strings.ReplaceAll(consts.AsmrApiPath.SyncMetaPath, "page=1",
+	for i := 1; i <= pageCount; i++ {
+		pageStr := strings.ReplaceAll(basePath, "page=1",
 			fmt.Sprintf("page=%s", strconv.Itoa(i)))
 
 		pageSizeStr := strings.ReplaceAll(pageStr, "pageSize=1",
-			fmt.Sprintf("pageSize=%d", 100))
+			fmt.Sprintf("pageSize=%d", pageSize))
 		url := m.ApiUrl + pageSizeStr
 		urls = append(urls, url)
 	}
@@ -616,12 +716,17 @@ func (m *EngineManager) SyncRetryFaild() error {
 }
 
 func (m *EngineManager) downloadFile(url string, path string, fileName string) error {
+	return m.downloadFileWithContext(context.Background(), url, path, fileName)
+}
+
+func (m *EngineManager) downloadFileWithContext(ctx context.Context, url string, path string, fileName string) error {
 	// 使用 resty 或 http.Get 下载文件
 	var filePathToStore = path
 	var fileUrl = url
 	var storePath = filepath.Join(filePathToStore, fileName)
 	//使用 resty 下载文件
 	resp, err := m.Client.R().
+		SetContext(ctx).
 		SetOutput(storePath).
 		Get(fileUrl)
 	if err != nil {
@@ -719,15 +824,7 @@ func (m *EngineManager) DownloadMediaByBatchIds(worksId []string, storePathDir s
 	if len(worksId) <= 0 {
 		return nil
 	}
-	//使用限流器下载
-	ctx := context.Background()
-
 	for _, id := range worksId {
-		// 等待令牌
-		if err := m.DownLimiter.Wait(ctx); err != nil {
-			log.Println("等待下载限流器令牌失败: ", err.Error())
-			return err
-		}
 		err := m.DownloadOne(id, storePathDir)
 		//err := func() error {
 		//	log.Println("正在下载作品: ", id)
@@ -740,6 +837,17 @@ func (m *EngineManager) DownloadMediaByBatchIds(worksId []string, storePathDir s
 		}
 	}
 	return nil
+}
+
+func dirHasFiles(path string) (bool, error) {
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return len(entries) > 0, nil
 }
 
 // 打印同步元数据统计信息
@@ -789,6 +897,10 @@ func (m *EngineManager) printSyncMetadataStatics(result *model.MetadataWorkRespo
 
 // 按照指定数量下载热门100作品
 func (m *EngineManager) DownloadHot100(count int, dir string) error {
+	return m.DownloadHot100WithContext(context.Background(), count, dir, nil)
+}
+
+func (m *EngineManager) DownloadHot100WithContext(ctx context.Context, count int, dir string, progress func(done, total int, message string)) error {
 	url := m.ApiUrl + consts.AsmrApiPath.HotPath
 	headers := defaultHeaders
 
@@ -803,6 +915,7 @@ func (m *EngineManager) DownloadHot100(count int, dir string) error {
 	}
 
 	resp, err := m.Client.R().
+		SetContext(ctx).
 		SetHeader("Authorization", m.JWTToken).
 		SetBody(body).
 		SetHeaders(headers).
@@ -827,11 +940,18 @@ func (m *EngineManager) DownloadHot100(count int, dir string) error {
 	for _, work := range works {
 		sourceIds = append(sourceIds, work.SourceID)
 	}
-	// 下载热门100作品
-	err = m.DownloadMediaByBatchIds(sourceIds, dir)
-	if err != nil {
-		log.Println("下载热门100作品失败: ", err.Error())
-		return err
+	for index, sourceID := range sourceIds {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		err = m.DownloadOneWithContext(ctx, sourceID, dir)
+		if err != nil {
+			log.Println("下载热门100作品失败: ", err.Error())
+			return err
+		}
+		if progress != nil {
+			progress(index+1, len(sourceIds), fmt.Sprintf("downloaded hot100 %s", sourceID))
+		}
 	}
 	return nil
 }

@@ -25,7 +25,7 @@ export function Settings() {
     onSuccess: (data) => {
       setForm(data);
       queryClient.setQueryData(["settings"], data);
-      toast.success("Configuration saved");
+      toast.success("配置已保存");
     },
     onError: (error) => {
       toast.error(String(error));
@@ -33,13 +33,13 @@ export function Settings() {
   });
 
   if (configQuery.isLoading || !form) {
-    return <div className="text-slate-400">Loading settings...</div>;
+    return <div className="text-slate-400">正在加载配置...</div>;
   }
 
   if (configQuery.isError) {
     return (
       <div className="rounded-3xl border border-rose-500/30 bg-rose-500/10 p-6 text-rose-100">
-        Failed to load configuration from backend.
+        从后端加载配置失败。
       </div>
     );
   }
@@ -48,21 +48,19 @@ export function Settings() {
     <section className="space-y-6">
       <header className="space-y-2">
         <p className="font-mono text-xs uppercase tracking-[0.35em] text-amber-300">
-          Settings
+          设置
         </p>
         <h1 className="text-4xl font-semibold tracking-tight text-white">
-          Runtime and downloader configuration
+          运行参数与下载器配置
         </h1>
         <p className="max-w-3xl text-sm text-slate-400">
-          This page replaces the old interactive `config` command. The backend
-          now boots with defaults, and updates here persist to
-          `.asmroner-data/config.toml`.
+          这个页面替代了旧的 `config` 命令。后端现在会使用默认值启动，并把这里的修改持久化到 `.asmroner-data/config.toml`。
         </p>
       </header>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <FormSection title="Account">
-          <LabeledField label="Account">
+        <FormSection title="账号">
+          <LabeledField label="账号">
             <Input
               value={form.user.account}
               onChange={(event) =>
@@ -80,7 +78,7 @@ export function Settings() {
               }
             />
           </LabeledField>
-          <LabeledField label="Password">
+          <LabeledField label="密码">
             <Input
               type="password"
               value={form.user.password}
@@ -101,8 +99,8 @@ export function Settings() {
           </LabeledField>
         </FormSection>
 
-        <FormSection title="Downloader">
-          <LabeledField label="API URL">
+        <FormSection title="下载器">
+          <LabeledField label="API 地址">
             <Input
               value={form.downloader.api_url || ""}
               onChange={(event) =>
@@ -120,7 +118,7 @@ export function Settings() {
               }
             />
           </LabeledField>
-          <LabeledField label="Proxy">
+          <LabeledField label="代理">
             <Input
               value={form.downloader.proxy_url || ""}
               onChange={(event) =>
@@ -138,7 +136,7 @@ export function Settings() {
               }
             />
           </LabeledField>
-          <LabeledField label="Sync folder">
+          <LabeledField label="同步目录">
             <Input
               value={form.downloader.sync_data_folder}
               onChange={(event) =>
@@ -156,7 +154,7 @@ export function Settings() {
               }
             />
           </LabeledField>
-          <LabeledField label="Prefer media">
+          <LabeledField label="优先音频格式">
             <Input
               value={form.downloader.prefer_media}
               onChange={(event) =>
@@ -175,7 +173,7 @@ export function Settings() {
             />
           </LabeledField>
           <NumberField
-            label="Max workers"
+            label="最大并发数"
             value={form.downloader.max_workers ?? 0}
             onChange={(value) =>
               setForm((prev) =>
@@ -192,7 +190,7 @@ export function Settings() {
             }
           />
           <NumberField
-            label="Max retries"
+            label="最大重试次数"
             value={form.downloader.max_retries ?? 0}
             onChange={(value) =>
               setForm((prev) =>
@@ -208,7 +206,7 @@ export function Settings() {
               )
             }
           />
-          <LabeledField label="Wanted size">
+          <LabeledField label="目标容量">
             <Input
               value={form.downloader.sync_wanted_size || ""}
               onChange={(event) =>
@@ -228,9 +226,9 @@ export function Settings() {
           </LabeledField>
         </FormSection>
 
-        <FormSection title="Rate limits">
+        <FormSection title="限流参数">
           <FloatField
-            label="Sync QPS"
+            label="同步 QPS"
             value={form.limit.sync_qps}
             onChange={(value) =>
               setForm((prev) =>
@@ -247,7 +245,7 @@ export function Settings() {
             }
           />
           <FloatField
-            label="Download QPS"
+            label="下载 QPS"
             value={form.limit.download_qps}
             onChange={(value) =>
               setForm((prev) =>
@@ -264,7 +262,7 @@ export function Settings() {
             }
           />
           <NumberField
-            label="Sync jitter min"
+            label="同步抖动最小值"
             value={form.limit.sync_jitter_min ?? 0}
             onChange={(value) =>
               setForm((prev) =>
@@ -281,7 +279,7 @@ export function Settings() {
             }
           />
           <NumberField
-            label="Sync jitter max"
+            label="同步抖动最大值"
             value={form.limit.sync_jitter_max ?? 0}
             onChange={(value) =>
               setForm((prev) =>
@@ -298,7 +296,7 @@ export function Settings() {
             }
           />
           <NumberField
-            label="Download jitter min"
+            label="下载抖动最小值"
             value={form.limit.download_jitter_min ?? 0}
             onChange={(value) =>
               setForm((prev) =>
@@ -315,7 +313,7 @@ export function Settings() {
             }
           />
           <NumberField
-            label="Download jitter max"
+            label="下载抖动最大值"
             value={form.limit.download_jitter_max ?? 0}
             onChange={(value) =>
               setForm((prev) =>
@@ -339,7 +337,7 @@ export function Settings() {
           onClick={() => saveMutation.mutate(form)}
           disabled={saveMutation.isPending}
         >
-          Save configuration
+          保存配置
         </Button>
         <Button
           variant="secondary"
@@ -350,7 +348,7 @@ export function Settings() {
           }}
           disabled={saveMutation.isPending}
         >
-          Reset form
+          重置表单
         </Button>
       </div>
     </section>

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"asmroner/internal/events"
@@ -26,11 +27,17 @@ type SyncService struct {
 	engine    SyncEngine
 	runner    *SyncDownloadRunner
 	hub       *events.Hub
+	mu        sync.Mutex
+	active    map[uint]context.CancelFunc
 }
 
 type SyncEngine interface {
-	SyncMetadata() error
+	SyncMetadata(scope string) error
 	DownloadOne(id string, storeBaseDir string) error
+}
+
+type SyncProgressEngine interface {
+	SyncMetadataWithContext(ctx context.Context, scope string, progress func(done, total int, message string)) error
 }
 
 // SyncRequest describes metadata sync options.
@@ -67,6 +74,7 @@ func NewSyncService(db *gorm.DB, taskStore *store.TaskStore, engine SyncEngine, 
 		engine:    engine,
 		runner:    NewSyncDownloadRunner(db, engine),
 		hub:       hub,
+		active:    make(map[uint]context.CancelFunc),
 	}
 }
 
@@ -79,6 +87,10 @@ func (s *SyncService) SetEngine(engine SyncEngine) {
 
 // EnqueueSyncMetadata queues a metadata sync task.
 func (s *SyncService) EnqueueSyncMetadata(ctx context.Context, req SyncRequest) (uint, error) {
+	req.Scope = strings.ToLower(strings.TrimSpace(req.Scope))
+	if req.Scope == "" {
+		req.Scope = "all"
+	}
 	payload, _ := json.Marshal(req)
 	task := &model.Task{
 		Type:    model.TaskTypeSync,
@@ -90,18 +102,41 @@ func (s *SyncService) EnqueueSyncMetadata(ctx context.Context, req SyncRequest) 
 	if err := s.taskStore.Create(ctx, task); err != nil {
 		return 0, err
 	}
-	go s.runSync(task.ID, req)
+	runCtx, cancel := context.WithCancel(context.Background())
+	s.registerTask(task.ID, cancel)
+	go s.runSync(runCtx, task.ID, req)
 	return task.ID, nil
 }
 
-func (s *SyncService) runSync(taskID uint, req SyncRequest) {
-	ctx := context.Background()
+func (s *SyncService) runSync(ctx context.Context, taskID uint, req SyncRequest) {
+	defer s.unregisterTask(taskID)
+	if err := ctx.Err(); err != nil {
+		s.finishCanceled(taskID, "sync canceled")
+		return
+	}
 	_ = s.taskStore.UpdateStatus(ctx, taskID, model.TaskStatusRunning, 0, "sync started")
 	s.publish(taskID, model.TaskStatusRunning, "sync started", 0)
 	s.appendLog(taskID, fmt.Sprintf("sync scope=%s", req.Scope))
 
-	err := s.engine.SyncMetadata()
+	progressFn := func(done, total int, message string) {
+		progress := 0.0
+		if total > 0 {
+			progress = float64(done) / float64(total)
+		}
+		_ = s.taskStore.UpdateStatus(context.Background(), taskID, model.TaskStatusRunning, progress, message)
+		s.publish(taskID, model.TaskStatusRunning, message, progress)
+	}
+	var err error
+	if progressEngine, ok := s.engine.(SyncProgressEngine); ok {
+		err = progressEngine.SyncMetadataWithContext(ctx, req.Scope, progressFn)
+	} else {
+		err = s.engine.SyncMetadata(req.Scope)
+	}
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			s.finishCanceled(taskID, "sync canceled")
+			return
+		}
 		_ = s.taskStore.UpdateStatus(ctx, taskID, model.TaskStatusFailed, 1, err.Error())
 		_ = s.taskStore.UpdateResult(ctx, taskID, "", err.Error())
 		s.publish(taskID, model.TaskStatusFailed, err.Error(), 1)
@@ -141,12 +176,18 @@ func (s *SyncService) EnqueueSyncDownload(ctx context.Context, req SyncDownloadR
 	if err := s.taskStore.Create(ctx, task); err != nil {
 		return 0, err
 	}
-	go s.runSyncDownload(task.ID, req)
+	runCtx, cancel := context.WithCancel(context.Background())
+	s.registerTask(task.ID, cancel)
+	go s.runSyncDownload(runCtx, task.ID, req)
 	return task.ID, nil
 }
 
-func (s *SyncService) runSyncDownload(taskID uint, req SyncDownloadRequest) {
-	ctx := context.Background()
+func (s *SyncService) runSyncDownload(ctx context.Context, taskID uint, req SyncDownloadRequest) {
+	defer s.unregisterTask(taskID)
+	if err := ctx.Err(); err != nil {
+		s.finishCanceled(taskID, "sync download canceled")
+		return
+	}
 	s.taskStore.UpdateStatus(ctx, taskID, model.TaskStatusRunning, 0, "sync download started")
 	s.publish(taskID, model.TaskStatusRunning, "sync download started", 0)
 	s.appendLog(taskID, fmt.Sprintf("sync download folder=%s", req.Folder))
@@ -154,7 +195,19 @@ func (s *SyncService) runSyncDownload(taskID uint, req SyncDownloadRequest) {
 	if folder == "" {
 		folder = model.AppConfig.Downloader.SyncDataFolder
 	}
-	if err := s.runner.Run(folder); err != nil {
+	progressFn := func(done, total int, message string) {
+		progress := 0.0
+		if total > 0 {
+			progress = float64(done) / float64(total)
+		}
+		_ = s.taskStore.UpdateStatus(context.Background(), taskID, model.TaskStatusRunning, progress, message)
+		s.publish(taskID, model.TaskStatusRunning, message, progress)
+	}
+	if err := s.runner.Run(ctx, folder, progressFn); err != nil {
+		if errors.Is(err, context.Canceled) {
+			s.finishCanceled(taskID, "sync download canceled")
+			return
+		}
 		s.taskStore.UpdateStatus(ctx, taskID, model.TaskStatusFailed, 1, err.Error())
 		s.taskStore.UpdateResult(ctx, taskID, "", err.Error())
 		s.publish(taskID, model.TaskStatusFailed, err.Error(), 1)
@@ -178,16 +231,34 @@ func (s *SyncService) EnqueueSyncRetry(ctx context.Context) (uint, error) {
 	if err := s.taskStore.Create(ctx, task); err != nil {
 		return 0, err
 	}
-	go s.runSyncRetry(task.ID)
+	runCtx, cancel := context.WithCancel(context.Background())
+	s.registerTask(task.ID, cancel)
+	go s.runSyncRetry(runCtx, task.ID)
 	return task.ID, nil
 }
 
-func (s *SyncService) runSyncRetry(taskID uint) {
-	ctx := context.Background()
+func (s *SyncService) runSyncRetry(ctx context.Context, taskID uint) {
+	defer s.unregisterTask(taskID)
+	if err := ctx.Err(); err != nil {
+		s.finishCanceled(taskID, "sync retry canceled")
+		return
+	}
 	s.taskStore.UpdateStatus(ctx, taskID, model.TaskStatusRunning, 0, "sync retry started")
 	s.publish(taskID, model.TaskStatusRunning, "sync retry started", 0)
 	s.appendLog(taskID, "sync retry start")
-	if err := s.runner.RetryFailed(); err != nil {
+	progressFn := func(done, total int, message string) {
+		progress := 0.0
+		if total > 0 {
+			progress = float64(done) / float64(total)
+		}
+		_ = s.taskStore.UpdateStatus(context.Background(), taskID, model.TaskStatusRunning, progress, message)
+		s.publish(taskID, model.TaskStatusRunning, message, progress)
+	}
+	if err := s.runner.RetryFailed(ctx, progressFn); err != nil {
+		if errors.Is(err, context.Canceled) {
+			s.finishCanceled(taskID, "sync retry canceled")
+			return
+		}
 		s.taskStore.UpdateStatus(ctx, taskID, model.TaskStatusFailed, 1, err.Error())
 		s.publish(taskID, model.TaskStatusFailed, err.Error(), 1)
 		s.appendLog(taskID, "failed: "+err.Error())
@@ -204,6 +275,36 @@ func (s *SyncService) appendLog(taskID uint, message string) {
 		return
 	}
 	_ = s.taskStore.AppendLog(context.Background(), taskID, message)
+}
+
+func (s *SyncService) Cancel(taskID uint) error {
+	s.mu.Lock()
+	cancel, ok := s.active[taskID]
+	s.mu.Unlock()
+	if !ok {
+		return errors.New("task is not running")
+	}
+	cancel()
+	return nil
+}
+
+func (s *SyncService) registerTask(taskID uint, cancel context.CancelFunc) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.active[taskID] = cancel
+}
+
+func (s *SyncService) unregisterTask(taskID uint) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.active, taskID)
+}
+
+func (s *SyncService) finishCanceled(taskID uint, message string) {
+	_ = s.taskStore.UpdateStatus(context.Background(), taskID, model.TaskStatusCanceled, 1, message)
+	_ = s.taskStore.UpdateResult(context.Background(), taskID, "", message)
+	s.publish(taskID, model.TaskStatusCanceled, message, 1)
+	s.appendLog(taskID, message)
 }
 
 func (s *SyncService) Report(ctx context.Context) (SyncReport, error) {
@@ -260,7 +361,7 @@ func (s *SyncService) Export(ctx context.Context, status string, format string) 
 		return nil, "", "", errors.New("database not initialized")
 	}
 
-	normalizedStatus, err := normalizeSyncExportStatus(status)
+	normalizedStatus, hasStatusFilter, err := normalizeSyncExportStatus(status)
 	if err != nil {
 		return nil, "", "", err
 	}
@@ -270,15 +371,21 @@ func (s *SyncService) Export(ctx context.Context, status string, format string) 
 	}
 
 	var syncInfos []model.WorkSyncInfo
-	if err := s.runner.DB.WithContext(ctx).
+	query := s.runner.DB.WithContext(ctx).
 		Table("work_sync_infos").
-		Where("status = ?", normalizedStatus).
-		Order("updated_at DESC").
-		Find(&syncInfos).Error; err != nil {
+		Order("updated_at DESC")
+	if hasStatusFilter {
+		query = query.Where("status = ?", normalizedStatus)
+	}
+	if err := query.Find(&syncInfos).Error; err != nil {
 		return nil, "", "", err
 	}
 
-	filename := fmt.Sprintf("sync_%s.%s", strings.ToLower(normalizedStatus), format)
+	statusLabel := "all"
+	if hasStatusFilter {
+		statusLabel = strings.ToLower(normalizedStatus)
+	}
+	filename := fmt.Sprintf("sync_%s.%s", statusLabel, format)
 	switch format {
 	case "csv":
 		content, err := encodeSyncExportCSV(syncInfos)
@@ -291,14 +398,18 @@ func (s *SyncService) Export(ctx context.Context, status string, format string) 
 	}
 }
 
-func normalizeSyncExportStatus(status string) (string, error) {
+func normalizeSyncExportStatus(status string) (string, bool, error) {
 	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "", "all":
+		return "", false, nil
 	case "failed":
-		return "FAILED", nil
+		return "FAILED", true, nil
 	case "success", "completed":
-		return "COMPLETED", nil
+		return "COMPLETED", true, nil
+	case "pending":
+		return "PENDING", true, nil
 	default:
-		return "", fmt.Errorf("%w: status must be failed or success", ErrInvalidSyncExportRequest)
+		return "", false, fmt.Errorf("%w: status must be failed, success, pending, or all", ErrInvalidSyncExportRequest)
 	}
 }
 

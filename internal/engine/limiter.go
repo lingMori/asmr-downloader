@@ -27,6 +27,9 @@ func NewSmartLimiter(r float64, burst int, minMs, maxMs int) *SmartLimiter {
 
 // Wait 等待许可，并叠加随机抖动
 func (s *SmartLimiter) Wait(ctx context.Context) error {
+	if s == nil || s.limiter == nil {
+		return nil
+	}
 	// 1. 硬限流：等待令牌桶（保证不会超速）
 	if err := s.limiter.Wait(ctx); err != nil {
 		return err
@@ -34,10 +37,12 @@ func (s *SmartLimiter) Wait(ctx context.Context) error {
 
 	// 2. 软伪装：增加随机抖动（Jitter）
 	// 如果配置了随机时间，则额外睡一会儿
-	if s.maxWait > 0 {
+	if s.maxWait > s.minWait {
 		// 生成 [minWait, maxWait) 范围内的随机时间
 		jitter := s.minWait + time.Duration(rand.Int63n(int64(s.maxWait-s.minWait)))
 		time.Sleep(jitter)
+	} else if s.minWait > 0 {
+		time.Sleep(s.minWait)
 	}
 
 	return nil

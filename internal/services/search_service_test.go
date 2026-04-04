@@ -31,8 +31,13 @@ func TestSearchServiceSearchAndExport(t *testing.T) {
 	}, nil)
 
 	result, err := svc.Search(context.Background(), SearchRequest{
-		Query: "护士@tag:治愈",
-		Count: 10,
+		Query:    "护士@tag:治愈",
+		Count:    10,
+		Page:     2,
+		PageSize: 10,
+		Order:    "dl_count",
+		Sort:     "asc",
+		Subtitle: "1",
 	})
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
@@ -45,6 +50,9 @@ func TestSearchServiceSearchAndExport(t *testing.T) {
 	}
 	if result.Items[0].MainCoverURL != "https://example.com/cover.jpg" {
 		t.Fatalf("expected mapped cover url, got %q", result.Items[0].MainCoverURL)
+	}
+	if result.Page != 2 || result.PageSize != 10 {
+		t.Fatalf("expected paged metadata, got page=%d size=%d", result.Page, result.PageSize)
 	}
 
 	content, contentType, filename, err := svc.Export(context.Background(), SearchExportRequest{

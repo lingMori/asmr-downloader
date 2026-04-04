@@ -29,8 +29,13 @@ type SearchDownloadEnqueuer interface {
 }
 
 type SearchRequest struct {
-	Query string `json:"query"`
-	Count int    `json:"count"`
+	Query    string `json:"query"`
+	Count    int    `json:"count"`
+	Page     int    `json:"page"`
+	PageSize int    `json:"pageSize"`
+	Order    string `json:"order"`
+	Sort     string `json:"sort"`
+	Subtitle string `json:"subtitle"`
 }
 
 type SearchDownloadRequest struct {
@@ -47,9 +52,11 @@ type SearchExportRequest struct {
 }
 
 type SearchListResponse struct {
-	Items []SearchWorkSummary `json:"items"`
-	Total int                 `json:"total"`
-	Count int                 `json:"count"`
+	Items    []SearchWorkSummary `json:"items"`
+	Total    int                 `json:"total"`
+	Count    int                 `json:"count"`
+	Page     int                 `json:"page"`
+	PageSize int                 `json:"pageSize"`
 }
 
 type SearchWorkSummary struct {
@@ -79,22 +86,30 @@ func (s *SearchService) SetEngine(engine SearchEngine) {
 }
 
 func (s *SearchService) Search(_ context.Context, req SearchRequest) (SearchListResponse, error) {
-	queryStr, count, err := normalizeSearchRequest(req)
+	req, err := normalizeSearchRequest(req)
 	if err != nil {
 		return SearchListResponse{}, err
 	}
 
-	queryParams := model.NewQueryParams(queryStr)
+	queryParams := model.NewQueryParams(req.Query)
 	if err := queryParams.ParseQueryStr(); err != nil {
 		return SearchListResponse{}, fmt.Errorf("%w: %s", ErrInvalidSearchRequest, err)
 	}
+	if queryParams.PageInfo == nil {
+		queryParams.PageInfo = &model.PageInfo{}
+	}
+	queryParams.PageInfo.Page = req.Page
+	queryParams.PageInfo.PageSize = req.PageSize
+	queryParams.PageInfo.Order = req.Order
+	queryParams.PageInfo.Sort = req.Sort
+	queryParams.PageInfo.Subtitle = req.Subtitle
 
 	asmrOneQueryStr, err := queryParams.BuildAsmrOneQueryStr()
 	if err != nil {
 		return SearchListResponse{}, fmt.Errorf("%w: %s", ErrInvalidSearchRequest, err)
 	}
 
-	result, err := s.engine.SearchForCountResult(asmrOneQueryStr, count)
+	result, err := s.engine.SearchForCountResult(asmrOneQueryStr, req.Count)
 	if err != nil {
 		return SearchListResponse{}, err
 	}
@@ -123,9 +138,11 @@ func (s *SearchService) Search(_ context.Context, req SearchRequest) (SearchList
 	}
 
 	return SearchListResponse{
-		Items: items,
-		Total: result.Pagination.TotalCount,
-		Count: len(items),
+		Items:    items,
+		Total:    result.Pagination.TotalCount,
+		Count:    len(items),
+		Page:     req.Page,
+		PageSize: req.PageSize,
 	}, nil
 }
 
@@ -190,19 +207,39 @@ func (s *SearchService) Export(ctx context.Context, req SearchExportRequest) ([]
 	}
 }
 
-func normalizeSearchRequest(req SearchRequest) (string, int, error) {
-	query := strings.TrimSpace(req.Query)
-	if query == "" {
-		return "", 0, fmt.Errorf("%w: query is required", ErrInvalidSearchRequest)
+func normalizeSearchRequest(req SearchRequest) (SearchRequest, error) {
+	req.Query = strings.TrimSpace(req.Query)
+	if req.Query == "" {
+		return SearchRequest{}, fmt.Errorf("%w: query is required", ErrInvalidSearchRequest)
 	}
-	count := req.Count
-	if count <= 0 {
-		count = 20
+	if req.Page <= 0 {
+		req.Page = 1
 	}
-	if count > 200 {
-		count = 200
+	if req.PageSize <= 0 {
+		req.PageSize = 20
 	}
-	return query, count, nil
+	if req.PageSize > 200 {
+		req.PageSize = 200
+	}
+	if req.Count <= 0 {
+		req.Count = req.PageSize
+	}
+	if req.Count > 200 {
+		req.Count = 200
+	}
+	req.Order = strings.TrimSpace(req.Order)
+	if req.Order == "" {
+		req.Order = "release"
+	}
+	req.Sort = strings.TrimSpace(req.Sort)
+	if req.Sort == "" {
+		req.Sort = "desc"
+	}
+	req.Subtitle = strings.TrimSpace(req.Subtitle)
+	if req.Subtitle == "" {
+		req.Subtitle = "0"
+	}
+	return req, nil
 }
 
 func (s *SearchService) idsFromResults(items []SearchWorkSummary) []string {

@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FolderOpen, Music4, PlayCircle, Subtitles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { apiClient, type LibraryFile } from "@/lib/api";
 
 export function Library() {
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState("");
   const [selectedAudioPath, setSelectedAudioPath] = useState("");
 
   const libraryQuery = useQuery({
-    queryKey: ["library", search],
-    queryFn: () => apiClient.getLibraryWorks({ search, page: 1, pageSize: 24 }),
+    queryKey: ["library", search, page],
+    queryFn: () => apiClient.getLibraryWorks({ search, page, pageSize: 24 }),
   });
 
   const detailQuery = useQuery({
@@ -47,19 +49,22 @@ export function Library() {
     : undefined;
   const coverUrl =
     detailQuery.data?.summary.thumbnailUrl || imageFiles[0]?.url || undefined;
+  const totalPages = Math.max(
+    1,
+    Math.ceil((libraryQuery.data?.total ?? 0) / 24),
+  );
 
   return (
     <section className="space-y-6">
       <header className="space-y-2">
         <p className="font-mono text-xs uppercase tracking-[0.35em] text-amber-300">
-          Library
+          媒体库
         </p>
         <h1 className="text-4xl font-semibold tracking-tight text-white">
-          Browse and play downloaded works
+          浏览并播放已下载作品
         </h1>
         <p className="max-w-3xl text-sm text-slate-400">
-          This screen replaces the old `listen` page: local browsing, playback,
-          cover preview, captions, and raw file access all live here now.
+          这个页面替代了旧的 `listen` 页面：本地浏览、播放、封面预览、字幕匹配和原始文件访问都在这里完成。
         </p>
       </header>
 
@@ -67,14 +72,18 @@ export function Library() {
         <CardContent>
           <Input
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search local library by title or RJ ID..."
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            placeholder="按标题或 RJ 编号搜索本地媒体库..."
           />
         </CardContent>
       </Card>
 
       <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
           {libraryQuery.data?.items.map((work) => (
             <Card
               key={work.id}
@@ -90,7 +99,7 @@ export function Library() {
                   />
                 ) : (
                   <div className="flex h-40 items-center justify-center rounded-2xl bg-white/5 text-sm text-slate-500">
-                    No cover
+                    暂无封面
                   </div>
                 )}
                 <div>
@@ -103,27 +112,59 @@ export function Library() {
                   <div className="text-sm text-slate-400">{work.releaseDate}</div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-xs text-slate-300">
-                  <MiniStat icon={FolderOpen} value={String(work.fileCount)} label="Files" />
-                  <MiniStat icon={Music4} value={String(work.audioFileCount)} label="Audio" />
+                  <MiniStat icon={FolderOpen} value={String(work.fileCount)} label="文件" />
+                  <MiniStat icon={Music4} value={String(work.audioFileCount)} label="音频" />
                   <MiniStat
                     icon={Subtitles}
                     value={String(work.subtitleCount)}
-                    label="Subs"
+                    label="字幕"
                   />
                 </div>
               </CardContent>
             </Card>
           ))}
+          {libraryQuery.data && libraryQuery.data.items.length === 0 && (
+            <Card className="border-white/10 bg-white/6 backdrop-blur-xl lg:col-span-2">
+              <CardContent className="py-10 text-center text-sm text-slate-400">
+                当前搜索条件下没有匹配的本地作品。
+              </CardContent>
+            </Card>
+          )}
+          </div>
+
+          <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-slate-400">
+            <span>
+              第 {page} / {totalPages} 页，共 {libraryQuery.data?.total ?? 0} 个作品
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((current) => current - 1)}
+              >
+                上一页
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((current) => current + 1)}
+              >
+                下一页
+              </Button>
+            </div>
+          </div>
         </div>
 
         <Card className="border-white/10 bg-white/6 backdrop-blur-xl">
           <CardHeader>
-            <CardTitle>Player & detail</CardTitle>
+            <CardTitle>播放器与详情</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {!selectedId && (
               <p className="text-sm text-slate-500">
-                Pick a downloaded work to inspect files and start playback.
+                选择一个已下载作品后，可以查看文件并开始播放。
               </p>
             )}
 
@@ -134,11 +175,11 @@ export function Library() {
                     <img
                       src={coverUrl}
                       alt={detailQuery.data.summary.title}
-                      className="h-48 w-full rounded-2xl object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-48 items-center justify-center rounded-2xl bg-white/5 text-sm text-slate-500">
-                      No cover
+                    className="h-48 w-full rounded-2xl object-cover"
+                  />
+                ) : (
+                  <div className="flex h-48 items-center justify-center rounded-2xl bg-white/5 text-sm text-slate-500">
+                      暂无封面
                     </div>
                   )}
 
@@ -156,22 +197,22 @@ export function Library() {
                   <MiniStat
                     icon={FolderOpen}
                     value={String(detailQuery.data.summary.fileCount)}
-                    label="Files"
+                    label="文件"
                   />
                   <MiniStat
                     icon={Music4}
                     value={String(detailQuery.data.summary.audioFileCount)}
-                    label="Audio"
+                    label="音频"
                   />
                   <MiniStat
                     icon={Subtitles}
                     value={String(detailQuery.data.summary.subtitleCount)}
-                    label="Subs"
+                    label="字幕"
                   />
                 </div>
 
                 <div className="space-y-3">
-                  <div className="text-sm text-slate-500">Player</div>
+                  <div className="text-sm text-slate-500">播放器</div>
                   {selectedAudio ? (
                     <>
                       <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
@@ -202,19 +243,19 @@ export function Library() {
                       </div>
                       <div className="text-xs text-slate-500">
                         {selectedSubtitle
-                          ? `Caption track: ${selectedSubtitle.name}`
-                          : "No caption track matched to the selected audio file."}
+                          ? `字幕轨：${selectedSubtitle.name}`
+                          : "没有找到和当前音频匹配的字幕文件。"}
                       </div>
                     </>
                   ) : (
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-500">
-                      No audio file found in this work.
+                      当前作品未找到可播放音频文件。
                     </div>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <div className="text-sm text-slate-500">Playlist</div>
+                  <div className="text-sm text-slate-500">播放列表</div>
                   <div className="space-y-2">
                     {audioFiles.map((file, index) => (
                       <button
@@ -234,7 +275,7 @@ export function Library() {
                 </div>
 
                 <div className="space-y-2">
-                  <div className="text-sm text-slate-500">All files</div>
+                  <div className="text-sm text-slate-500">全部文件</div>
                   <div className="space-y-2">
                     {detailQuery.data.files.map((file) => (
                       <a

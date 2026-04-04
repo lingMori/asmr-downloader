@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -29,6 +30,10 @@ type DownloadOneEngine interface {
 	DownloadOne(id string, storeBaseDir string) error
 }
 
+type ContextDownloadOneEngine interface {
+	DownloadOneWithContext(ctx context.Context, id string, storeBaseDir string) error
+}
+
 func NewSyncDownloadRunner(db *gorm.DB, eng DownloadOneEngine) *SyncDownloadRunner {
 	if db == nil {
 		db = database.Database
@@ -42,7 +47,7 @@ func NewSyncDownloadRunner(db *gorm.DB, eng DownloadOneEngine) *SyncDownloadRunn
 	}
 }
 
-func (r *SyncDownloadRunner) Run(dir string) error {
+func (r *SyncDownloadRunner) Run(ctx context.Context, dir string, progress func(done, total int, message string)) error {
 	if r.DB == nil {
 		return errors.New("database not initialized")
 	}
@@ -57,9 +62,17 @@ func (r *SyncDownloadRunner) Run(dir string) error {
 	if err := r.cleanPending(); err != nil {
 		return err
 	}
+	totalPending, err := r.pendingSyncCount()
+	if err != nil {
+		return err
+	}
+	done := 0
 	batchSize := 1
 	batchCount := 1
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		needSync, hasDownSize, err := r.checkNeedSync(downloadLimitSize)
 		if err != nil {
 			return err
@@ -68,8 +81,12 @@ func (r *SyncDownloadRunner) Run(dir string) error {
 			break
 		}
 		log.Printf("✅ 已下载的数据大小: %d byte, 下载限制: %d byte\n", hasDownSize, downloadLimitSize)
-		time.Sleep(3 * time.Second)
-		if err := r.runBatch(dir, batchSize, batchCount, downloadLimitSize); err != nil {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(3 * time.Second):
+		}
+		if err := r.runBatch(ctx, dir, batchSize, batchCount, downloadLimitSize, totalPending, &done, progress); err != nil {
 			return err
 		}
 		batchCount++
@@ -77,7 +94,7 @@ func (r *SyncDownloadRunner) Run(dir string) error {
 	return nil
 }
 
-func (r *SyncDownloadRunner) runBatch(downDir string, batchSize int, batchCount int, downloadLimitSize int64) error {
+func (r *SyncDownloadRunner) runBatch(ctx context.Context, downDir string, batchSize int, batchCount int, downloadLimitSize int64, total int, done *int, progress func(done, total int, message string)) error {
 	var needSyncCount int64
 	result := r.DB.Table("metadata_works").
 		Where("id NOT IN (SELECT metadata_work_id FROM work_sync_infos)").
@@ -148,6 +165,7 @@ func (r *SyncDownloadRunner) runBatch(downDir string, batchSize int, batchCount 
 	}, len(workSyncInfos))
 	cancelChan := make(chan struct{})
 	var wg sync.WaitGroup
+	var cancelOnce sync.Once
 
 	workerCount := batchSize
 	for i := 0; i < workerCount; i++ {
@@ -156,17 +174,30 @@ func (r *SyncDownloadRunner) runBatch(downDir string, batchSize int, batchCount 
 			defer wg.Done()
 			for {
 				select {
+				case <-ctx.Done():
+					return
 				case syncInfo, ok := <-downloadChan:
 					if !ok {
 						return
 					}
 					log.Printf("🚀 开始下载作品: %s", syncInfo.SourceId)
-					downError := r.Engine.DownloadOne(syncInfo.SourceId, downDir)
+					var downError error
+					if ctxEngine, ok := r.Engine.(ContextDownloadOneEngine); ok {
+						downError = ctxEngine.DownloadOneWithContext(ctx, syncInfo.SourceId, downDir)
+					} else {
+						downError = r.Engine.DownloadOne(syncInfo.SourceId, downDir)
+					}
 					if downError != nil {
-						log.Printf("❌ 下载作品 %s 失败: %v", syncInfo.SourceId, downError)
-						syncInfo.Status = "FAILED"
-						syncInfo.FailReason = downError.Error()
-						syncInfo.FailedAt = time.Now()
+						if errors.Is(downError, context.Canceled) {
+							syncInfo.Status = "PENDING"
+							syncInfo.FailReason = ""
+							syncInfo.FailedAt = time.Time{}
+						} else {
+							log.Printf("❌ 下载作品 %s 失败: %v", syncInfo.SourceId, downError)
+							syncInfo.Status = "FAILED"
+							syncInfo.FailReason = downError.Error()
+							syncInfo.FailedAt = time.Now()
+						}
 					} else {
 						syncInfo.Status = "COMPLETED"
 						size, err := utils.GetDirSize(syncInfo.FilePath)
@@ -204,14 +235,21 @@ func (r *SyncDownloadRunner) runBatch(downDir string, batchSize int, batchCount 
 	doneCount := 0
 	for doneCount < len(workSyncInfos) && !needCancel {
 		select {
+		case <-ctx.Done():
+			cancelOnce.Do(func() { close(cancelChan) })
+			needCancel = true
 		case result := <-resultChan:
 			doneCount++
 			r.updateWorkSync(result.SyncInfo)
 			if result.SyncInfo.Status == "COMPLETED" {
 				totalDownloadedSize += result.Size
 			}
+			if progress != nil && result.SyncInfo.Status == "COMPLETED" {
+				*done = *done + 1
+				progress(*done, total, fmt.Sprintf("downloaded %s", result.SyncInfo.SourceId))
+			}
 			if totalDownloadedSize >= downloadLimitSize {
-				close(cancelChan)
+				cancelOnce.Do(func() { close(cancelChan) })
 				needCancel = true
 			}
 		}
@@ -229,9 +267,16 @@ func (r *SyncDownloadRunner) runBatch(downDir string, batchSize int, batchCount 
 		r.updateWorkSync(result.SyncInfo)
 		if result.SyncInfo.Status == "COMPLETED" && !needCancel {
 			totalDownloadedSize += result.Size
+			if progress != nil {
+				*done = *done + 1
+				progress(*done, total, fmt.Sprintf("downloaded %s", result.SyncInfo.SourceId))
+			}
 		}
 	}
 	log.Printf("✅ 单次批量同步下载完成, 下载大小: %d bytes", totalDownloadedSize)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -276,7 +321,7 @@ func (r *SyncDownloadRunner) checkNeedSync(limit int64) (bool, int64, error) {
 	return true, totalSize, nil
 }
 
-func (r *SyncDownloadRunner) RetryFailed() error {
+func (r *SyncDownloadRunner) RetryFailed(ctx context.Context, progress func(done, total int, message string)) error {
 	if r.DB == nil {
 		return errors.New("database not initialized")
 	}
@@ -289,19 +334,36 @@ func (r *SyncDownloadRunner) RetryFailed() error {
 		log.Println("✅ 没有需要重试下载的文件")
 		return nil
 	}
+	done := 0
 	for _, info := range failed {
-		if err := r.retryOne(info); err != nil {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := r.retryOne(ctx, info); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return err
+			}
 			log.Printf("❌ 重试下载作品 %s 失败: %v", info.SourceId, err)
+		}
+		done++
+		if progress != nil {
+			progress(done, len(failed), fmt.Sprintf("retried %s", info.SourceId))
 		}
 	}
 	return nil
 }
 
-func (r *SyncDownloadRunner) retryOne(info model.WorkSyncInfo) error {
+func (r *SyncDownloadRunner) retryOne(ctx context.Context, info model.WorkSyncInfo) error {
 	if err := os.RemoveAll(info.FilePath); err != nil {
 		return err
 	}
-	if err := r.Engine.DownloadOne(info.SourceId, filepath.Dir(info.FilePath)); err != nil {
+	var err error
+	if ctxEngine, ok := r.Engine.(ContextDownloadOneEngine); ok {
+		err = ctxEngine.DownloadOneWithContext(ctx, info.SourceId, filepath.Dir(info.FilePath))
+	} else {
+		err = r.Engine.DownloadOne(info.SourceId, filepath.Dir(info.FilePath))
+	}
+	if err != nil {
 		return err
 	}
 	info.Status = "COMPLETED"
@@ -309,4 +371,15 @@ func (r *SyncDownloadRunner) retryOne(info model.WorkSyncInfo) error {
 	info.RetryCount++
 	info.FailedAt = time.Now()
 	return r.DB.Table("work_sync_infos").Where("id = ?", info.ID).Updates(info).Error
+}
+
+func (r *SyncDownloadRunner) pendingSyncCount() (int, error) {
+	var count int64
+	result := r.DB.Table("metadata_works").
+		Where("id NOT IN (SELECT metadata_work_id FROM work_sync_infos)").
+		Count(&count)
+	if result.Error != nil {
+		return 0, result.Error
+	}
+	return int(count), nil
 }

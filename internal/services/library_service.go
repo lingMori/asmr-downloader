@@ -48,6 +48,8 @@ type LibraryFile struct {
 }
 
 var libraryFolderPattern = regexp.MustCompile(`^([^-\s]+)-(\d{8})-(sub|nosub)-(.+)$`)
+var libraryMediaIDPattern = regexp.MustCompile(`(?i)(RJ|BJ|VJ|RE)\d+`)
+var libraryDatePattern = regexp.MustCompile(`\d{8}`)
 
 func NewLibraryService() *LibraryService {
 	return &LibraryService{baseDir: model.AppConfig.Downloader.SyncDataFolder}
@@ -162,13 +164,12 @@ func (s *LibraryService) loadEntries(search string) ([]LibraryWorkSummary, error
 			continue
 		}
 		matches := libraryFolderPattern.FindStringSubmatch(entry.Name())
-		if len(matches) != 5 {
-			continue
-		}
-
 		summary, err := buildLibrarySummary(filepath.Join(s.baseDir, entry.Name()), entry.Name(), matches)
 		if err != nil {
 			return nil, err
+		}
+		if summary.AudioFileCount == 0 && summary.SubtitleCount == 0 && summary.ThumbnailURL == "" {
+			continue
 		}
 		if search != "" && !strings.Contains(strings.ToLower(summary.Title), search) && !strings.Contains(strings.ToLower(summary.MediaID), search) {
 			continue
@@ -190,12 +191,22 @@ func buildLibrarySummary(dirPath string, folderName string, matches []string) (L
 	}
 
 	summary := LibraryWorkSummary{
-		ID:           folderName,
-		MediaID:      matches[1],
-		ReleaseDate:  matches[2],
-		HasSubtitles: matches[3] == "sub",
-		Title:        matches[4],
-		FileCount:    len(files),
+		ID:        folderName,
+		Title:     folderName,
+		FileCount: len(files),
+	}
+	if len(matches) == 5 {
+		summary.MediaID = matches[1]
+		summary.ReleaseDate = matches[2]
+		summary.HasSubtitles = matches[3] == "sub"
+		summary.Title = matches[4]
+	} else {
+		if mediaID := libraryMediaIDPattern.FindString(folderName); mediaID != "" {
+			summary.MediaID = strings.ToUpper(mediaID)
+		} else {
+			summary.MediaID = folderName
+		}
+		summary.ReleaseDate = libraryDatePattern.FindString(folderName)
 	}
 	for _, file := range files {
 		switch file.Kind {
@@ -203,6 +214,7 @@ func buildLibrarySummary(dirPath string, folderName string, matches []string) (L
 			summary.AudioFileCount++
 		case "subtitle":
 			summary.SubtitleCount++
+			summary.HasSubtitles = true
 		case "image":
 			if summary.ThumbnailURL == "" {
 				summary.ThumbnailURL = file.URL

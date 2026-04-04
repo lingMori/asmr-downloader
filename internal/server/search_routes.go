@@ -22,9 +22,16 @@ func (s *Server) registerSearchRoutes(group *gin.RouterGroup) {
 
 func (s *Server) handleSearchList(ctx *gin.Context) {
 	count, _ := strconv.Atoi(ctx.DefaultQuery("count", "20"))
+	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("pageSize", "20"))
 	result, err := s.searchSvc.Search(ctx.Request.Context(), services.SearchRequest{
-		Query: ctx.Query("q"),
-		Count: count,
+		Query:    ctx.Query("q"),
+		Count:    count,
+		Page:     page,
+		PageSize: pageSize,
+		Order:    ctx.DefaultQuery("order", "release"),
+		Sort:     ctx.DefaultQuery("sort", "desc"),
+		Subtitle: ctx.DefaultQuery("subtitle", "0"),
 	})
 	if err != nil {
 		if errors.Is(err, services.ErrInvalidSearchRequest) {

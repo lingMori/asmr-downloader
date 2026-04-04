@@ -214,8 +214,8 @@ func (s *DiscoverService) searchFromMetadata(ctx context.Context, req DiscoverSe
 	if req.Subtitle == "1" {
 		query = query.Where("has_subtitle = ?", true)
 	}
-	if req.Tag != "" {
-		query = query.Where("tags LIKE ?", "%"+req.Tag+"%")
+	for _, tag := range splitCommaList(req.Tag) {
+		query = query.Where("tags LIKE ?", "%"+tag+"%")
 	}
 	if req.Circle != "" {
 		query = query.Where("name = ?", req.Circle)
@@ -229,9 +229,16 @@ func (s *DiscoverService) searchFromMetadata(ctx context.Context, req DiscoverSe
 		return DiscoverSearchResponse{}, err
 	}
 
-	order := "dl_count desc"
-	if req.Order == "release" {
-		order = "release desc"
+	order := "dl_count " + normalizeDiscoverSort(req.Sort)
+	switch req.Order {
+	case "release":
+		order = "release " + normalizeDiscoverSort(req.Sort)
+	case "rate_average_2dp":
+		order = "rate_average_2dp " + normalizeDiscoverSort(req.Sort)
+	case "review_count":
+		order = "review_count " + normalizeDiscoverSort(req.Sort)
+	case "price":
+		order = "price " + normalizeDiscoverSort(req.Sort)
 	}
 
 	if err := query.Order(order).
@@ -302,13 +309,20 @@ func normalizeDiscoverRequest(req *DiscoverSearchRequest) {
 	}
 }
 
+func normalizeDiscoverSort(sort string) string {
+	if strings.EqualFold(strings.TrimSpace(sort), "asc") {
+		return "asc"
+	}
+	return "desc"
+}
+
 func buildDiscoverQuery(req DiscoverSearchRequest) (string, error) {
 	parts := make([]string, 0, 4)
 	if req.Query != "" {
 		parts = append(parts, req.Query)
 	}
-	if req.Tag != "" {
-		parts = append(parts, "$tag:"+req.Tag+"$")
+	for _, tag := range splitCommaList(req.Tag) {
+		parts = append(parts, "$tag:"+tag+"$")
 	}
 	if req.Circle != "" {
 		parts = append(parts, "$circle:"+req.Circle+"$")

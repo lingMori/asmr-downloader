@@ -7,6 +7,7 @@ import {
 import { Layout } from "../components/Layout";
 import { Dashboard } from "./screens/Dashboard";
 import { Discover } from "./screens/Discover";
+import { DiscoverDetail } from "./screens/DiscoverDetail";
 import { Library } from "./screens/Library";
 import { Queue } from "./screens/Queue";
 import { Settings } from "./screens/Settings";
@@ -30,6 +31,12 @@ const discoverRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/discover",
   component: Discover,
+});
+
+const discoverDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/discover/$sourceId",
+  component: DiscoverDetail,
 });
 
 const queueRoute = createRoute({
@@ -59,6 +66,7 @@ const settingsRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   dashboardRoute,
   discoverRoute,
+  discoverDetailRoute,
   queueRoute,
   libraryRoute,
   syncRoute,

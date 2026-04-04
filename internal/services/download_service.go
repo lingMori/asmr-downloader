@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"asmroner/internal/events"
@@ -20,6 +21,11 @@ type DownloadEngine interface {
 	DownloadHot100(count int, dir string) error
 }
 
+type DownloadProgressEngine interface {
+	SimpleDownloadWithContext(ctx context.Context, ids []string, storeBaseDir string, progress func(done, total int, message string)) error
+	DownloadHot100WithContext(ctx context.Context, count int, dir string, progress func(done, total int, message string)) error
+}
+
 // ErrInvalidDownloadRequest indicates an invalid payload.
 var ErrInvalidDownloadRequest = errors.New("invalid download request")
 
@@ -28,6 +34,8 @@ type DownloadService struct {
 	taskStore *store.TaskStore
 	engine    DownloadEngine
 	hub       *events.Hub
+	mu        sync.Mutex
+	active    map[uint]context.CancelFunc
 }
 
 // DownloadRequest describes API payload for creating download tasks.
@@ -45,6 +53,7 @@ func NewDownloadService(taskStore *store.TaskStore, engine DownloadEngine, hub *
 		taskStore: taskStore,
 		engine:    engine,
 		hub:       hub,
+		active:    make(map[uint]context.CancelFunc),
 	}
 }
 
@@ -54,6 +63,7 @@ func (s *DownloadService) SetEngine(engine DownloadEngine) {
 
 // EnqueueDownload enqueues a download job and returns its task ID.
 func (s *DownloadService) EnqueueDownload(ctx context.Context, req DownloadRequest) (uint, error) {
+	req.IDs = uniqueStrings(req.IDs)
 	if err := validateDownloadRequest(req); err != nil {
 		return 0, err
 	}
@@ -86,8 +96,21 @@ func (s *DownloadService) EnqueueDownload(ctx context.Context, req DownloadReque
 		return 0, err
 	}
 
-	go s.executeDownload(task.ID, req)
+	runCtx, cancel := context.WithCancel(context.Background())
+	s.registerTask(task.ID, cancel)
+	go s.executeDownload(runCtx, task.ID, req)
 	return task.ID, nil
+}
+
+func (s *DownloadService) Cancel(taskID uint) error {
+	s.mu.Lock()
+	cancel, ok := s.active[taskID]
+	s.mu.Unlock()
+	if !ok {
+		return errors.New("task is not running")
+	}
+	cancel()
+	return nil
 }
 
 func validateDownloadRequest(req DownloadRequest) error {
@@ -109,14 +132,21 @@ func validateDownloadRequest(req DownloadRequest) error {
 		if req.Count <= 0 {
 			req.Count = 10
 		}
+		if req.Count > 100 {
+			return fmt.Errorf("%w: hot100 count must be between 1 and 100", ErrInvalidDownloadRequest)
+		}
 	default:
 		return fmt.Errorf("%w: unknown mode %s", ErrInvalidDownloadRequest, req.Mode)
 	}
 	return nil
 }
 
-func (s *DownloadService) executeDownload(taskID uint, req DownloadRequest) {
-	ctx := context.Background()
+func (s *DownloadService) executeDownload(ctx context.Context, taskID uint, req DownloadRequest) {
+	defer s.unregisterTask(taskID)
+	if err := ctx.Err(); err != nil {
+		s.finishCanceled(taskID)
+		return
+	}
 	_ = s.taskStore.UpdateStatus(ctx, taskID, model.TaskStatusRunning, 0, "starting download")
 	s.publishEvent(taskID, model.TaskStatusRunning, "starting download", 0)
 	s.appendLog(taskID, fmt.Sprintf("mode=%s ids=%v count=%d dir=%s", req.Mode, req.IDs, req.Count, req.OutputDir))
@@ -133,16 +163,40 @@ func (s *DownloadService) executeDownload(taskID uint, req DownloadRequest) {
 
 	mode := strings.ToLower(req.Mode)
 	var runErr error
-	switch mode {
-	case "single", "batch":
-		runErr = s.engine.SimpleDownload(req.IDs, absDir)
-	case "hot100":
-		runErr = s.engine.DownloadHot100(req.Count, absDir)
-	default:
-		runErr = fmt.Errorf("unsupported mode %s", mode)
+	progressFn := func(done, total int, message string) {
+		progress := 0.0
+		if total > 0 {
+			progress = float64(done) / float64(total)
+		}
+		_ = s.taskStore.UpdateStatus(context.Background(), taskID, model.TaskStatusRunning, progress, message)
+		s.publishEvent(taskID, model.TaskStatusRunning, message, progress)
+	}
+	if progressEngine, ok := s.engine.(DownloadProgressEngine); ok {
+		switch mode {
+		case "single", "batch":
+			runErr = progressEngine.SimpleDownloadWithContext(ctx, req.IDs, absDir, progressFn)
+		case "hot100":
+			runErr = progressEngine.DownloadHot100WithContext(ctx, req.Count, absDir, progressFn)
+		default:
+			runErr = fmt.Errorf("unsupported mode %s", mode)
+		}
+	} else {
+		switch mode {
+		case "single", "batch":
+			runErr = s.engine.SimpleDownload(req.IDs, absDir)
+		case "hot100":
+			runErr = s.engine.DownloadHot100(req.Count, absDir)
+		default:
+			runErr = fmt.Errorf("unsupported mode %s", mode)
+		}
 	}
 
 	if runErr != nil {
+		if errors.Is(runErr, context.Canceled) {
+			s.finishCanceled(taskID)
+			s.appendLog(taskID, "canceled")
+			return
+		}
 		_ = s.taskStore.UpdateStatus(ctx, taskID, model.TaskStatusFailed, 1, runErr.Error())
 		_ = s.taskStore.UpdateResult(ctx, taskID, "", truncateLog(runErr.Error()))
 		s.publishEvent(taskID, model.TaskStatusFailed, runErr.Error(), 1)
@@ -182,4 +236,40 @@ func (s *DownloadService) appendLog(taskID uint, message string) {
 		return
 	}
 	_ = s.taskStore.AppendLog(context.Background(), taskID, message)
+}
+
+func (s *DownloadService) registerTask(taskID uint, cancel context.CancelFunc) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.active[taskID] = cancel
+}
+
+func (s *DownloadService) unregisterTask(taskID uint) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.active, taskID)
+}
+
+func (s *DownloadService) finishCanceled(taskID uint) {
+	message := "task canceled"
+	_ = s.taskStore.UpdateStatus(context.Background(), taskID, model.TaskStatusCanceled, 1, message)
+	_ = s.taskStore.UpdateResult(context.Background(), taskID, "", message)
+	s.publishEvent(taskID, model.TaskStatusCanceled, message, 1)
+}
+
+func uniqueStrings(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	return result
 }
