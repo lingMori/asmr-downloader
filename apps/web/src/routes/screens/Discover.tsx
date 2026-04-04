@@ -1,6 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Download, FileDown, Flame, Search, Tag } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Download,
+  FileDown,
+  Flame,
+  RotateCcw,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+  Tag,
+  Wrench,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,36 +41,48 @@ type FacetItem = {
   count: number;
 };
 
+const defaultDiscoverFilters: DiscoverFilters = {
+  q: "",
+  tag: "",
+  circle: "",
+  va: "",
+  subtitle: false,
+  count: 24,
+  order: "dl_count",
+  sort: "desc",
+};
+
+const emptyFacets = {
+  tags: [] as FacetItem[],
+  circles: [] as FacetItem[],
+  vas: [] as FacetItem[],
+};
+
 export function Discover() {
-  const [draft, setDraft] = useState<DiscoverFilters>({
-    q: "",
-    tag: "",
-    circle: "",
-    va: "",
-    subtitle: false,
-    count: 24,
-    order: "dl_count",
-    sort: "desc",
-  });
-  const [filters, setFilters] = useState<DiscoverFilters>({
-    q: "",
-    tag: "",
-    circle: "",
-    va: "",
-    subtitle: false,
-    count: 24,
-    order: "dl_count",
-    sort: "desc",
-  });
+  const [draft, setDraft] = useState<DiscoverFilters>(defaultDiscoverFilters);
+  const [filters, setFilters] = useState<DiscoverFilters>(defaultDiscoverFilters);
   const [selectedSourceId, setSelectedSourceId] = useState<string>("");
   const [directIds, setDirectIds] = useState("");
   const [hotCount, setHotCount] = useState("10");
   const [outputDir, setOutputDir] = useState("");
   const [page, setPage] = useState(1);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showTools, setShowTools] = useState(false);
   const queryClient = useQueryClient();
 
   const legacyQuery = useMemo(() => buildLegacyQuery(filters), [filters]);
   const usingLegacyQuery = useMemo(() => isLegacySearchInput(filters.q), [filters.q]);
+  const draftIsLegacyQuery = useMemo(() => isLegacySearchInput(draft.q), [draft.q]);
+  const draftTags = useMemo(() => splitFilterValues(draft.tag), [draft.tag]);
+  const hasAdvancedDraft = Boolean(
+    draft.tag.trim() ||
+      draft.circle.trim() ||
+      draft.va.trim() ||
+      draft.subtitle ||
+      draft.count !== defaultDiscoverFilters.count ||
+      draft.order !== defaultDiscoverFilters.order ||
+      draft.sort !== defaultDiscoverFilters.sort,
+  );
 
   const searchQuery = useQuery({
     queryKey: ["discover", filters, legacyQuery, page, usingLegacyQuery],
@@ -92,10 +116,10 @@ export function Discover() {
         sort: filters.sort,
       });
 
-        return {
-          items: data.items,
-          total: data.total,
-          facets:
+      return {
+        items: data.items,
+        total: data.total,
+        facets:
           data.facets.tags.length > 0 ||
           data.facets.circles.length > 0 ||
           data.facets.vas.length > 0
@@ -204,6 +228,13 @@ export function Discover() {
     },
   });
 
+  const works = searchQuery.data?.items ?? [];
+  const facets = searchQuery.data?.facets ?? emptyFacets;
+  const totalPages = Math.max(1, Math.ceil((searchQuery.data?.total ?? 0) / filters.count));
+  const canQueueSearch =
+    (usingLegacyQuery && legacyQuery.length > 0) ||
+    (!usingLegacyQuery && works.length > 0);
+
   const activeFilters = useMemo(
     () =>
       [
@@ -212,241 +243,364 @@ export function Discover() {
         filters.circle && `社团：${filters.circle}`,
         filters.va && `声优：${filters.va}`,
         filters.subtitle && "仅字幕作品",
-        legacyQuery && `每页：${filters.count}`,
+        filters.count !== defaultDiscoverFilters.count && `每页：${filters.count}`,
+        filters.order !== defaultDiscoverFilters.order && `排序：${filters.order}`,
       ].filter(Boolean) as string[],
-    [filters, legacyQuery],
+    [filters],
   );
 
-  const works = searchQuery.data?.items ?? [];
-  const canQueueSearch =
-    (usingLegacyQuery && legacyQuery.length > 0) ||
-    (!usingLegacyQuery && works.length > 0);
-  const facets = searchQuery.data?.facets ?? emptyFacets;
-  const totalPages = Math.max(
-    1,
-    Math.ceil((searchQuery.data?.total ?? 0) / filters.count),
-  );
+  function submitSearch(nextDraft = draft) {
+    const normalizedDraft = {
+      ...nextDraft,
+      q: nextDraft.q.trim(),
+      tag: splitFilterValues(nextDraft.tag).join(", "),
+      circle: nextDraft.circle.trim(),
+      va: nextDraft.va.trim(),
+    };
+    setDraft(normalizedDraft);
+    setFilters(normalizedDraft);
+    setSelectedSourceId("");
+    setPage(1);
+  }
+
+  function resetSearchPanel() {
+    setDraft(defaultDiscoverFilters);
+    setFilters(defaultDiscoverFilters);
+    setSelectedSourceId("");
+    setPage(1);
+    setShowFilters(false);
+    setShowTools(false);
+  }
 
   return (
-    <section className="space-y-6">
-      <header className="space-y-2">
+    <section className="space-y-5">
+      <header className="space-y-1">
         <p className="font-mono text-xs uppercase tracking-[0.35em] text-amber-300">
           发现
         </p>
-        <h1 className="text-4xl font-semibold tracking-tight text-white">
-          搜索作品、查看详情并加入下载队列
-        </h1>
-        <p className="max-w-3xl text-sm text-slate-400">
-          当前控制台已经覆盖搜索、搜索下载、搜索导出、RJ 批量下载、Hot100
-          和作品详情。标签支持多值查询，多个标签请使用逗号分隔。
+        <h1 className="text-3xl font-semibold tracking-tight text-white">搜索作品</h1>
+        <p className="max-w-3xl text-sm text-slate-500">
+          支持普通条件搜索和高级语法搜索，结果可直接查看详情、导出或加入下载队列。
         </p>
       </header>
 
       <Card>
-        <CardHeader>
-          <CardTitle>搜索面板</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 lg:grid-cols-[2fr_1fr_1fr_1fr_120px_160px_140px_auto]">
-            <Input
-              value={draft.q}
-              onChange={(event) =>
-                setDraft((prev) => ({ ...prev, q: event.target.value }))
-              }
-              placeholder="关键词、RJ 编号或高级查询表达式"
-            />
-            <Input
-              value={draft.tag}
-              onChange={(event) =>
-                setDraft((prev) => ({ ...prev, tag: event.target.value }))
-              }
-              placeholder="标签，多个用逗号分隔"
-            />
-            <Input
-              value={draft.circle}
-              onChange={(event) =>
-                setDraft((prev) => ({ ...prev, circle: event.target.value }))
-              }
-              placeholder="社团"
-            />
-            <Input
-              value={draft.va}
-              onChange={(event) =>
-                setDraft((prev) => ({ ...prev, va: event.target.value }))
-              }
-              placeholder="声优"
-            />
-            <Input
-              type="number"
-              min={1}
-              max={200}
-              value={String(draft.count)}
-              onChange={(event) =>
-                setDraft((prev) => ({
-                  ...prev,
-                  count: Number(event.target.value) || 24,
-                }))
-              }
-              placeholder="每页数量"
-            />
-            <Select
-              value={draft.order}
-              onChange={(event) =>
-                setDraft((prev) => ({ ...prev, order: event.target.value }))
-              }
-            >
-              <option value="dl_count">按下载量</option>
-              <option value="release">按发售时间</option>
-              <option value="rate_average_2dp">按评分</option>
-              <option value="review_count">按评论数</option>
-              <option value="price">按价格</option>
-            </Select>
-            <Select
-              value={draft.sort}
-              onChange={(event) =>
-                setDraft((prev) => ({ ...prev, sort: event.target.value }))
-              }
-            >
-              <option value="desc">降序</option>
-              <option value="asc">升序</option>
-            </Select>
-            <Button
-              onClick={() => {
-                setFilters(draft);
-                setSelectedSourceId("");
-                setPage(1);
-              }}
-            >
-              <Search className="mr-2 h-4 w-4" />
-              搜索
-            </Button>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 text-sm text-slate-300">
-              <input
-                type="checkbox"
-                checked={draft.subtitle}
-                onChange={(event) =>
-                setDraft((prev) => ({
-                  ...prev,
-                  subtitle: event.target.checked,
-                }))
-                }
-              />
-              仅字幕作品
-            </label>
-            <Input
-              value={outputDir}
-              onChange={(event) => setOutputDir(event.target.value)}
-              placeholder="可选输出目录"
-              className="max-w-sm"
-            />
-          </div>
-
-          {activeFilters.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {activeFilters.map((item) => (
-                <span
-                  key={item}
-                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300"
-                >
-                  {item}
-                </span>
-              ))}
+        <CardContent>
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submitSearch();
+            }}
+          >
+            <div className="flex flex-wrap items-center gap-3 rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(245,158,11,0.1),rgba(255,255,255,0.03))] p-4">
+              <div className="min-w-0 flex-1">
+                <Input
+                  value={draft.q}
+                  onChange={(event) =>
+                    setDraft((prev) => ({ ...prev, q: event.target.value }))
+                  }
+                  placeholder="输入关键词、RJ 编号，或直接粘贴高级查询表达式"
+                  className="h-12 text-base"
+                />
+              </div>
+              <Button type="submit" className="h-12 px-5">
+                <Search className="mr-2 h-4 w-4" />
+                搜索
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-12 px-5"
+                onClick={() => setShowFilters((value) => !value)}
+              >
+                <SlidersHorizontal className="mr-2 h-4 w-4" />
+                筛选
+                {showFilters ? (
+                  <ChevronUp className="ml-2 h-4 w-4" />
+                ) : (
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-12 px-5"
+                onClick={() => setShowTools((value) => !value)}
+              >
+                <Wrench className="mr-2 h-4 w-4" />
+                工具
+                {showTools ? (
+                  <ChevronUp className="ml-2 h-4 w-4" />
+                ) : (
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-12 px-4"
+                onClick={resetSearchPanel}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                重置
+              </Button>
             </div>
-          )}
 
-          <div className="flex flex-wrap gap-3">
-            <Button
-              variant="secondary"
-              onClick={() => searchDownloadMutation.mutate()}
-              disabled={!canQueueSearch || searchDownloadMutation.isPending}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              下载当前搜索结果
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => exportMutation.mutate("csv")}
-              disabled={!canQueueSearch || exportMutation.isPending}
-            >
-              <FileDown className="mr-2 h-4 w-4" />
-              导出 CSV
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => exportMutation.mutate("json")}
-              disabled={!canQueueSearch || exportMutation.isPending}
-            >
-              <FileDown className="mr-2 h-4 w-4" />
-              导出 JSON
-            </Button>
-          </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/4 px-4 py-3 text-sm text-slate-400">
+              <div className="flex flex-wrap gap-2">
+                <SearchModeBadge active={!draftIsLegacyQuery}>条件搜索</SearchModeBadge>
+                <SearchModeBadge active={draftIsLegacyQuery}>高级语法</SearchModeBadge>
+                {activeFilters.slice(0, 4).map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300"
+                  >
+                    {item}
+                  </span>
+                ))}
+                {activeFilters.length > 4 && (
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-500">
+                    +{activeFilters.length - 4} 项条件
+                  </span>
+                )}
+              </div>
+              <span>
+                第 {page} / {totalPages} 页，共 {searchQuery.data?.total ?? 0} 个作品
+              </span>
+            </div>
 
-          <div className="text-sm text-slate-400">
-            第 {page} / {totalPages} 页，共 {searchQuery.data?.total ?? 0} 个作品
-          </div>
+            {(showFilters || hasAdvancedDraft) && (
+              <div className="rounded-3xl border border-white/10 bg-white/4 p-5">
+                <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+                  <div className="space-y-4">
+                    <PanelLabel title="筛选条件" description="标签支持多个值，使用逗号或换行分隔。" />
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <div className="space-y-2 md:col-span-3">
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                          标签
+                        </div>
+                        <Input
+                          value={draft.tag}
+                          onChange={(event) =>
+                            setDraft((prev) => ({ ...prev, tag: event.target.value }))
+                          }
+                          placeholder="例如：护士, 助眠, 掏耳"
+                        />
+                        {draftTags.length > 0 && (
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {draftTags.map((tagValue) => (
+                              <button
+                                key={tagValue}
+                                type="button"
+                                className="rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-xs text-amber-100 transition hover:border-amber-300/40"
+                                onClick={() =>
+                                  setDraft((prev) => ({
+                                    ...prev,
+                                    tag: splitFilterValues(prev.tag)
+                                      .filter((item) => item !== tagValue)
+                                      .join(", "),
+                                  }))
+                                }
+                              >
+                                #{tagValue} ×
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                          社团
+                        </div>
+                        <Input
+                          value={draft.circle}
+                          onChange={(event) =>
+                            setDraft((prev) => ({ ...prev, circle: event.target.value }))
+                          }
+                          placeholder="例如：甘幸冬水"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                          声优
+                        </div>
+                        <Input
+                          value={draft.va}
+                          onChange={(event) =>
+                            setDraft((prev) => ({ ...prev, va: event.target.value }))
+                          }
+                          placeholder="例如：秋野かえで"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                          附加条件
+                        </div>
+                        <label className="flex h-11 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/50 px-4 text-sm text-slate-300">
+                          <input
+                            type="checkbox"
+                            checked={draft.subtitle}
+                            onChange={(event) =>
+                              setDraft((prev) => ({
+                                ...prev,
+                                subtitle: event.target.checked,
+                              }))
+                            }
+                          />
+                          仅字幕作品
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <PanelLabel title="排序" description="先定义排序，再决定列表密度。" />
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <div className="space-y-2 md:col-span-2">
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                          排序字段
+                        </div>
+                        <Select
+                          value={draft.order}
+                          onChange={(event) =>
+                            setDraft((prev) => ({ ...prev, order: event.target.value }))
+                          }
+                        >
+                          <option value="dl_count">按下载量</option>
+                          <option value="release">按发售时间</option>
+                          <option value="rate_average_2dp">按评分</option>
+                          <option value="review_count">按评论数</option>
+                          <option value="price">按价格</option>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                          顺序
+                        </div>
+                        <Select
+                          value={draft.sort}
+                          onChange={(event) =>
+                            setDraft((prev) => ({ ...prev, sort: event.target.value }))
+                          }
+                        >
+                          <option value="desc">降序</option>
+                          <option value="asc">升序</option>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                          每页数量
+                        </div>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={200}
+                          value={String(draft.count)}
+                          onChange={(event) =>
+                            setDraft((prev) => ({
+                              ...prev,
+                              count: Number(event.target.value) || 24,
+                            }))
+                          }
+                          placeholder="24"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {showTools && (
+              <div className="rounded-3xl border border-white/10 bg-white/4 p-5">
+                <div className="grid gap-4 xl:grid-cols-[1fr_0.95fr]">
+                  <div className="space-y-4">
+                    <PanelLabel
+                      title="结果工具"
+                      description="导出当前结果，或把当前筛选结果整体加入下载队列。"
+                    />
+                    <div className="grid gap-3 md:grid-cols-[1.2fr_auto_auto_auto]">
+                      <Input
+                        value={outputDir}
+                        onChange={(event) => setOutputDir(event.target.value)}
+                        placeholder="可选输出目录"
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => searchDownloadMutation.mutate()}
+                        disabled={!canQueueSearch || searchDownloadMutation.isPending}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        下载结果
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => exportMutation.mutate("csv")}
+                        disabled={!canQueueSearch || exportMutation.isPending}
+                      >
+                        <FileDown className="mr-2 h-4 w-4" />
+                        CSV
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => exportMutation.mutate("json")}
+                        disabled={!canQueueSearch || exportMutation.isPending}
+                      >
+                        <FileDown className="mr-2 h-4 w-4" />
+                        JSON
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <PanelLabel
+                      title="快捷下载"
+                      description="适合直接粘贴 RJ 编号，或按数量拉取 Hot100。"
+                    />
+                    <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                      <Input
+                        value={directIds}
+                        onChange={(event) => setDirectIds(event.target.value)}
+                        placeholder="输入 RJ 编号，支持逗号或换行分隔"
+                      />
+                      <Button
+                        type="button"
+                        onClick={() => directDownloadMutation.mutate("batch")}
+                        disabled={parseIds(directIds).length === 0 || directDownloadMutation.isPending}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        批量下载
+                      </Button>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-[120px_auto]">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={hotCount}
+                        onChange={(event) => setHotCount(event.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => directDownloadMutation.mutate("hot100")}
+                        disabled={directDownloadMutation.isPending}
+                      >
+                        <Flame className="mr-2 h-4 w-4" />
+                        下载 Hot100
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </form>
         </CardContent>
       </Card>
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>直接下载</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              value={directIds}
-              onChange={(event) => setDirectIds(event.target.value)}
-              placeholder="输入 RJ 编号，支持逗号或换行分隔"
-            />
-            <div className="flex flex-wrap gap-3">
-              <Button
-                onClick={() => directDownloadMutation.mutate("batch")}
-                disabled={parseIds(directIds).length === 0 || directDownloadMutation.isPending}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                批量下载 RJ
-              </Button>
-              <div className="flex items-center gap-3">
-                <Input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={hotCount}
-                  onChange={(event) => setHotCount(event.target.value)}
-                  className="w-28"
-                />
-                <Button
-                  variant="secondary"
-                  onClick={() => directDownloadMutation.mutate("hot100")}
-                  disabled={directDownloadMutation.isPending}
-                >
-                  <Flame className="mr-2 h-4 w-4" />
-                  下载 Hot100
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>查询说明</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-slate-300">
-            <p>
-              搜索框兼容旧 CLI 查询语法，支持普通文本以及 `tag:`、`circle:`、
-              `va:`、`duration:` 等高级筛选。
-            </p>
-            <p>
-              当结构化字段全部为空时，本页会回落到本地元数据索引浏览。标签字段支持多值，
-              多个标签使用逗号分隔，当前按“同时包含这些标签”处理。
-            </p>
-          </CardContent>
-        </Card>
-      </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.8fr_0.9fr]">
         <div className="space-y-4">
@@ -479,9 +633,7 @@ export function Discover() {
           </div>
 
           <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-slate-400">
-            <span>
-              第 {page} / {totalPages} 页
-            </span>
+            <span>第 {page} / {totalPages} 页</span>
             <div className="flex gap-2">
               <Button
                 variant="secondary"
@@ -542,6 +694,41 @@ export function Discover() {
   );
 }
 
+function PanelLabel({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="text-xs uppercase tracking-[0.18em] text-amber-300">{title}</div>
+      <div className="text-sm text-slate-400">{description}</div>
+    </div>
+  );
+}
+
+function SearchModeBadge({
+  active,
+  children,
+}: {
+  active: boolean;
+  children: string;
+}) {
+  return (
+    <span
+      className={`rounded-full border px-3 py-1 text-xs transition ${
+        active
+          ? "border-amber-400/30 bg-amber-400/12 text-amber-100"
+          : "border-white/10 bg-white/5 text-slate-400"
+      }`}
+    >
+      {children}
+    </span>
+  );
+}
+
 function WorkCard({
   work,
   onSelect,
@@ -563,8 +750,8 @@ function WorkCard({
           <img
             src={work.mainCoverUrl || work.thumbnailUrl}
             alt={work.title}
-                    className="h-44 w-full rounded-2xl object-cover"
-                  />
+            className="h-44 w-full rounded-2xl object-cover"
+          />
         ) : (
           <div className="flex h-44 items-center justify-center rounded-2xl bg-white/5 text-sm text-slate-500">
             暂无封面
@@ -573,14 +760,10 @@ function WorkCard({
 
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-4">
-            <div className="text-sm font-medium text-amber-300">
-              {work.sourceId}
-            </div>
+            <div className="text-sm font-medium text-amber-300">{work.sourceId}</div>
             <div className="text-xs text-slate-400">{work.release}</div>
           </div>
-          <h3 className="line-clamp-2 text-lg font-semibold text-white">
-            {work.title}
-          </h3>
+          <h3 className="line-clamp-2 text-lg font-semibold text-white">{work.title}</h3>
           <p className="text-sm text-slate-400">{work.circle}</p>
         </div>
 
@@ -641,11 +824,9 @@ function FacetCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2">
-        {items.length === 0 && (
-          <div className="text-sm text-slate-500">暂无可用聚合</div>
-        )}
+        {items.length === 0 && <div className="text-sm text-slate-500">暂无可用聚合</div>}
         {items.map((item) => (
-            <button
+          <button
             key={`${title}-${item.value}`}
             className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300 transition hover:border-amber-400/40 hover:text-white"
             onClick={() => onPick(item.value)}
@@ -685,9 +866,7 @@ function WorkDetailCard({
               <div className="text-sm font-medium text-amber-300">
                 {detail.summary.sourceId}
               </div>
-              <h3 className="text-xl font-semibold text-white">
-                {detail.summary.title}
-              </h3>
+              <h3 className="text-xl font-semibold text-white">{detail.summary.title}</h3>
               <div className="text-sm text-slate-400">{detail.summary.circle}</div>
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm text-slate-300">
@@ -729,9 +908,7 @@ function WorkDetailCard({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-      <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">
-        {label}
-      </div>
+      <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{label}</div>
       <div className="mt-1 text-sm font-medium text-white">{value}</div>
     </div>
   );
@@ -873,9 +1050,3 @@ function isLegacySearchInput(raw: string) {
     value,
   );
 }
-
-const emptyFacets = {
-  tags: [] as FacetItem[],
-  circles: [] as FacetItem[],
-  vas: [] as FacetItem[],
-};
