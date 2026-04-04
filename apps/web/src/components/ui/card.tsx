@@ -1,14 +1,31 @@
 import type { HTMLAttributes } from "react";
+import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export function Card({
   className,
+  interactive = false,
+  foil = false,
   ...props
-}: HTMLAttributes<HTMLDivElement>) {
+}: HTMLMotionProps<"div"> & {
+  interactive?: boolean;
+  foil?: boolean;
+}) {
   return (
-    <div
+    <motion.div
+      whileHover={
+        interactive
+          ? {
+              y: -8,
+              scale: 1.01,
+            }
+          : undefined
+      }
+      transition={{ type: "spring", stiffness: 220, damping: 18 }}
       className={cn(
-        "rounded-3xl border border-white/10 bg-white/6 backdrop-blur-xl shadow-glass",
+        "group relative overflow-hidden rounded-[2rem] border border-[color:var(--panel-border)] bg-[color:var(--panel-bg)] shadow-[var(--shadow-glass)] backdrop-blur-2xl",
+        interactive &&
+          "sweet-card-interactive cursor-pointer border-[color:var(--panel-border-strong)] shadow-[0_18px_40px_rgba(255,182,193,0.22)]",
         className,
       )}
       {...props}
@@ -36,7 +53,10 @@ export function CardTitle({
 }: HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h3
-      className={cn("text-sm font-semibold uppercase tracking-[0.18em]", className)}
+      className={cn(
+        "sweet-title text-sm font-bold uppercase tracking-[0.18em] text-[color:var(--text-body)]",
+        className,
+      )}
       {...props}
     />
   );

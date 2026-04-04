@@ -76,6 +76,31 @@ func (s *TaskStore) UpdateStatus(ctx context.Context, id uint, status model.Task
 	return nil
 }
 
+// UpdateStatusKeepProgress updates status/message timestamps without overwriting progress.
+func (s *TaskStore) UpdateStatusKeepProgress(ctx context.Context, id uint, status model.TaskStatus, message string) error {
+	updates := map[string]interface{}{
+		"status":  status,
+		"message": message,
+	}
+
+	now := time.Now()
+	switch status {
+	case model.TaskStatusRunning:
+		updates["started_at"] = gorm.Expr("COALESCE(started_at, ?)", now)
+	case model.TaskStatusSuccess, model.TaskStatusFailed, model.TaskStatusCanceled, model.TaskStatusTerminated:
+		updates["completed_at"] = now
+	}
+
+	tx := s.db.WithContext(ctx).Model(&model.Task{}).Where("id = ?", id).Updates(updates)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return ErrTaskNotFound
+	}
+	return nil
+}
+
 // UpdateResult stores serialized result/log info.
 func (s *TaskStore) UpdateResult(ctx context.Context, id uint, result string, logExcerpt string) error {
 	tx := s.db.WithContext(ctx).Model(&model.Task{}).

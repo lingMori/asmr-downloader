@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ASMRoner Dashboard</title>
+    <script>
+      try {
+        const mode = localStorage.getItem("sweet-whispers-theme") || "system";
+        const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const resolved = mode === "system" ? (systemDark ? "dark" : "light") : mode;
+        document.documentElement.dataset.theme = resolved;
+        document.documentElement.dataset.themeMode = mode;
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

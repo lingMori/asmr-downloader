@@ -116,6 +116,10 @@ export type ConfigResponse = {
     download_jitter_min?: number;
     download_jitter_max?: number;
   };
+  auth?: {
+    state: string;
+    message: string;
+  };
 };
 
 type RawConfigResponse =
@@ -141,6 +145,10 @@ type RawConfigResponse =
         SyncJitterMax?: number;
         DownloadJitterMin?: number;
         DownloadJitterMax?: number;
+      };
+      Auth?: {
+        State?: string;
+        Message?: string;
       };
     };
 
@@ -397,6 +405,12 @@ function normalizeConfig(raw: RawConfigResponse): ConfigResponse {
       download_jitter_min: legacy.Limit?.DownloadJitterMin,
       download_jitter_max: legacy.Limit?.DownloadJitterMax,
     },
+    auth: legacy.Auth
+      ? {
+          state: legacy.Auth.State ?? "unknown",
+          message: legacy.Auth.Message ?? "",
+        }
+      : undefined,
   };
 }
 
@@ -530,10 +544,13 @@ export const apiClient = {
     });
   },
 
-  deleteTask(id: number) {
-    return requestData<{ deleted: boolean }>(`/tasks/${id}`, {
+  deleteTask(id: number, options?: { withFiles?: boolean }) {
+    return requestData<{ deleted: boolean; filesDeleted?: number }>(
+      `/tasks/${id}${options?.withFiles ? "?withFiles=1" : ""}`,
+      {
       method: "DELETE",
-    });
+      },
+    );
   },
 
   cancelTask(id: number) {

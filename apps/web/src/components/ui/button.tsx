@@ -1,22 +1,22 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import type { ButtonHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, PointerEvent } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center rounded-xl text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent disabled:pointer-events-none disabled:opacity-50",
+  "group relative inline-flex items-center justify-center overflow-hidden rounded-full border text-sm font-semibold transition duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(255,138,101,0.45)] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default:
-          "bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-[0_12px_30px_rgba(245,158,11,0.25)]",
-        secondary:
-          "bg-white/10 text-white hover:bg-white/15 border border-white/10",
-        ghost: "text-slate-200 hover:bg-white/10",
+        default: "sweet-button-primary",
+        secondary: "sweet-button-secondary",
+        ghost: "sweet-button-ghost",
+        danger: "sweet-button-danger",
       },
       size: {
-        default: "h-11 px-4 py-2",
-        sm: "h-9 px-3",
-        lg: "h-12 px-6",
+        default: "h-12 px-5 py-2",
+        sm: "h-10 px-4 text-xs",
+        lg: "h-14 px-7 text-base",
       },
     },
     defaultVariants: {
@@ -33,12 +33,56 @@ export function Button({
   className,
   variant,
   size,
+  children,
+  onPointerDown,
   ...props
 }: ButtonProps) {
+  const [ripples, setRipples] = useState<
+    Array<{ id: number; x: number; y: number; size: number }>
+  >([]);
+
+  function handlePointerDown(event: PointerEvent<HTMLButtonElement>) {
+    onPointerDown?.(event);
+    if (event.defaultPrevented || props.disabled) {
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const sizePx = Math.max(rect.width, rect.height) * 1.2;
+    const nextRipple = {
+      id: Date.now() + Math.random(),
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+      size: sizePx,
+    };
+
+    setRipples((current) => [...current, nextRipple]);
+    window.setTimeout(() => {
+      setRipples((current) => current.filter((ripple) => ripple.id !== nextRipple.id));
+    }, 700);
+  }
+
   return (
     <button
       className={cn(buttonVariants({ variant, size }), className)}
+      onPointerDown={handlePointerDown}
       {...props}
-    />
+    >
+      {ripples.map((ripple) => (
+        <span
+          key={ripple.id}
+          className="sweet-button-ripple"
+          style={{
+            left: ripple.x,
+            top: ripple.y,
+            width: ripple.size,
+            height: ripple.size,
+          }}
+        />
+      ))}
+      <span className="relative z-10 inline-flex items-center justify-center gap-2">
+        {children}
+      </span>
+    </button>
   );
 }

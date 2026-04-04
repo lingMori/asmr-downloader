@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"asmroner/internal/engine"
 	"asmroner/internal/model"
 	"asmroner/internal/server/handlers"
 	"asmroner/internal/utils"
@@ -105,6 +106,17 @@ func (s *Server) handleConfigUpdate(ctx *gin.Context) {
 		return
 	}
 
+	if requiresAuthRefresh(*s.config, next) {
+		engManager, err := engine.NewEngineManagerWithConfig(&next)
+		if err != nil {
+			if engManager != nil {
+				s.updateAuthStatus(engManager)
+			}
+			respondError(ctx, http.StatusBadRequest, "CONFIG_AUTH_FAILED", err)
+			return
+		}
+	}
+
 	if err := model.SaveConfig(&next); err != nil {
 		respondError(ctx, http.StatusInternalServerError, "CONFIG_SAVE_FAILED", err)
 		return
@@ -116,7 +128,10 @@ func (s *Server) handleConfigUpdate(ctx *gin.Context) {
 
 	safeCfg := next
 	safeCfg.User.Password = "***"
-	respondOK(ctx, safeCfg)
+	respondOK(ctx, handlers.ConfigPayload{
+		Config: safeCfg,
+		Auth:   currentAuthStatus(s.enManager),
+	})
 }
 
 func validateConfig(cfg model.Config) error {
@@ -190,4 +205,27 @@ func validPreferMedia(value string) bool {
 		seen[part] = struct{}{}
 	}
 	return true
+}
+
+func requiresAuthRefresh(current model.Config, next model.Config) bool {
+	return strings.TrimSpace(current.User.Account) != strings.TrimSpace(next.User.Account) ||
+		strings.TrimSpace(current.User.Password) != strings.TrimSpace(next.User.Password) ||
+		strings.TrimSpace(current.Downloader.ApiUrl) != strings.TrimSpace(next.Downloader.ApiUrl) ||
+		strings.TrimSpace(current.Downloader.ProxyUrl) != strings.TrimSpace(next.Downloader.ProxyUrl)
+}
+
+func currentAuthStatus(engManager *engine.EngineManager) handlers.AuthStatusPayload {
+	status := handlers.AuthStatusPayload{
+		State:   "unknown",
+		Message: "未登录",
+	}
+	if engManager != nil {
+		if engManager.AuthState != "" {
+			status.State = engManager.AuthState
+		}
+		if engManager.AuthMessage != "" {
+			status.Message = engManager.AuthMessage
+		}
+	}
+	return status
 }

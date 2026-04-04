@@ -5,6 +5,7 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { Layout } from "../components/Layout";
+import { validateDiscoverSearch } from "./discoverSearch";
 import { Dashboard } from "./screens/Dashboard";
 import { Discover } from "./screens/Discover";
 import { DiscoverDetail } from "./screens/DiscoverDetail";
@@ -30,12 +31,14 @@ const dashboardRoute = createRoute({
 const discoverRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/discover",
+  validateSearch: validateDiscoverSearch,
   component: Discover,
 });
 
 const discoverDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/discover/$sourceId",
+  validateSearch: validateDiscoverSearch,
   component: DiscoverDetail,
 });
 

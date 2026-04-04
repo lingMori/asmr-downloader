@@ -95,6 +95,7 @@ func New() (*Server, error) {
 		enManager:     engManager,
 		eventHub:      hub,
 	}
+	srv.updateAuthStatus(engManager)
 	srv.registerRoutes()
 	return srv, nil
 }
@@ -162,6 +163,7 @@ func (s *Server) applyConfig(cfg *model.Config) error {
 		return fmt.Errorf("init engine manager failed")
 	}
 	s.enManager = engManager
+	s.updateAuthStatus(engManager)
 	if s.downloadSvc != nil {
 		s.downloadSvc.SetEngine(engManager)
 	}
@@ -175,6 +177,24 @@ func (s *Server) applyConfig(cfg *model.Config) error {
 		s.discoverSvc.SetEngine(engManager)
 	}
 	return nil
+}
+
+func (s *Server) updateAuthStatus(engManager *engine.EngineManager) {
+	status := handlers.AuthStatusPayload{
+		State:   "unknown",
+		Message: "未登录",
+	}
+	if engManager != nil {
+		if engManager.AuthState != "" {
+			status.State = engManager.AuthState
+		}
+		if engManager.AuthMessage != "" {
+			status.Message = engManager.AuthMessage
+		}
+	}
+	if s.systemHandler != nil {
+		s.systemHandler.SetAuthStatus(status)
+	}
 }
 
 // HTTPError propagates errors in a consistent JSON shape.

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -252,9 +253,72 @@ func (s *DownloadService) unregisterTask(taskID uint) {
 
 func (s *DownloadService) finishCanceled(taskID uint) {
 	message := "task canceled"
-	_ = s.taskStore.UpdateStatus(context.Background(), taskID, model.TaskStatusCanceled, 1, message)
+	_ = s.taskStore.UpdateStatusKeepProgress(context.Background(), taskID, model.TaskStatusCanceled, message)
 	_ = s.taskStore.UpdateResult(context.Background(), taskID, "", message)
 	s.publishEvent(taskID, model.TaskStatusCanceled, message, 1)
+}
+
+func (s *DownloadService) DeleteTaskFiles(task *model.Task) (int, error) {
+	if task == nil {
+		return 0, errors.New("task is nil")
+	}
+	if task.Type != model.TaskTypeDownload {
+		return 0, errors.New("task type does not support file cleanup")
+	}
+
+	var req DownloadRequest
+	if err := json.Unmarshal([]byte(task.Payload), &req); err != nil {
+		return 0, fmt.Errorf("invalid task payload: %w", err)
+	}
+
+	mode := strings.ToLower(strings.TrimSpace(req.Mode))
+	if mode == "" {
+		mode = "batch"
+	}
+	if mode == "hot100" {
+		return 0, errors.New("hot100 task file cleanup is not supported")
+	}
+	if len(req.IDs) == 0 {
+		return 0, errors.New("download task has no source ids")
+	}
+
+	outputDir := strings.TrimSpace(req.OutputDir)
+	if outputDir == "" {
+		var result struct {
+			OutputDir string `json:"outputDir"`
+		}
+		if err := json.Unmarshal([]byte(task.Result), &result); err == nil && result.OutputDir != "" {
+			outputDir = result.OutputDir
+		}
+	}
+	if outputDir == "" {
+		outputDir = model.AppConfig.Downloader.SyncDataFolder
+	}
+	if outputDir == "" {
+		return 0, errors.New("output directory is empty")
+	}
+
+	absDir, err := filepath.Abs(outputDir)
+	if err != nil {
+		absDir = outputDir
+	}
+
+	removed := 0
+	for _, id := range uniqueStrings(req.IDs) {
+		pattern := filepath.Join(absDir, strings.ToUpper(strings.TrimSpace(id))+"-*")
+		matches, err := filepath.Glob(pattern)
+		if err != nil {
+			return removed, err
+		}
+		for _, match := range matches {
+			if err := os.RemoveAll(match); err != nil {
+				return removed, err
+			}
+			removed++
+		}
+	}
+
+	return removed, nil
 }
 
 func uniqueStrings(values []string) []string {

@@ -301,7 +301,7 @@ func (s *SyncService) unregisterTask(taskID uint) {
 }
 
 func (s *SyncService) finishCanceled(taskID uint, message string) {
-	_ = s.taskStore.UpdateStatus(context.Background(), taskID, model.TaskStatusCanceled, 1, message)
+	_ = s.taskStore.UpdateStatusKeepProgress(context.Background(), taskID, model.TaskStatusCanceled, message)
 	_ = s.taskStore.UpdateResult(context.Background(), taskID, "", message)
 	s.publish(taskID, model.TaskStatusCanceled, message, 1)
 	s.appendLog(taskID, message)

@@ -146,6 +146,20 @@ func (s *Server) handleTaskDelete(ctx *gin.Context) {
 		respondError(ctx, http.StatusConflict, "TASK_NOT_DELETABLE", errors.New("running or queued task cannot be deleted"))
 		return
 	}
+	withFiles := ctx.Query("withFiles") == "1" || ctx.Query("withFiles") == "true"
+	filesDeleted := 0
+	if withFiles {
+		if s.downloadSvc == nil {
+			respondError(ctx, http.StatusInternalServerError, "TASK_FILE_CLEANUP_FAILED", errors.New("download service unavailable"))
+			return
+		}
+		filesDeleted, err = s.downloadSvc.DeleteTaskFiles(task)
+		if err != nil {
+			respondError(ctx, http.StatusBadRequest, "TASK_FILE_CLEANUP_FAILED", err)
+			return
+		}
+	}
+
 	if err := s.taskStore.Delete(ctx.Request.Context(), task.ID); err != nil {
 		if err == store.ErrTaskNotFound {
 			respondError(ctx, http.StatusNotFound, "TASK_NOT_FOUND", err)
@@ -154,7 +168,7 @@ func (s *Server) handleTaskDelete(ctx *gin.Context) {
 		respondError(ctx, http.StatusInternalServerError, "TASK_DELETE_FAILED", err)
 		return
 	}
-	respondOK(ctx, gin.H{"deleted": true})
+	respondOK(ctx, gin.H{"deleted": true, "filesDeleted": filesDeleted})
 }
 
 func (s *Server) taskFromParam(ctx *gin.Context) (*model.Task, error) {

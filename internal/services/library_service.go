@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"errors"
+	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -164,9 +166,13 @@ func (s *LibraryService) loadEntries(search string) ([]LibraryWorkSummary, error
 			continue
 		}
 		matches := libraryFolderPattern.FindStringSubmatch(entry.Name())
+		if len(matches) == 0 && !libraryMediaIDPattern.MatchString(entry.Name()) {
+			continue
+		}
 		summary, err := buildLibrarySummary(filepath.Join(s.baseDir, entry.Name()), entry.Name(), matches)
 		if err != nil {
-			return nil, err
+			log.Printf("skip unreadable library entry %q: %v", entry.Name(), err)
+			continue
 		}
 		if summary.AudioFileCount == 0 && summary.SubtitleCount == 0 && summary.ThumbnailURL == "" {
 			continue
@@ -228,6 +234,9 @@ func scanLibraryFiles(dirPath string, folderName string) ([]LibraryFile, error) 
 	files := make([]LibraryFile, 0, 32)
 	err := filepath.WalkDir(dirPath, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
+			if errors.Is(err, fs.ErrPermission) {
+				return filepath.SkipDir
+			}
 			return err
 		}
 		if d.IsDir() || path == dirPath {

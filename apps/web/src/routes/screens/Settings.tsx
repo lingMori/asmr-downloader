@@ -1,9 +1,12 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PageHeader, fadeUpItem, staggerContainer } from "@/components/ui/sweet";
 import { apiClient, type ConfigResponse } from "@/lib/api";
 
 export function Settings() {
@@ -25,7 +28,13 @@ export function Settings() {
     onSuccess: (data) => {
       setForm(data);
       queryClient.setQueryData(["settings"], data);
-      toast.success("配置已保存");
+      if (data.auth?.state === "success") {
+        toast.success("配置已保存，登录成功");
+      } else if (data.auth?.state === "error") {
+        toast.error(data.auth.message || "配置已保存，但登录失败");
+      } else {
+        toast.success("配置已保存");
+      }
     },
     onError: (error) => {
       toast.error(String(error));
@@ -33,33 +42,61 @@ export function Settings() {
   });
 
   if (configQuery.isLoading || !form) {
-    return <div className="text-slate-400">正在加载配置...</div>;
+    return <div className="text-[color:var(--text-body)]">正在加载配置...</div>;
   }
 
   if (configQuery.isError) {
     return (
-      <div className="rounded-3xl border border-rose-500/30 bg-rose-500/10 p-6 text-rose-100">
+      <div className="rounded-[2rem] border border-rose-300/50 bg-rose-100/80 p-6 text-rose-700">
         从后端加载配置失败。
       </div>
     );
   }
 
   return (
-    <section className="space-y-6">
-      <header className="space-y-2">
-        <p className="font-mono text-xs uppercase tracking-[0.35em] text-amber-300">
-          设置
-        </p>
-        <h1 className="text-4xl font-semibold tracking-tight text-white">
-          运行参数与下载器配置
-        </h1>
-        <p className="max-w-3xl text-sm text-slate-400">
-          这个页面替代了旧的 `config` 命令。后端现在会使用默认值启动，并把这里的修改持久化到 `.asmroner-data/config.toml`。
-        </p>
-      </header>
+    <motion.section
+      className="space-y-6"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div variants={fadeUpItem}>
+        <PageHeader
+          kicker="Settings"
+          title="运行参数与后台配置"
+          description="这里替代旧的 config 命令，负责整理账号、下载器和限流参数。结构上改成更容易扫读的表单分区，避免长表单直接压到一整屏。"
+          meta={
+            <div className="space-y-3 rounded-[1.8rem] border border-white/40 bg-white/45 p-4 shadow-[0_16px_34px_rgba(255,182,193,0.12)]">
+              <Badge variant="gold">配置中心</Badge>
+              <div className="text-sm text-[color:var(--text-body)]">
+                修改会持久化到 `.asmroner-data/config.toml`
+              </div>
+              {form.auth ? (
+                <Badge variant={authBadgeVariant(form.auth.state)}>
+                  {authLabel(form.auth.state)}: {form.auth.message}
+                </Badge>
+              ) : null}
+            </div>
+          }
+        />
+      </motion.div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <FormSection title="账号">
+      <motion.div variants={fadeUpItem} className="grid gap-4 xl:grid-cols-3">
+        <FormSection
+          title="账号"
+          hint="登录凭据与鉴权入口。"
+          badges={
+            <>
+              <Badge variant="pink">登录</Badge>
+              <Badge variant="violet">凭据</Badge>
+              {form.auth ? (
+                <Badge variant={authBadgeVariant(form.auth.state)}>
+                  {authLabel(form.auth.state)}
+                </Badge>
+              ) : null}
+            </>
+          }
+        >
           <LabeledField label="账号">
             <Input
               value={form.user.account}
@@ -99,7 +136,16 @@ export function Settings() {
           </LabeledField>
         </FormSection>
 
-        <FormSection title="下载器">
+        <FormSection
+          title="下载器"
+          hint="下载 API、目标目录、并发和媒体偏好。"
+          badges={
+            <>
+              <Badge variant="blue">网络</Badge>
+              <Badge variant="mint">下载</Badge>
+            </>
+          }
+        >
           <LabeledField label="API 地址">
             <Input
               value={form.downloader.api_url || ""}
@@ -226,7 +272,16 @@ export function Settings() {
           </LabeledField>
         </FormSection>
 
-        <FormSection title="限流参数">
+        <FormSection
+          title="限流参数"
+          hint="QPS 与抖动窗口控制访问节奏。"
+          badges={
+            <>
+              <Badge variant="gold">限流</Badge>
+              <Badge variant="blue">节奏</Badge>
+            </>
+          }
+        >
           <FloatField
             label="同步 QPS"
             value={form.limit.sync_qps}
@@ -330,9 +385,9 @@ export function Settings() {
             }
           />
         </FormSection>
-      </div>
+      </motion.div>
 
-      <div className="flex gap-3">
+      <motion.div variants={fadeUpItem} className="flex flex-wrap gap-3">
         <Button
           onClick={() => saveMutation.mutate(form)}
           disabled={saveMutation.isPending}
@@ -350,24 +405,54 @@ export function Settings() {
         >
           重置表单
         </Button>
-      </div>
-    </section>
+      </motion.div>
+    </motion.section>
   );
+}
+
+function authBadgeVariant(state: string) {
+  switch (state) {
+    case "success":
+      return "mint" as const;
+    case "error":
+      return "danger" as const;
+    default:
+      return "ghost" as const;
+  }
+}
+
+function authLabel(state: string) {
+  switch (state) {
+    case "success":
+      return "已登录";
+    case "error":
+      return "登录失败";
+    default:
+      return "未知";
+  }
 }
 
 function FormSection({
   title,
+  hint,
+  badges,
   children,
 }: {
   title: string;
+  hint: string;
+  badges?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <Card className="border-white/10 bg-white/6 backdrop-blur-xl">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
+    <Card foil className="h-full">
+      <CardHeader className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CardTitle className="text-base">{title}</CardTitle>
+          <div className="flex flex-wrap gap-2">{badges}</div>
+        </div>
+        <p className="text-sm leading-6 text-[color:var(--text-body)]">{hint}</p>
       </CardHeader>
-      <CardContent className="space-y-3">{children}</CardContent>
+      <CardContent className="space-y-4">{children}</CardContent>
     </Card>
   );
 }
@@ -381,7 +466,7 @@ function LabeledField({
 }) {
   return (
     <div className="space-y-2">
-      <div className="text-sm text-slate-500">{label}</div>
+      <div className="text-sm font-semibold text-[color:var(--text-body)]">{label}</div>
       {children}
     </div>
   );

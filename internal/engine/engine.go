@@ -17,6 +17,7 @@ import (
 	"strconv"
 
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/alitto/pond/v2"
@@ -38,6 +39,8 @@ type EngineManager struct {
 	DownloadPool *pond.Pool
 	Client       *resty.Client
 	JWTToken     string
+	AuthState    string
+	AuthMessage  string
 	ApiUrl       string
 	//批量通道  在元数据初始化的时候
 	MetadataWorkBatchChan chan []model.MetadataWork
@@ -67,7 +70,17 @@ var defaultHeaders = map[string]string{
 
 // 在初始化 EngineManager 时读取配置
 func NewEngineManager() *EngineManager {
-	config := model.AppConfig
+	engine, err := NewEngineManagerWithConfig(model.AppConfig)
+	if err != nil {
+		log.Printf("engine auth login failed: %v", err)
+	}
+	return engine
+}
+
+func NewEngineManagerWithConfig(config *model.Config) (*EngineManager, error) {
+	if config == nil {
+		return nil, fmt.Errorf("config is nil")
+	}
 	//limit := config.Limit
 	//downloadJitterMax := limit.DownloadJitterMax
 	//downloadQPS := limit.DownloadQPS
@@ -91,7 +104,7 @@ func NewEngineManager() *EngineManager {
 	client, err := buildRestyClient(config)
 	if err != nil {
 		fmt.Printf("build resty client failed: %v", err)
-		return nil
+		return nil, err
 	}
 	//获取api地址
 	apiUrl := GetRespFastestSiteUrl()
@@ -116,6 +129,8 @@ func NewEngineManager() *EngineManager {
 		DownloadPool: &downloadPool,
 		Client:       client,
 		JWTToken:     "",
+		AuthState:    "unknown",
+		AuthMessage:  "未登录",
 		ApiUrl:       apiUrl,
 		//批量通道  在元数据初始化的时候  队列2也刚好 不会触发429
 		MetadataWorkBatchChan: make(chan []model.MetadataWork, 50),
@@ -125,10 +140,10 @@ func NewEngineManager() *EngineManager {
 		SyncWorkerPool: &syncPool,
 	}
 	//默认登录
-	engine.AuthLogin()
+	authErr := engine.AuthLogin()
 	//检测需要使用batch channel
 	//engine.CheckIfMetadataWorkBatchMode()
-	return engine
+	return engine, authErr
 }
 
 func buildRestyClient(config *model.Config) (*resty.Client, error) {
@@ -196,6 +211,10 @@ func buildRestyClient(config *model.Config) (*resty.Client, error) {
 // AuthLogin 登录获取JWT Token
 func (m *EngineManager) AuthLogin() error {
 	headers := defaultHeaders
+	m.JWTToken = ""
+	m.AuthState = "unknown"
+	m.AuthMessage = "正在登录"
+
 	user := struct {
 		Name     string `json:"name"`
 		Password string `json:"password"`
@@ -205,25 +224,36 @@ func (m *EngineManager) AuthLogin() error {
 	}
 	result := make(map[string]interface{})
 
-	response, err2 := m.Client.R().
+	response, err := m.Client.R().
 		SetHeaders(headers).
 		SetResult(&result).
 		SetBody(&user).
 		Post(m.ApiUrl + consts.AsmrApiPath.LoginPath)
-	//fmt.Println(string(response.Body()))
-	if !response.IsSuccess() {
-		return errors.New("auth login error: " + response.Status())
+	if err != nil {
+		m.AuthState = "error"
+		m.AuthMessage = "登录失败: " + err.Error()
+		return errors.New(m.AuthMessage)
 	}
-
-	if err2 != nil {
-		return errors.New("auth login error: " + err2.Error())
+	if response == nil {
+		m.AuthState = "error"
+		m.AuthMessage = "登录失败: empty response"
+		return errors.New(m.AuthMessage)
+	}
+	if !response.IsSuccess() {
+		m.AuthState = "error"
+		m.AuthMessage = "登录失败: " + response.Status()
+		return errors.New(m.AuthMessage)
 	}
 	// 检查响应是否包含 token
 	token, ok := result["token"].(string)
 	if !ok || token == "" {
-		return errors.New("auth login error: token not found in response")
+		m.AuthState = "error"
+		m.AuthMessage = "登录失败: token not found in response"
+		return errors.New(m.AuthMessage)
 	}
 	m.JWTToken = "Bearer " + token
+	m.AuthState = "success"
+	m.AuthMessage = "登录成功"
 	return nil
 }
 
@@ -237,44 +267,83 @@ func (m *EngineManager) DownloadOne(id string, storeBaseDir string) error {
 }
 
 func (m *EngineManager) SimpleDownloadWithContext(ctx context.Context, ids []string, storeBaseDir string, progress func(done, total int, message string)) error {
-	total := len(ids)
-	done := 0
+	plans := make([]downloadPlan, 0, len(ids))
+	totalFiles := 0
 	for _, id := range ids {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if err := m.DownloadOneWithContext(ctx, id, storeBaseDir); err != nil {
+		plan, err := m.prepareDownloadPlanWithContext(ctx, id, storeBaseDir)
+		if err != nil {
 			return err
 		}
-		done++
-		if progress != nil {
-			progress(done, total, fmt.Sprintf("downloaded %s", id))
+		plans = append(plans, plan)
+		totalFiles += len(plan.Files)
+	}
+
+	if totalFiles == 0 {
+		return nil
+	}
+
+	var doneFiles atomic.Int64
+	for _, plan := range plans {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if len(plan.Files) == 0 {
+			continue
+		}
+		if err := m.downloadPreparedFilesWithContext(ctx, plan.Files, func(fileName string) {
+			if progress == nil {
+				return
+			}
+			current := int(doneFiles.Add(1))
+			progress(
+				current,
+				totalFiles,
+				fmt.Sprintf("downloaded %s (%s)", plan.SourceID, fileName),
+			)
+		}); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
 func (m *EngineManager) DownloadOneWithContext(ctx context.Context, id string, storeBaseDir string) error {
+	plan, err := m.prepareDownloadPlanWithContext(ctx, id, storeBaseDir)
+	if err != nil {
+		return err
+	}
+	return m.downloadPreparedFilesWithContext(ctx, plan.Files, nil)
+}
+
+type downloadPlan struct {
+	SourceID string
+	Files    [][]string
+}
+
+func (m *EngineManager) prepareDownloadPlanWithContext(ctx context.Context, id string, storeBaseDir string) (downloadPlan, error) {
 	//检查是否是合格的id
 	valid, prefix, number, err := utils.IsValidDlsiteID(id)
 	if err != nil || !valid {
-		return err
+		return downloadPlan{}, err
 	}
 	if m.DownLimiter != nil {
 		if err := m.DownLimiter.Wait(ctx); err != nil {
-			return err
+			return downloadPlan{}, err
 		}
 	}
 	//获取作品信息
 	workInfo, err := m.GetWorkInfoWithContext(ctx, number)
 	if err != nil {
-		return err
+		return downloadPlan{}, err
 	}
 	log.Printf("Get WorkInfo  %s...\n", workInfo.Title)
 	//获取所有的tracks
 	tracks, err := m.GetVoiceTracksWithContext(ctx, number)
 	if err != nil {
-		return err
+		return downloadPlan{}, err
 	}
 	log.Printf("Get TracksInfo list,size: %d...\n", len(tracks))
 	hasSubtitle := ""
@@ -300,28 +369,44 @@ func (m *EngineManager) DownloadOneWithContext(ctx context.Context, id string, s
 	storeFileDir := filepath.Join(storeBaseDir, folderName)
 	if hasFiles, err := dirHasFiles(storeFileDir); err == nil && hasFiles {
 		log.Printf("skip existing download: %s", storeFileDir)
-		return nil
+		return downloadPlan{SourceID: id}, nil
 	}
 	needDownloadUrls, err := m.ensureDirExists(tracks, storeFileDir)
 	if err != nil {
-		return err
+		return downloadPlan{}, err
 	}
 	//过滤掉不需要的格式
 	needDownloadUrls = m.filterTargetAudioFormate(needDownloadUrls)
+	return downloadPlan{
+		SourceID: id,
+		Files:    needDownloadUrls,
+	}, nil
+}
+
+func (m *EngineManager) downloadPreparedFilesWithContext(ctx context.Context, files [][]string, onFileDone func(fileName string)) error {
+	if len(files) == 0 {
+		return nil
+	}
 	//并行下载
 	pool := *m.DownloadPool
 	group := pool.NewGroup()
-	for _, url := range needDownloadUrls {
+	for _, url := range files {
 		fileURL := url
-		//log.Println("Download file:", url[2])
 		group.SubmitErr(func() error {
-			return m.downloadFileWithContext(ctx, fileURL[0], fileURL[1], fileURL[2])
-			//return nil
+			if err := m.downloadFileWithContext(ctx, fileURL[0], fileURL[1], fileURL[2]); err != nil {
+				return err
+			}
+			if onFileDone != nil {
+				onFileDone(fileURL[2])
+			}
+			return nil
 		})
 	}
-	err = group.Wait()
+	err := group.Wait()
 	//递归的移除空目录
-	utils.RemoveEmptyDirs(folderName)
+	if len(files) > 0 {
+		utils.RemoveEmptyDirs(files[0][1])
+	}
 	return err
 }
 

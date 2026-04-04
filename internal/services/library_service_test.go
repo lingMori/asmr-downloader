@@ -37,3 +37,32 @@ func TestLibraryServiceListWorksSupportsFallbackFolders(t *testing.T) {
 		t.Fatalf("unexpected fallback summary: %+v", item)
 	}
 }
+
+func TestLibraryServiceListWorksSkipsUnrelatedFolders(t *testing.T) {
+	baseDir := t.TempDir()
+
+	if err := os.MkdirAll(filepath.Join(baseDir, "Applications"), 0755); err != nil {
+		t.Fatalf("MkdirAll(unrelated) error = %v", err)
+	}
+
+	workDir := filepath.Join(baseDir, "RJ123456-20240101-sub-sample")
+	if err := os.MkdirAll(workDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(work) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(workDir, "track01.mp3"), []byte("a"), 0644); err != nil {
+		t.Fatalf("WriteFile(audio) error = %v", err)
+	}
+
+	service := &LibraryService{baseDir: baseDir}
+
+	result, err := service.ListWorks(context.Background(), 1, 24, "")
+	if err != nil {
+		t.Fatalf("ListWorks() error = %v", err)
+	}
+	if len(result.Items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(result.Items))
+	}
+	if result.Items[0].MediaID != "RJ123456" {
+		t.Fatalf("expected RJ123456, got %q", result.Items[0].MediaID)
+	}
+}
