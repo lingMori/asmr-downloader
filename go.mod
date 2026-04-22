@@ -1,12 +1,13 @@
 module asmroner
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/alitto/pond/v2 v2.6.0
 	github.com/gin-gonic/gin v1.11.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/go-resty/resty/v2 v2.17.0
+	github.com/google/uuid v1.3.0
 	github.com/spf13/viper v1.21.0
 	golang.org/x/net v0.43.0
 	golang.org/x/time v0.14.0
@@ -28,7 +29,6 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -55,7 +55,8 @@ require (
 	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/mod v0.26.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/term v0.42.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
 	golang.org/x/tools v0.35.0 // indirect
 	google.golang.org/protobuf v1.36.9 // indirect

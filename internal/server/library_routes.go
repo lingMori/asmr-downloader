@@ -21,7 +21,7 @@ func (s *Server) registerLibraryRoutes(group *gin.RouterGroup) {
 
 func (s *Server) handleLibraryList(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("pageSize", "24"))
+	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("page_size", "24"))
 
 	result, err := s.librarySvc.ListWorks(ctx.Request.Context(), page, pageSize, ctx.Query("search"))
 	if err != nil {

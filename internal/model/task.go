@@ -46,13 +46,13 @@ type Task struct {
 
 	Progress   float64 `gorm:"type:real" json:"progress"`
 	Message    string  `gorm:"type:text" json:"message"`
-	LogExcerpt string  `gorm:"type:text" json:"logExcerpt"`
+	LogExcerpt string  `gorm:"type:text" json:"log_excerpt"`
 
-	StartedAt   *time.Time `json:"startedAt"`
-	CompletedAt *time.Time `json:"completedAt"`
+	StartedAt   *time.Time `json:"started_at"`
+	CompletedAt *time.Time `json:"completed_at"`
 
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 
 	Logs []TaskLog `gorm:"foreignKey:TaskID" json:"logs"`
 }
@@ -60,7 +60,7 @@ type Task struct {
 // TaskLog stores textual log entries for a task.
 type TaskLog struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	TaskID    uint      `gorm:"index" json:"taskId"`
+	TaskID    uint      `gorm:"index" json:"task_id"`
 	Message   string    `gorm:"type:text" json:"message"`
-	CreatedAt time.Time `json:"createdAt"`
+	CreatedAt time.Time `json:"created_at"`
 }

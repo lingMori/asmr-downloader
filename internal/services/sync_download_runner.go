@@ -22,8 +22,9 @@ import (
 
 // SyncDownloadRunner encapsulates sync download/retry logic.
 type SyncDownloadRunner struct {
-	DB     *gorm.DB
-	Engine DownloadOneEngine
+	DB       *gorm.DB
+	Engine   DownloadOneEngine
+	Provider *model.ConfigProvider
 }
 
 type DownloadOneEngine interface {
@@ -34,16 +35,18 @@ type ContextDownloadOneEngine interface {
 	DownloadOneWithContext(ctx context.Context, id string, storeBaseDir string) error
 }
 
-func NewSyncDownloadRunner(db *gorm.DB, eng DownloadOneEngine) *SyncDownloadRunner {
+func NewSyncDownloadRunner(db *gorm.DB, eng DownloadOneEngine, provider *model.ConfigProvider) *SyncDownloadRunner {
 	if db == nil {
 		db = database.Database
 	}
-	if eng == nil {
-		eng = engine.NewEngineManager()
+	if eng == nil && provider != nil {
+		snap := provider.Snapshot()
+		eng = engine.NewEngineManager(&snap)
 	}
 	return &SyncDownloadRunner{
-		DB:     db,
-		Engine: eng,
+		DB:       db,
+		Engine:   eng,
+		Provider: provider,
 	}
 }
 
@@ -51,10 +54,14 @@ func (r *SyncDownloadRunner) Run(ctx context.Context, dir string, progress func(
 	if r.DB == nil {
 		return errors.New("database not initialized")
 	}
-	if dir == "" {
-		dir = model.AppConfig.Downloader.SyncDataFolder
+	if dir == "" && r.Provider != nil {
+		dir = r.Provider.Downloader().SyncDataFolder
 	}
-	downloadLimitSize, err := utils.FileSize2Byte(model.AppConfig.Downloader.SyncWantedSize)
+	syncWantedSize := ""
+	if r.Provider != nil {
+		syncWantedSize = r.Provider.Downloader().SyncWantedSize
+	}
+	downloadLimitSize, err := utils.FileSize2Byte(syncWantedSize)
 	if err != nil {
 		log.Println("❌ 解析SyncWantedSize失败:", err)
 		downloadLimitSize = 1024 * 1024 * 1024

@@ -21,7 +21,7 @@ func (s *Server) registerDiscoverRoutes(group *gin.RouterGroup) {
 
 func (s *Server) handleDiscoverSearch(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("pageSize", "24"))
+	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("page_size", "24"))
 
 	result, err := s.discoverSvc.Search(ctx.Request.Context(), services.DiscoverSearchRequest{
 		Query:    ctx.Query("q"),

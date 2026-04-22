@@ -3,7 +3,7 @@ package server
 import (
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -28,6 +28,7 @@ import (
 type Server struct {
 	engine        *gin.Engine
 	config        *model.Config
+	cfgProvider   *model.ConfigProvider
 	db            *gorm.DB
 	taskStore     *store.TaskStore
 	taskSvc       *services.TaskService
@@ -50,6 +51,7 @@ func New() (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("load config: %w", err)
 	}
+	cfgProvider := model.NewConfigProvider(cfg)
 
 	db, err := database.InitDB()
 	if err != nil {
@@ -65,24 +67,25 @@ func New() (*Server, error) {
 	gin.SetMode(ginMode)
 
 	router := gin.New()
-	router.Use(gin.Logger(), gin.Recovery(), corsMiddleware())
+	router.Use(requestIDMiddleware(), slogLoggerMiddleware(), slogRecoveryMiddleware(), corsMiddleware())
 
 	taskStore := store.NewTaskStore(db)
 	taskSvc := services.NewTaskService(taskStore)
-	engManager := engine.NewEngineManager()
+	engManager := engine.NewEngineManager(cfg)
 	if engManager == nil {
 		return nil, fmt.Errorf("init engine manager failed")
 	}
 	hub := events.NewHub()
-	downloadSvc := services.NewDownloadService(taskStore, engManager, hub)
+	downloadSvc := services.NewDownloadService(taskStore, engManager, hub, cfgProvider)
 	searchSvc := services.NewSearchService(engManager, downloadSvc)
-	syncSvc := services.NewSyncService(db, taskStore, engManager, hub)
+	syncSvc := services.NewSyncService(db, taskStore, engManager, hub, cfgProvider)
 	discoverSvc := services.NewDiscoverService(db, engManager)
-	librarySvc := services.NewLibraryService()
+	librarySvc := services.NewLibraryService(cfgProvider)
 
 	srv := &Server{
 		engine:        router,
 		config:        cfg,
+		cfgProvider:   cfgProvider,
 		db:            db,
 		taskStore:     taskStore,
 		taskSvc:       taskSvc,
@@ -102,7 +105,7 @@ func New() (*Server, error) {
 
 // Run starts serving HTTP requests on the provided address.
 func (s *Server) Run(addr string) error {
-	log.Printf("HTTP server listening on %s", addr)
+	logger.Logger().Info("http server listening", slog.String("addr", addr))
 	return s.engine.Run(addr)
 }
 
@@ -128,7 +131,6 @@ func loadConfig() (*model.Config, error) {
 		return nil, err
 	}
 
-	model.AppConfig = cfg
 	return cfg, nil
 }
 
@@ -149,8 +151,10 @@ func (s *Server) applyConfig(cfg *model.Config) error {
 		return fmt.Errorf("config is nil")
 	}
 
-	model.AppConfig = cfg
 	s.config = cfg
+	if s.cfgProvider != nil {
+		s.cfgProvider.Update(cfg)
+	}
 	if s.systemHandler != nil {
 		s.systemHandler.SetConfig(cfg)
 	}
@@ -158,7 +162,7 @@ func (s *Server) applyConfig(cfg *model.Config) error {
 		s.librarySvc.SetBaseDir(cfg.Downloader.SyncDataFolder)
 	}
 
-	engManager := engine.NewEngineManager()
+	engManager := engine.NewEngineManager(cfg)
 	if engManager == nil {
 		return fmt.Errorf("init engine manager failed")
 	}

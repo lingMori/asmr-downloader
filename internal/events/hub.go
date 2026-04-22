@@ -9,7 +9,7 @@ import (
 
 // TaskEvent represents a change in task state for SSE/WebSocket consumers.
 type TaskEvent struct {
-	TaskID   uint             `json:"taskId"`
+	TaskID   uint             `json:"task_id"`
 	Status   model.TaskStatus `json:"status"`
 	Message  string           `json:"message"`
 	Progress float64          `json:"progress"`

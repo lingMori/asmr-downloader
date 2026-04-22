@@ -44,22 +44,22 @@ type DiscoverSearchResponse struct {
 	Facets   DiscoverFacets        `json:"facets"`
 	Total    int                   `json:"total"`
 	Page     int                   `json:"page"`
-	PageSize int                   `json:"pageSize"`
+	PageSize int                   `json:"page_size"`
 }
 
 type DiscoverWorkSummary struct {
-	SourceID     string   `json:"sourceId"`
+	SourceID     string   `json:"source_id"`
 	Title        string   `json:"title"`
 	Circle       string   `json:"circle"`
 	Release      string   `json:"release"`
-	DlCount      int      `json:"dlCount"`
+	DlCount      int      `json:"dl_count"`
 	Rate         float64  `json:"rate"`
 	Duration     int      `json:"duration"`
-	HasSubtitle  bool     `json:"hasSubtitle"`
+	HasSubtitle  bool     `json:"has_subtitle"`
 	Vas          []string `json:"vas"`
 	Tags         []string `json:"tags"`
-	ThumbnailURL string   `json:"thumbnailUrl"`
-	MainCoverURL string   `json:"mainCoverUrl"`
+	ThumbnailURL string   `json:"thumbnail_url"`
+	MainCoverURL string   `json:"main_cover_url"`
 }
 
 type DiscoverFacet struct {
@@ -75,14 +75,14 @@ type DiscoverFacets struct {
 
 type DiscoverWorkDetail struct {
 	Summary    DiscoverWorkSummary `json:"summary"`
-	SourceURL  string              `json:"sourceUrl"`
-	CircleID   int                 `json:"circleId"`
+	SourceURL  string              `json:"source_url"`
+	CircleID   int                 `json:"circle_id"`
 	Price      int                 `json:"price"`
-	ReviewCnt  int                 `json:"reviewCount"`
-	RateCnt    int                 `json:"rateCount"`
-	CreateDate string              `json:"createDate"`
-	WorkAttrs  string              `json:"workAttributes"`
-	Age        string              `json:"ageCategory"`
+	ReviewCnt  int                 `json:"review_count"`
+	RateCnt    int                 `json:"rate_count"`
+	CreateDate string              `json:"create_date"`
+	WorkAttrs  string              `json:"work_attributes"`
+	Age        string              `json:"age_category"`
 	Tracks     []model.Track       `json:"tracks"`
 }
 

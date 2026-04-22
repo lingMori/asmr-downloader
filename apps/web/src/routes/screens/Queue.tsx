@@ -51,7 +51,7 @@ export function Queue() {
   const retryMutation = useMutation({
     mutationFn: (id: number) => apiClient.retryTask(id),
     onSuccess: (res) => {
-      toast.success(`已创建重试任务 #${res.taskId}`);
+      toast.success(`已创建重试任务 #${res.task_id}`);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
     onError: (error) => {
@@ -422,9 +422,9 @@ export function Queue() {
                   <Summary label="状态" value={translateTaskStatus(selectedTask.status)} />
                   <Summary label="来源" value={selectedTask.source || "-"} />
                   <Summary label="类型" value={translateTaskType(selectedTask.type)} />
-                  <Summary label="创建时间" value={selectedTask.createdAt || "-"} />
-                  <Summary label="开始时间" value={selectedTask.startedAt || "-"} />
-                  <Summary label="完成时间" value={selectedTask.completedAt || "-"} />
+                  <Summary label="创建时间" value={selectedTask.created_at || "-"} />
+                  <Summary label="开始时间" value={selectedTask.started_at || "-"} />
+                  <Summary label="完成时间" value={selectedTask.completed_at || "-"} />
                 </div>
 
                 <CodeBlock title="请求参数" value={selectedTask.payload || "{}"} />
@@ -444,9 +444,9 @@ export function Queue() {
                         className="rounded-[1.4rem] border border-white/40 bg-white/42 p-3 text-sm text-[color:var(--text-strong)]"
                       >
                         <div>{log.message}</div>
-                        {log.createdAt ? (
+                        {log.created_at ? (
                           <div className="mt-2 text-xs text-[color:var(--text-muted)]">
-                            {log.createdAt}
+                            {log.created_at}
                           </div>
                         ) : null}
                       </div>

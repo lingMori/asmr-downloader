@@ -193,7 +193,7 @@ export function Dashboard() {
               />
               <ProgressTrack
                 label="字幕作品进度"
-                value={reportQuery.data?.progress.withSubtitle ?? 0}
+                value={reportQuery.data?.progress.with_subtitle ?? 0}
                 mascot="🎧"
                 hint="适合优先推进有字幕的作品集"
               />

@@ -35,6 +35,7 @@ type DownloadService struct {
 	taskStore *store.TaskStore
 	engine    DownloadEngine
 	hub       *events.Hub
+	provider  *model.ConfigProvider
 	mu        sync.Mutex
 	active    map[uint]context.CancelFunc
 }
@@ -44,22 +45,30 @@ type DownloadRequest struct {
 	Mode      string   `json:"mode"` // single|batch|hot100
 	IDs       []string `json:"ids"`
 	Count     int      `json:"count"`
-	OutputDir string   `json:"outputDir"`
+	OutputDir string   `json:"output_dir"`
 	Name      string   `json:"name"`
 }
 
 // NewDownloadService constructs a service with dependencies.
-func NewDownloadService(taskStore *store.TaskStore, engine DownloadEngine, hub *events.Hub) *DownloadService {
+func NewDownloadService(taskStore *store.TaskStore, engine DownloadEngine, hub *events.Hub, provider *model.ConfigProvider) *DownloadService {
 	return &DownloadService{
 		taskStore: taskStore,
 		engine:    engine,
 		hub:       hub,
+		provider:  provider,
 		active:    make(map[uint]context.CancelFunc),
 	}
 }
 
 func (s *DownloadService) SetEngine(engine DownloadEngine) {
 	s.engine = engine
+}
+
+func (s *DownloadService) syncDataFolder() string {
+	if s.provider == nil {
+		return ""
+	}
+	return s.provider.Downloader().SyncDataFolder
 }
 
 // EnqueueDownload enqueues a download job and returns its task ID.
@@ -154,7 +163,7 @@ func (s *DownloadService) executeDownload(ctx context.Context, taskID uint, req 
 
 	outputDir := req.OutputDir
 	if outputDir == "" {
-		outputDir = model.AppConfig.Downloader.SyncDataFolder
+		outputDir = s.syncDataFolder()
 	}
 	absDir, err := filepath.Abs(outputDir)
 	if err != nil {
@@ -207,7 +216,7 @@ func (s *DownloadService) executeDownload(ctx context.Context, taskID uint, req 
 
 	message := fmt.Sprintf("completed %s", time.Now().Format(time.RFC3339))
 	_ = s.taskStore.UpdateStatus(ctx, taskID, model.TaskStatusSuccess, 1, message)
-	_ = s.taskStore.UpdateResult(ctx, taskID, fmt.Sprintf("{\"outputDir\":\"%s\"}", absDir), "")
+	_ = s.taskStore.UpdateResult(ctx, taskID, fmt.Sprintf("{\"output_dir\":\"%s\"}", absDir), "")
 	s.publishEvent(taskID, model.TaskStatusSuccess, message, 1)
 	s.appendLog(taskID, message)
 }
@@ -285,14 +294,14 @@ func (s *DownloadService) DeleteTaskFiles(task *model.Task) (int, error) {
 	outputDir := strings.TrimSpace(req.OutputDir)
 	if outputDir == "" {
 		var result struct {
-			OutputDir string `json:"outputDir"`
+			OutputDir string `json:"output_dir"`
 		}
 		if err := json.Unmarshal([]byte(task.Result), &result); err == nil && result.OutputDir != "" {
 			outputDir = result.OutputDir
 		}
 	}
 	if outputDir == "" {
-		outputDir = model.AppConfig.Downloader.SyncDataFolder
+		outputDir = s.syncDataFolder()
 	}
 	if outputDir == "" {
 		return 0, errors.New("output directory is empty")

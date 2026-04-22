@@ -3,7 +3,7 @@ import type { Task, TaskListResponse } from "@/lib/api";
 import { useTaskEvents } from "@/lib/useTaskEvents";
 
 type TaskEventPayload = {
-  taskId: number;
+  task_id: number;
   status: string;
   message: string;
   progress: number;
@@ -33,11 +33,11 @@ export function TaskRealtimeBridge() {
     queryClient.setQueryData<TaskListResponse>(["dashboard", "tasks"], (current) =>
       patchTaskList(current, payload),
     );
-    queryClient.setQueryData<Task>(["task", payload.taskId], (current) =>
+    queryClient.setQueryData<Task>(["task", payload.task_id], (current) =>
       patchTask(current, payload),
     );
 
-    queryClient.invalidateQueries({ queryKey: ["task", payload.taskId] });
+    queryClient.invalidateQueries({ queryKey: ["task", payload.task_id] });
 
     if (terminalStatuses.has(payload.status)) {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
@@ -75,7 +75,7 @@ function patchTaskList(
 }
 
 function patchTask(task: Task | undefined, payload: TaskEventPayload) {
-  if (!task || task.id !== payload.taskId) {
+  if (!task || task.id !== payload.task_id) {
     return task;
   }
 
@@ -86,10 +86,10 @@ function patchTask(task: Task | undefined, payload: TaskEventPayload) {
     message: payload.message,
     updatedAt: payload.time,
     startedAt:
-      payload.status === "RUNNING" ? task.startedAt ?? payload.time : task.startedAt,
+      payload.status === "RUNNING" ? task.started_at ?? payload.time : task.started_at,
     completedAt: terminalStatuses.has(payload.status)
-      ? task.completedAt ?? payload.time
-      : task.completedAt,
+      ? task.completed_at ?? payload.time
+      : task.completed_at,
   };
 }
 

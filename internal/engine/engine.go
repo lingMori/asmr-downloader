@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -47,32 +48,58 @@ type EngineManager struct {
 	//标记是否开启  条件db中有数据了
 	//MetadataWorkBatchMode bool
 	SyncWorkerPool *pond.Pool
+	// headers 缓存的请求头模板（由 Config.Downloader.HTTP 构建）。
+	headers map[string]string
 }
 
-var defaultHeaders = map[string]string{
-	"accept":             "application/json, text/plain, */*",
-	"accept-encoding":    "gzip",
-	"accept-language":    "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7",
-	"cache-control":      "no-cache",
-	"content-type":       "application/json",
-	"origin":             "https://asmr.one",
-	"pragma":             "no-cache",
-	"priority":           "u=1, i",
-	"referer":            "https://asmr.one/",
-	"sec-ch-ua":          `"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"`,
-	"sec-ch-ua-mobile":   "?0",
-	"sec-ch-ua-platform": `"macOS"`,
-	"sec-fetch-dest":     "empty",
-	"sec-fetch-mode":     "cors",
-	"sec-fetch-site":     "cross-site",
-	"user-agent":         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+// staticHeaders 返回与浏览器指纹无关的固定头（accept、cache-control 等）。
+func staticHeaders() map[string]string {
+	return map[string]string{
+		"accept":           "application/json, text/plain, */*",
+		"accept-encoding":  "gzip",
+		"cache-control":    "no-cache",
+		"content-type":     "application/json",
+		"pragma":           "no-cache",
+		"priority":         "u=1, i",
+		"sec-ch-ua-mobile": "?0",
+		"sec-fetch-dest":   "empty",
+		"sec-fetch-mode":   "cors",
+		"sec-fetch-site":   "cross-site",
+	}
+}
+
+// buildHeadersFromConfig 根据配置构建一份完整的请求头。
+// 调用方拿到的是独立 map，可安全添加 Authorization 等动态值。
+func buildHeadersFromConfig(cfg model.HTTPHeaders) map[string]string {
+	defaults := model.DefaultHTTPHeaders()
+	pick := func(custom, fallback string) string {
+		if strings.TrimSpace(custom) != "" {
+			return custom
+		}
+		return fallback
+	}
+	headers := staticHeaders()
+	headers["user-agent"] = pick(cfg.UserAgent, defaults.UserAgent)
+	headers["origin"] = pick(cfg.Origin, defaults.Origin)
+	headers["referer"] = pick(cfg.Referer, defaults.Referer)
+	headers["accept-language"] = pick(cfg.AcceptLanguage, defaults.AcceptLanguage)
+	headers["sec-ch-ua"] = pick(cfg.SecChUa, defaults.SecChUa)
+	headers["sec-ch-ua-platform"] = pick(cfg.SecChUaPlatform, defaults.SecChUaPlatform)
+	for k, v := range cfg.Extra {
+		headers[strings.ToLower(k)] = v
+	}
+	return headers
 }
 
 // 在初始化 EngineManager 时读取配置
-func NewEngineManager() *EngineManager {
-	engine, err := NewEngineManagerWithConfig(model.AppConfig)
+func NewEngineManager(cfg *model.Config) *EngineManager {
+	if cfg == nil {
+		logger.Logger().Error("engine init: nil config")
+		return nil
+	}
+	engine, err := NewEngineManagerWithConfig(cfg)
 	if err != nil {
-		log.Printf("engine auth login failed: %v", err)
+		logger.Logger().Error("engine auth login failed", slog.Any("error", err))
 	}
 	return engine
 }
@@ -107,7 +134,7 @@ func NewEngineManagerWithConfig(config *model.Config) (*EngineManager, error) {
 		return nil, err
 	}
 	//获取api地址
-	apiUrl := GetRespFastestSiteUrl()
+	apiUrl := GetRespFastestSiteUrl(config.Downloader.ApiUrl)
 
 	engine := &EngineManager{
 		DB: database.Database,
@@ -138,6 +165,7 @@ func NewEngineManagerWithConfig(config *model.Config) (*EngineManager, error) {
 		//标记是否开启  条件db中有数据了
 		//MetadataWorkBatchMode: true,
 		SyncWorkerPool: &syncPool,
+		headers:        buildHeadersFromConfig(config.Downloader.HTTP),
 	}
 	//默认登录
 	authErr := engine.AuthLogin()
@@ -193,11 +221,23 @@ func buildRestyClient(config *model.Config) (*resty.Client, error) {
 		}
 
 	}
-	client := r.
-		SetHeader("User-Agent", utils.RandomUserAgent(consts.UserAgents)).
-		SetRetryCount(retries).
+	client := r.SetRetryCount(retries).
 		SetRetryWaitTime(2 * time.Second)
+	ua := strings.TrimSpace(config.Downloader.HTTP.UserAgent)
+	if ua == "" {
+		ua = utils.RandomUserAgent(consts.UserAgents)
+	}
+	client.SetHeader("User-Agent", ua)
 	return client, nil
+}
+
+// cloneHeaders 返回当前 EngineManager 配置的请求头独立副本，供每次请求附加 Authorization 等动态字段。
+func (m *EngineManager) cloneHeaders() map[string]string {
+	out := make(map[string]string, len(m.headers))
+	for k, v := range m.headers {
+		out[k] = v
+	}
+	return out
 }
 
 //func (m *EngineManager) CheckIfMetadataWorkBatchMode() {
@@ -210,7 +250,7 @@ func buildRestyClient(config *model.Config) (*resty.Client, error) {
 
 // AuthLogin 登录获取JWT Token
 func (m *EngineManager) AuthLogin() error {
-	headers := defaultHeaders
+	headers := m.cloneHeaders()
 	m.JWTToken = ""
 	m.AuthState = "unknown"
 	m.AuthMessage = "正在登录"
@@ -503,7 +543,7 @@ func (m *EngineManager) GetVoiceTracks(id string) ([]model.Track, error) {
 
 func (m *EngineManager) GetVoiceTracksWithContext(ctx context.Context, id string) ([]model.Track, error) {
 	url := m.ApiUrl + consts.AsmrApiPath.TracksPath + id
-	headers := defaultHeaders
+	headers := m.cloneHeaders()
 
 	var result []model.Track
 
@@ -530,7 +570,7 @@ func (m *EngineManager) GetWorkInfo(id string) (model.WorkInfo, error) {
 
 func (m *EngineManager) GetWorkInfoWithContext(ctx context.Context, id string) (model.WorkInfo, error) {
 	url := m.ApiUrl + consts.AsmrApiPath.WorkinfoPath + id
-	headers := defaultHeaders
+	headers := m.cloneHeaders()
 
 	var result = model.WorkInfo{}
 
@@ -731,7 +771,7 @@ func (m *EngineManager) fetchMetaDataRespWithContext(ctx context.Context, url st
 			return nil, err
 		}
 	}
-	headers := defaultHeaders
+	headers := m.cloneHeaders()
 
 	var result = model.MetadataWorkResponse{}
 
@@ -826,7 +866,7 @@ func (m *EngineManager) downloadFileWithContext(ctx context.Context, url string,
 
 func (m *EngineManager) SearchForCountResult(asmrOneQueryStr string, count int) (model.SearchResult, error) {
 	url := m.ApiUrl + consts.AsmrApiPath.SearchPath + asmrOneQueryStr
-	headers := defaultHeaders
+	headers := m.cloneHeaders()
 
 	var result = model.SearchResult{}
 
@@ -987,7 +1027,7 @@ func (m *EngineManager) DownloadHot100(count int, dir string) error {
 
 func (m *EngineManager) DownloadHot100WithContext(ctx context.Context, count int, dir string, progress func(done, total int, message string)) error {
 	url := m.ApiUrl + consts.AsmrApiPath.HotPath
-	headers := defaultHeaders
+	headers := m.cloneHeaders()
 
 	var result = model.MetadataWorkResponse{}
 	body := map[string]interface{}{

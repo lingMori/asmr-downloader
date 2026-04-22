@@ -42,7 +42,7 @@ func (s *Server) handleEvents(ctx *gin.Context) {
 			return
 		case ev := <-ch:
 			fmt.Fprintf(ctx.Writer, "event: task\n")
-			fmt.Fprintf(ctx.Writer, "data: {\"taskId\":%d,\"status\":\"%s\",\"message\":\"%s\",\"progress\":%.2f,\"time\":\"%s\"}\n\n",
+			fmt.Fprintf(ctx.Writer, "data: {\"task_id\":%d,\"status\":\"%s\",\"message\":\"%s\",\"progress\":%.2f,\"time\":\"%s\"}\n\n",
 				ev.TaskID, ev.Status, escapeForJSON(ev.Message), ev.Progress, ev.Time.Format(time.RFC3339))
 			flusher.Flush()
 		case <-heartbeat.C:

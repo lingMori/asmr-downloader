@@ -34,6 +34,6 @@ func (s *Server) handleDownloadCreate(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusAccepted, gin.H{
 		"code":   "ACCEPTED",
-		"taskId": taskID,
+		"task_id": taskID,
 	})
 }

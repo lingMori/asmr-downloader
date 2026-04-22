@@ -34,7 +34,7 @@ func (s *Server) handleTaskList(ctx *gin.Context) {
 	if page, err := strconv.Atoi(ctx.DefaultQuery("page", "1")); err == nil {
 		filter.Page = page
 	}
-	if size, err := strconv.Atoi(ctx.DefaultQuery("pageSize", "20")); err == nil {
+	if size, err := strconv.Atoi(ctx.DefaultQuery("page_size", "20")); err == nil {
 		filter.PageSize = size
 	}
 
@@ -108,7 +108,7 @@ func (s *Server) handleTaskRetry(ctx *gin.Context) {
 		respondError(ctx, http.StatusInternalServerError, "TASK_RETRY_FAILED", err)
 		return
 	}
-	ctx.JSON(http.StatusAccepted, gin.H{"code": "ACCEPTED", "taskId": taskID})
+	ctx.JSON(http.StatusAccepted, gin.H{"code": "ACCEPTED", "task_id": taskID})
 }
 
 func (s *Server) handleTaskCancel(ctx *gin.Context) {
@@ -146,7 +146,7 @@ func (s *Server) handleTaskDelete(ctx *gin.Context) {
 		respondError(ctx, http.StatusConflict, "TASK_NOT_DELETABLE", errors.New("running or queued task cannot be deleted"))
 		return
 	}
-	withFiles := ctx.Query("withFiles") == "1" || ctx.Query("withFiles") == "true"
+	withFiles := ctx.Query("with_files") == "1" || ctx.Query("with_files") == "true"
 	filesDeleted := 0
 	if withFiles {
 		if s.downloadSvc == nil {

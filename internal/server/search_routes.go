@@ -23,7 +23,7 @@ func (s *Server) registerSearchRoutes(group *gin.RouterGroup) {
 func (s *Server) handleSearchList(ctx *gin.Context) {
 	count, _ := strconv.Atoi(ctx.DefaultQuery("count", "20"))
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("pageSize", "20"))
+	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("page_size", "20"))
 	result, err := s.searchSvc.Search(ctx.Request.Context(), services.SearchRequest{
 		Query:    ctx.Query("q"),
 		Count:    count,
@@ -60,7 +60,7 @@ func (s *Server) handleSearchDownload(ctx *gin.Context) {
 		respondError(ctx, http.StatusInternalServerError, "SEARCH_DOWNLOAD_ENQUEUE_FAILED", err)
 		return
 	}
-	ctx.JSON(http.StatusAccepted, gin.H{"code": "ACCEPTED", "taskId": taskID})
+	ctx.JSON(http.StatusAccepted, gin.H{"code": "ACCEPTED", "task_id": taskID})
 }
 
 func (s *Server) handleSearchExport(ctx *gin.Context) {

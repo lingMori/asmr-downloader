@@ -50,7 +50,7 @@ export function DiscoverDetail() {
         ids: [sourceId],
       }),
     onSuccess: (res) => {
-      toast.success(`已加入下载队列，任务 #${res.taskId}`);
+      toast.success(`已加入下载队列，任务 #${res.task_id}`);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
     onError: (error) => {
@@ -67,7 +67,7 @@ export function DiscoverDetail() {
   }
 
   const detail = detailQuery.data;
-  const coverUrl = detail.summary.mainCoverUrl || detail.summary.thumbnailUrl;
+  const coverUrl = detail.summary.main_cover_url || detail.summary.thumbnail_url;
 
   return (
     <motion.section
@@ -96,9 +96,9 @@ export function DiscoverDetail() {
           description="改成更高密度的作品资料页后，封面、核心指标、标签、声优、补充信息和音轨树会同时留在视野里，不需要来回扫大段空白。"
           meta={
             <div className="grid gap-2 rounded-[1.8rem] border border-white/40 bg-white/45 p-4 shadow-[0_16px_34px_rgba(255,182,193,0.12)]">
-              <Badge variant="gold">{detail.summary.sourceId}</Badge>
+              <Badge variant="gold">{detail.summary.source_id}</Badge>
               <Badge variant="pink">{detail.summary.circle || "未知社团"}</Badge>
-              {detail.ageCategory ? <Badge variant="violet">{detail.ageCategory}</Badge> : null}
+              {detail.age_category ? <Badge variant="violet">{detail.age_category}</Badge> : null}
             </div>
           }
         />
@@ -137,11 +137,11 @@ export function DiscoverDetail() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Badge variant="gold">{detail.summary.sourceId}</Badge>
+                <Badge variant="gold">{detail.summary.source_id}</Badge>
                 <Badge variant="pink">{detail.summary.circle || "未知社团"}</Badge>
-                {detail.ageCategory ? <Badge variant="violet">{detail.ageCategory}</Badge> : null}
-                <Badge variant={detail.summary.hasSubtitle ? "mint" : "ghost"}>
-                  {detail.summary.hasSubtitle ? "有字幕" : "无字幕"}
+                {detail.age_category ? <Badge variant="violet">{detail.age_category}</Badge> : null}
+                <Badge variant={detail.summary.has_subtitle ? "mint" : "ghost"}>
+                  {detail.summary.has_subtitle ? "有字幕" : "无字幕"}
                 </Badge>
               </div>
 
@@ -161,7 +161,7 @@ export function DiscoverDetail() {
                 <InfoStat
                   icon={Download}
                   label="下载量"
-                  value={String(detail.summary.dlCount)}
+                  value={String(detail.summary.dl_count)}
                   accentClassName="from-rose-300 to-pink-300"
                 />
                 <InfoStat
@@ -173,13 +173,13 @@ export function DiscoverDetail() {
                 <InfoStat
                   icon={MessageSquareText}
                   label="评论数"
-                  value={String(detail.reviewCount)}
+                  value={String(detail.review_count)}
                   accentClassName="from-violet-300 to-fuchsia-300"
                 />
                 <InfoStat
                   icon={BadgeInfo}
                   label="评分人数"
-                  value={String(detail.rateCount)}
+                  value={String(detail.rate_count)}
                   accentClassName="from-violet-300 to-sky-300"
                 />
                 <InfoStat
@@ -205,27 +205,27 @@ export function DiscoverDetail() {
                 <CompactInfoRow
                   icon={BadgeInfo}
                   label="社团 ID"
-                  value={String(detail.circleId)}
+                  value={String(detail.circle_id)}
                 />
                 <CompactInfoRow
                   icon={ShieldCheck}
                   label="年龄分级"
-                  value={detail.ageCategory || "-"}
+                  value={detail.age_category || "-"}
                 />
                 <CompactInfoRow
                   icon={AudioLines}
                   label="作品属性"
-                  value={detail.workAttributes || "-"}
+                  value={detail.work_attributes || "-"}
                 />
                 <CompactInfoRow
                   icon={FileText}
                   label="字幕状态"
-                  value={detail.summary.hasSubtitle ? "有字幕" : "无字幕"}
+                  value={detail.summary.has_subtitle ? "有字幕" : "无字幕"}
                 />
                 <CompactInfoRow
                   icon={CalendarDays}
                   label="创建日期"
-                  value={detail.createDate || "-"}
+                  value={detail.create_date || "-"}
                 />
               </div>
 
@@ -294,7 +294,7 @@ export function DiscoverDetail() {
                 加入下载队列
               </Button>
               <a
-                href={detail.sourceUrl}
+                href={detail.source_url}
                 target="_blank"
                 rel="noreferrer"
                 className={pillActionClass}
@@ -313,15 +313,15 @@ export function DiscoverDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
-              <SummaryTile label="RJ 编号" value={detail.summary.sourceId} />
+              <SummaryTile label="RJ 编号" value={detail.summary.source_id} />
               <SummaryTile label="社团名" value={detail.summary.circle || "-"} />
               <SummaryTile label="标签数量" value={String(detail.summary.tags.length)} />
               <SummaryTile label="声优数量" value={String(detail.summary.vas.length)} />
               <SummaryTile
                 label="字幕状态"
-                value={detail.summary.hasSubtitle ? "有字幕" : "无字幕"}
+                value={detail.summary.has_subtitle ? "有字幕" : "无字幕"}
               />
-              <SummaryTile label="评分人数" value={String(detail.rateCount)} />
+              <SummaryTile label="评分人数" value={String(detail.rate_count)} />
             </CardContent>
           </Card>
         </div>

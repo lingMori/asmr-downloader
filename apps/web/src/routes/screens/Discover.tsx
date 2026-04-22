@@ -162,10 +162,10 @@ export function Discover() {
       apiClient.createDownload({
         mode: "single",
         ids: [sourceId],
-        outputDir: outputDir || undefined,
+        output_dir: outputDir || undefined,
       }),
     onSuccess: (res) => {
-      toast.success(`已加入下载队列，任务 #${res.taskId}`);
+      toast.success(`已加入下载队列，任务 #${res.task_id}`);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
     onError: (error) => {
@@ -179,19 +179,19 @@ export function Discover() {
         return apiClient.queueSearchDownload({
           query: legacyQuery,
           count: filters.count,
-          outputDir: outputDir || undefined,
+          output_dir: outputDir || undefined,
         });
       }
-      const ids = (searchQuery.data?.items ?? []).map((item) => item.sourceId);
+      const ids = (searchQuery.data?.items ?? []).map((item) => item.source_id);
       return apiClient.createDownload({
         mode: "batch",
         ids,
-        outputDir: outputDir || undefined,
+        output_dir: outputDir || undefined,
         name: "结构化筛选批量下载",
       });
     },
     onSuccess: (res) => {
-      toast.success(`已加入搜索结果下载任务 #${res.taskId}`);
+      toast.success(`已加入搜索结果下载任务 #${res.task_id}`);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
     onError: (error) => {
@@ -205,7 +205,7 @@ export function Discover() {
         return apiClient.createDownload({
           mode,
           count: Number(hotCount) || 10,
-          outputDir: outputDir || undefined,
+          output_dir: outputDir || undefined,
           name: `Hot100 x${Number(hotCount) || 10}`,
         });
       }
@@ -213,12 +213,12 @@ export function Discover() {
       return apiClient.createDownload({
         mode: "batch",
         ids: parseIds(directIds),
-        outputDir: outputDir || undefined,
+        output_dir: outputDir || undefined,
         name: "Direct batch download",
       });
     },
     onSuccess: (res, mode) => {
-      toast.success(`已创建${mode === "hot100" ? " Hot100" : "批量"}下载任务 #${res.taskId}`);
+      toast.success(`已创建${mode === "hot100" ? " Hot100" : "批量"}下载任务 #${res.task_id}`);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
     onError: (error) => {
@@ -709,15 +709,15 @@ export function Discover() {
             {!searchQuery.isLoading &&
               works.map((work, index) => (
                 <motion.div
-                  key={work.sourceId}
+                  key={work.source_id}
                   variants={fadeUpItem}
                   transition={{ delay: index * 0.02 }}
                 >
                   <WorkCard
                     work={work}
                     detailSearch={routeSearch}
-                    onSelect={() => setSelectedSourceId(work.sourceId)}
-                    onQueue={() => singleDownloadMutation.mutate(work.sourceId)}
+                    onSelect={() => setSelectedSourceId(work.source_id)}
+                    onQueue={() => singleDownloadMutation.mutate(work.source_id)}
                   />
                 </motion.div>
               ))}
@@ -850,9 +850,9 @@ function WorkCard({
     <Card interactive foil className="h-full overflow-hidden" onClick={onSelect}>
       <CardContent className="flex h-full flex-col gap-5 p-5">
         <div className="relative overflow-hidden rounded-[1.9rem]">
-          {work.mainCoverUrl || work.thumbnailUrl ? (
+          {work.main_cover_url || work.thumbnail_url ? (
             <img
-              src={work.mainCoverUrl || work.thumbnailUrl}
+              src={work.main_cover_url || work.thumbnail_url}
               alt={work.title}
               className="h-60 w-full object-cover transition duration-500 group-hover:scale-[1.03]"
             />
@@ -870,7 +870,7 @@ function WorkCard({
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Badge variant="gold" className="shrink-0">
-              {work.sourceId}
+              {work.source_id}
             </Badge>
             <span className="text-xs text-[color:var(--text-muted)]">{work.release}</span>
           </div>
@@ -880,12 +880,12 @@ function WorkCard({
         </div>
 
         <div className="grid grid-cols-3 gap-3">
-          <MiniMetric label="下载量" value={String(work.dlCount)} variant="blue" />
+          <MiniMetric label="下载量" value={String(work.dl_count)} variant="blue" />
           <MiniMetric label="评分" value={work.rate.toFixed(2)} variant="mint" />
           <MiniMetric
             label="字幕"
-            value={work.hasSubtitle ? "有" : "无"}
-            variant={work.hasSubtitle ? "violet" : "ghost"}
+            value={work.has_subtitle ? "有" : "无"}
+            variant={work.has_subtitle ? "violet" : "ghost"}
           />
         </div>
 
@@ -910,7 +910,7 @@ function WorkCard({
           </Button>
           <Link
             to="/discover/$sourceId"
-            params={{ sourceId: work.sourceId }}
+            params={{ sourceId: work.source_id }}
             search={detailSearch}
             className="block rounded-full border border-[color:var(--panel-border)] bg-white/58 px-4 py-3 text-center text-sm font-medium text-[color:var(--text-strong)] transition hover:-translate-y-0.5 hover:bg-white/78"
             onClick={(event) => event.stopPropagation()}
@@ -1019,9 +1019,9 @@ function WorkDetailCard({
         {detail && (
           <>
             <div className="overflow-hidden rounded-[1.7rem]">
-              {detail.summary.mainCoverUrl || detail.summary.thumbnailUrl ? (
+              {detail.summary.main_cover_url || detail.summary.thumbnail_url ? (
                 <img
-                  src={detail.summary.mainCoverUrl || detail.summary.thumbnailUrl}
+                  src={detail.summary.main_cover_url || detail.summary.thumbnail_url}
                   alt={detail.summary.title}
                   className="h-52 w-full object-cover"
                 />
@@ -1032,7 +1032,7 @@ function WorkDetailCard({
               )}
             </div>
             <div className="space-y-2">
-              <Badge variant="gold">{detail.summary.sourceId}</Badge>
+              <Badge variant="gold">{detail.summary.source_id}</Badge>
               <h3 className="text-xl font-semibold text-[color:var(--text-strong)]">
                 {detail.summary.title}
               </h3>
@@ -1041,7 +1041,7 @@ function WorkDetailCard({
             <div className="grid grid-cols-2 gap-3">
               <MiniMetric label="发售日" value={detail.summary.release || "-"} variant="pink" />
               <MiniMetric label="价格" value={String(detail.price)} variant="gold" />
-              <MiniMetric label="评论数" value={String(detail.reviewCount)} variant="blue" />
+              <MiniMetric label="评论数" value={String(detail.review_count)} variant="blue" />
               <MiniMetric label="音轨数" value={String(detail.tracks.length)} variant="mint" />
             </div>
             <div className="space-y-2">
@@ -1057,13 +1057,13 @@ function WorkDetailCard({
                 ))}
               </div>
             </div>
-            <Button className="w-full" onClick={() => onQueue(detail.summary.sourceId)}>
+            <Button className="w-full" onClick={() => onQueue(detail.summary.source_id)}>
               <Download className="h-4 w-4" />
               下载当前作品
             </Button>
             <Link
               to="/discover/$sourceId"
-              params={{ sourceId: detail.summary.sourceId }}
+              params={{ sourceId: detail.summary.source_id }}
               search={detailSearch}
               className="block rounded-full border border-[color:var(--panel-border)] bg-white/58 px-4 py-3 text-center text-sm font-medium text-[color:var(--text-strong)] transition hover:-translate-y-0.5 hover:bg-white/78"
             >
@@ -1195,14 +1195,14 @@ function buildDiscoverExportBlob(
     "vas",
   ];
   const rows = items.map((item) => [
-    item.sourceId,
+    item.source_id,
     escapeCSV(item.title),
     escapeCSV(item.circle),
     item.release,
-    String(item.dlCount),
+    String(item.dl_count),
     String(item.rate),
     String(item.duration),
-    item.hasSubtitle ? "true" : "false",
+    item.has_subtitle ? "true" : "false",
     escapeCSV(item.tags.join(",")),
     escapeCSV(item.vas.join(",")),
   ]);

@@ -2,7 +2,6 @@ package engine
 
 import (
 	"asmroner/internal/consts"
-	"asmroner/internal/model"
 	"fmt"
 	"log"
 	"regexp"
@@ -84,11 +83,11 @@ func GetAsmrLatestUrls() ([]string, error) {
 	return result, nil
 }
 
-// GetRespFastestSiteUrl 获取最快的响应 API 地址
-func GetRespFastestSiteUrl() string {
-	u := model.AppConfig.Downloader.ApiUrl
-	if u != "" {
-		return u
+// GetRespFastestSiteUrl 获取最快的响应 API 地址。
+// apiUrlOverride 来自配置 (Downloader.ApiUrl)，非空时直接使用。
+func GetRespFastestSiteUrl(apiUrlOverride string) string {
+	if apiUrlOverride != "" {
+		return apiUrlOverride
 	}
 	if consts.AsmrBaseApiUrl != "" {
 		return consts.AsmrBaseApiUrl

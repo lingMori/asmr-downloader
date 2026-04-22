@@ -26,7 +26,7 @@ func TestDeleteTaskFilesRemovesMatchedDownloadFolders(t *testing.T) {
 		Payload: `{
 			"mode":"single",
 			"ids":["RJ123456"],
-			"outputDir":"` + baseDir + `"
+			"output_dir":"` + baseDir + `"
 		}`,
 	}
 

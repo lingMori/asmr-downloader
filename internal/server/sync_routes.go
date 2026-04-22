@@ -44,7 +44,7 @@ func (s *Server) handleSyncMetadata(ctx *gin.Context) {
 		respondError(ctx, http.StatusInternalServerError, "SYNC_ENQUEUE_FAILED", err)
 		return
 	}
-	ctx.JSON(http.StatusAccepted, gin.H{"code": "ACCEPTED", "taskId": taskID})
+	ctx.JSON(http.StatusAccepted, gin.H{"code": "ACCEPTED", "task_id": taskID})
 }
 
 func (s *Server) handleSyncDownload(ctx *gin.Context) {
@@ -58,7 +58,7 @@ func (s *Server) handleSyncDownload(ctx *gin.Context) {
 		respondError(ctx, http.StatusInternalServerError, "SYNC_DOWNLOAD_ENQUEUE_FAILED", err)
 		return
 	}
-	ctx.JSON(http.StatusAccepted, gin.H{"code": "ACCEPTED", "taskId": taskID})
+	ctx.JSON(http.StatusAccepted, gin.H{"code": "ACCEPTED", "task_id": taskID})
 }
 
 func (s *Server) handleSyncRetry(ctx *gin.Context) {
@@ -67,7 +67,7 @@ func (s *Server) handleSyncRetry(ctx *gin.Context) {
 		respondError(ctx, http.StatusInternalServerError, "SYNC_RETRY_ENQUEUE_FAILED", err)
 		return
 	}
-	ctx.JSON(http.StatusAccepted, gin.H{"code": "ACCEPTED", "taskId": taskID})
+	ctx.JSON(http.StatusAccepted, gin.H{"code": "ACCEPTED", "task_id": taskID})
 }
 
 func (s *Server) handleSyncExport(ctx *gin.Context) {

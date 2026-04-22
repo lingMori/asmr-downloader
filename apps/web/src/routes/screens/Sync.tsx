@@ -47,7 +47,7 @@ export function Sync() {
     onSuccess: (res, mode) => {
       const label =
         mode === "metadata" ? "元数据同步" : mode === "download" ? "同步下载" : "失败重试";
-      toast.success(`已创建${label}任务 #${res.taskId}`);
+      toast.success(`已创建${label}任务 #${res.task_id}`);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
     onError: (error) => {
@@ -158,13 +158,13 @@ export function Sync() {
             />
             <ProgressTrack
               label="字幕作品进度"
-              value={reportQuery.data?.progress.withSubtitle ?? 0}
+              value={reportQuery.data?.progress.with_subtitle ?? 0}
               mascot="🎧"
               hint="适合优先保证可读性较高的作品库存"
             />
             <ProgressTrack
               label="无字幕作品进度"
-              value={reportQuery.data?.progress.withoutSubtitle ?? 0}
+              value={reportQuery.data?.progress.without_subtitle ?? 0}
               mascot="📦"
               hint="补全库存的尾段通常会落在这里"
             />
@@ -186,7 +186,7 @@ export function Sync() {
           />
           <StatCard
             label="无字幕作品数"
-            value={reportQuery.data?.totals.withoutSubtitle ?? 0}
+            value={reportQuery.data?.totals.without_subtitle ?? 0}
             icon={<ServerCrash className="h-5 w-5" />}
             accentClassName="from-violet-300 to-fuchsia-300"
           />

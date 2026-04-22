@@ -56,7 +56,7 @@ export function Library() {
     ? findSubtitleForAudio(detailQuery.data?.files ?? [], selectedAudio)
     : undefined;
   const coverUrl =
-    detailQuery.data?.summary.thumbnailUrl || imageFiles[0]?.url || undefined;
+    detailQuery.data?.summary.thumbnail_url || imageFiles[0]?.url || undefined;
   const totalPages = Math.max(1, Math.ceil((libraryQuery.data?.total ?? 0) / 24));
 
   return (
@@ -121,9 +121,9 @@ export function Library() {
                 >
                   <CardContent className="flex h-full flex-col gap-4 p-4">
                     <div className="relative overflow-hidden rounded-[1.7rem]">
-                      {work.thumbnailUrl ? (
+                      {work.thumbnail_url ? (
                         <img
-                          src={work.thumbnailUrl}
+                          src={work.thumbnail_url}
                           alt={work.title}
                           className="h-52 w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                         />
@@ -134,7 +134,7 @@ export function Library() {
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-[rgba(25,10,24,0.42)] via-transparent to-transparent" />
                       <div className="absolute bottom-3 left-3">
-                        <Badge variant="gold">{work.mediaId}</Badge>
+                        <Badge variant="gold">{work.media_id}</Badge>
                       </div>
                     </div>
 
@@ -142,22 +142,22 @@ export function Library() {
                       <h3 className="line-clamp-2 text-lg font-semibold text-[color:var(--text-strong)]">
                         {work.title}
                       </h3>
-                      <div className="text-sm text-[color:var(--text-body)]">{work.releaseDate}</div>
+                      <div className="text-sm text-[color:var(--text-body)]">{work.release_date}</div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-2">
-                      <MiniStat icon={FolderOpen} value={String(work.fileCount)} label="文件" />
-                      <MiniStat icon={Music4} value={String(work.audioFileCount)} label="音频" />
+                      <MiniStat icon={FolderOpen} value={String(work.file_count)} label="文件" />
+                      <MiniStat icon={Music4} value={String(work.audio_file_count)} label="音频" />
                       <MiniStat
                         icon={Subtitles}
-                        value={String(work.subtitleCount)}
+                        value={String(work.subtitle_count)}
                         label="字幕"
                       />
                     </div>
 
                     <div className="mt-auto flex flex-wrap gap-2">
                       <Badge variant="pink">收藏卡</Badge>
-                      {work.hasSubtitles ? (
+                      {work.has_subtitles ? (
                         <Badge variant="mint">已配字幕</Badge>
                       ) : (
                         <Badge variant="ghost">暂无字幕</Badge>
@@ -236,7 +236,7 @@ export function Library() {
                   )}
 
                   <div className="space-y-2">
-                    <Badge variant="gold">{detailQuery.data.summary.mediaId}</Badge>
+                    <Badge variant="gold">{detailQuery.data.summary.media_id}</Badge>
                     <div className="text-2xl font-semibold text-[color:var(--text-strong)]">
                       {detailQuery.data.summary.title}
                     </div>
@@ -246,17 +246,17 @@ export function Library() {
                 <div className="grid grid-cols-3 gap-2">
                   <MiniStat
                     icon={FolderOpen}
-                    value={String(detailQuery.data.summary.fileCount)}
+                    value={String(detailQuery.data.summary.file_count)}
                     label="文件"
                   />
                   <MiniStat
                     icon={Music4}
-                    value={String(detailQuery.data.summary.audioFileCount)}
+                    value={String(detailQuery.data.summary.audio_file_count)}
                     label="音频"
                   />
                   <MiniStat
                     icon={Subtitles}
-                    value={String(detailQuery.data.summary.subtitleCount)}
+                    value={String(detailQuery.data.summary.subtitle_count)}
                     label="字幕"
                   />
                 </div>

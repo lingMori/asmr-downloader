@@ -15,26 +15,27 @@ import (
 )
 
 type LibraryService struct {
-	baseDir string
+	provider *model.ConfigProvider
+	baseDir  string
 }
 
 type LibraryListResponse struct {
 	Items    []LibraryWorkSummary `json:"items"`
 	Total    int                  `json:"total"`
 	Page     int                  `json:"page"`
-	PageSize int                  `json:"pageSize"`
+	PageSize int                  `json:"page_size"`
 }
 
 type LibraryWorkSummary struct {
 	ID             string `json:"id"`
-	MediaID        string `json:"mediaId"`
+	MediaID        string `json:"media_id"`
 	Title          string `json:"title"`
-	ReleaseDate    string `json:"releaseDate"`
-	HasSubtitles   bool   `json:"hasSubtitles"`
-	FileCount      int    `json:"fileCount"`
-	AudioFileCount int    `json:"audioFileCount"`
-	SubtitleCount  int    `json:"subtitleCount"`
-	ThumbnailURL   string `json:"thumbnailUrl"`
+	ReleaseDate    string `json:"release_date"`
+	HasSubtitles   bool   `json:"has_subtitles"`
+	FileCount      int    `json:"file_count"`
+	AudioFileCount int    `json:"audio_file_count"`
+	SubtitleCount  int    `json:"subtitle_count"`
+	ThumbnailURL   string `json:"thumbnail_url"`
 }
 
 type LibraryWorkDetail struct {
@@ -53,8 +54,12 @@ var libraryFolderPattern = regexp.MustCompile(`^([^-\s]+)-(\d{8})-(sub|nosub)-(.
 var libraryMediaIDPattern = regexp.MustCompile(`(?i)(RJ|BJ|VJ|RE)\d+`)
 var libraryDatePattern = regexp.MustCompile(`\d{8}`)
 
-func NewLibraryService() *LibraryService {
-	return &LibraryService{baseDir: model.AppConfig.Downloader.SyncDataFolder}
+func NewLibraryService(provider *model.ConfigProvider) *LibraryService {
+	svc := &LibraryService{provider: provider}
+	if provider != nil {
+		svc.baseDir = provider.Downloader().SyncDataFolder
+	}
+	return svc
 }
 
 func (s *LibraryService) BaseDir() string {

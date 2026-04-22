@@ -60,7 +60,7 @@ func TestSyncServiceReportAndExport(t *testing.T) {
 		t.Fatalf("Create sync info error = %v", err)
 	}
 
-	service := NewSyncService(db, store.NewTaskStore(db), fakeSyncEngine{}, nil)
+	service := NewSyncService(db, store.NewTaskStore(db), fakeSyncEngine{}, nil, nil)
 
 	report, err := service.Report(context.Background())
 	if err != nil {

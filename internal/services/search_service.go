@@ -32,7 +32,7 @@ type SearchRequest struct {
 	Query    string `json:"query"`
 	Count    int    `json:"count"`
 	Page     int    `json:"page"`
-	PageSize int    `json:"pageSize"`
+	PageSize int    `json:"page_size"`
 	Order    string `json:"order"`
 	Sort     string `json:"sort"`
 	Subtitle string `json:"subtitle"`
@@ -41,7 +41,7 @@ type SearchRequest struct {
 type SearchDownloadRequest struct {
 	Query     string `json:"query"`
 	Count     int    `json:"count"`
-	OutputDir string `json:"outputDir"`
+	OutputDir string `json:"output_dir"`
 	Name      string `json:"name"`
 }
 
@@ -56,22 +56,22 @@ type SearchListResponse struct {
 	Total    int                 `json:"total"`
 	Count    int                 `json:"count"`
 	Page     int                 `json:"page"`
-	PageSize int                 `json:"pageSize"`
+	PageSize int                 `json:"page_size"`
 }
 
 type SearchWorkSummary struct {
-	SourceID     string   `json:"sourceId"`
+	SourceID     string   `json:"source_id"`
 	Title        string   `json:"title"`
 	Circle       string   `json:"circle"`
 	Release      string   `json:"release"`
-	DlCount      int      `json:"dlCount"`
+	DlCount      int      `json:"dl_count"`
 	Rate         float64  `json:"rate"`
 	Duration     int      `json:"duration"`
-	HasSubtitle  bool     `json:"hasSubtitle"`
+	HasSubtitle  bool     `json:"has_subtitle"`
 	Vas          []string `json:"vas"`
 	Tags         []string `json:"tags"`
-	ThumbnailURL string   `json:"thumbnailUrl"`
-	MainCoverURL string   `json:"mainCoverUrl"`
+	ThumbnailURL string   `json:"thumbnail_url"`
+	MainCoverURL string   `json:"main_cover_url"`
 }
 
 func NewSearchService(engine SearchEngine, downloads SearchDownloadEnqueuer) *SearchService {

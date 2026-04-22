@@ -27,6 +27,7 @@ type SyncService struct {
 	engine    SyncEngine
 	runner    *SyncDownloadRunner
 	hub       *events.Hub
+	provider  *model.ConfigProvider
 	mu        sync.Mutex
 	active    map[uint]context.CancelFunc
 }
@@ -53,7 +54,7 @@ type SyncReport struct {
 	Totals struct {
 		Metadata        int64 `json:"metadata"`
 		Subtitle        int64 `json:"subtitle"`
-		WithoutSubtitle int64 `json:"withoutSubtitle"`
+		WithoutSubtitle int64 `json:"without_subtitle"`
 	} `json:"totals"`
 	Downloads struct {
 		Completed int64 `json:"completed"`
@@ -62,18 +63,19 @@ type SyncReport struct {
 	} `json:"downloads"`
 	Progress struct {
 		Overall         float64 `json:"overall"`
-		WithSubtitle    float64 `json:"withSubtitle"`
-		WithoutSubtitle float64 `json:"withoutSubtitle"`
+		WithSubtitle    float64 `json:"with_subtitle"`
+		WithoutSubtitle float64 `json:"without_subtitle"`
 	} `json:"progress"`
 }
 
 // NewSyncService builds the service.
-func NewSyncService(db *gorm.DB, taskStore *store.TaskStore, engine SyncEngine, hub *events.Hub) *SyncService {
+func NewSyncService(db *gorm.DB, taskStore *store.TaskStore, engine SyncEngine, hub *events.Hub, provider *model.ConfigProvider) *SyncService {
 	return &SyncService{
 		taskStore: taskStore,
 		engine:    engine,
-		runner:    NewSyncDownloadRunner(db, engine),
+		runner:    NewSyncDownloadRunner(db, engine, provider),
 		hub:       hub,
+		provider:  provider,
 		active:    make(map[uint]context.CancelFunc),
 	}
 }
@@ -192,8 +194,8 @@ func (s *SyncService) runSyncDownload(ctx context.Context, taskID uint, req Sync
 	s.publish(taskID, model.TaskStatusRunning, "sync download started", 0)
 	s.appendLog(taskID, fmt.Sprintf("sync download folder=%s", req.Folder))
 	folder := req.Folder
-	if folder == "" {
-		folder = model.AppConfig.Downloader.SyncDataFolder
+	if folder == "" && s.provider != nil {
+		folder = s.provider.Downloader().SyncDataFolder
 	}
 	progressFn := func(done, total int, message string) {
 		progress := 0.0
