@@ -23,13 +23,13 @@ go.work
 go.work.sum
 
 # env file
-.env
+# .env
 
 # local app/runtime data
 .asmroner-data/
 syncdata/
 download_errors.log
-.vscode/
+# .vscode/
 .npm-cache/
 
 # frontend generated files
@@ -37,11 +37,11 @@ node_modules/
 apps/web/node_modules/
 apps/web/.npm-cache/
 apps/web/dist/
-apps/web/*.tsbuildinfo
-apps/web/vite.config.js
-apps/web/vite.config.d.ts
-apps/web/vitest.config.js
-apps/web/vitest.config.d.ts
+# apps/web/*.tsbuildinfo
+# apps/web/vite.config.js
+# apps/web/vite.config.d.ts
+# apps/web/vitest.config.js
+# apps/web/vitest.config.d.ts
 
 # macOS
 .DS_Store
