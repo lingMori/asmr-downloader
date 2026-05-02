@@ -47,7 +47,7 @@ export function Settings() {
 
   if (configQuery.isError) {
     return (
-      <div className="rounded-lg border border-[rgba(225,104,84,0.55)] bg-[rgba(225,104,84,0.12)] p-6 text-[color:var(--accent-red)]">
+      <div className="deck-screen p-6 text-[color:var(--telltale-red)]">
         从后端加载配置失败。
       </div>
     );
@@ -66,8 +66,8 @@ export function Settings() {
           title="系统参数面板"
           description="这里替代旧的 config 命令，负责整理账号、下载器和限流参数。结构上改成更容易扫读的表单分区，避免长表单直接压到一整屏。"
           meta={
-            <div className="space-y-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 shadow-[var(--shadow-glass)]">
-              <Badge variant="gold">配置中心</Badge>
+            <div className="deck-screen space-y-3 p-4">
+              <Badge variant="warn">配置中心</Badge>
               <div className="text-sm text-[color:var(--text-body)]">
                 修改会持久化到 `.asmroner-data/config.toml`
               </div>
@@ -87,8 +87,8 @@ export function Settings() {
           hint="登录凭据与鉴权入口。"
           badges={
             <>
-              <Badge variant="pink">登录</Badge>
-              <Badge variant="violet">凭据</Badge>
+              <Badge variant="decal">登录</Badge>
+              <Badge variant="live">凭据</Badge>
               {form.auth ? (
                 <Badge variant={authBadgeVariant(form.auth.state)}>
                   {authLabel(form.auth.state)}
@@ -141,8 +141,8 @@ export function Settings() {
           hint="下载 API、目标目录、并发和媒体偏好。"
           badges={
             <>
-              <Badge variant="blue">网络</Badge>
-              <Badge variant="mint">下载</Badge>
+              <Badge variant="signal">网络</Badge>
+              <Badge variant="warn">下载</Badge>
             </>
           }
         >
@@ -277,8 +277,8 @@ export function Settings() {
           hint="QPS 与抖动窗口控制访问节奏。"
           badges={
             <>
-              <Badge variant="gold">限流</Badge>
-              <Badge variant="blue">节奏</Badge>
+              <Badge variant="warn">限流</Badge>
+              <Badge variant="signal">节奏</Badge>
             </>
           }
         >
@@ -389,6 +389,7 @@ export function Settings() {
 
       <motion.div variants={fadeUpItem} className="flex flex-wrap gap-3">
         <Button
+          busy={saveMutation.isPending}
           onClick={() => saveMutation.mutate(form)}
           disabled={saveMutation.isPending}
         >
@@ -413,11 +414,11 @@ export function Settings() {
 function authBadgeVariant(state: string) {
   switch (state) {
     case "success":
-      return "mint" as const;
+      return "signal" as const;
     case "error":
-      return "danger" as const;
+      return "halt" as const;
     default:
-      return "ghost" as const;
+      return "mute" as const;
   }
 }
 
@@ -447,7 +448,7 @@ function FormSection({
     <Card foil className="h-full">
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle className="text-base">{title}</CardTitle>
+          <CardTitle>{title}</CardTitle>
           <div className="flex flex-wrap gap-2">{badges}</div>
         </div>
         <p className="text-sm leading-6 text-[color:var(--text-body)]">{hint}</p>
@@ -466,7 +467,7 @@ function LabeledField({
 }) {
   return (
     <div className="space-y-2">
-      <div className="text-sm font-semibold text-[color:var(--text-body)]">{label}</div>
+      <div className="deck-decal">{label}</div>
       {children}
     </div>
   );
@@ -483,11 +484,16 @@ function NumberField({
 }) {
   return (
     <LabeledField label={label}>
-      <Input
-        type="number"
-        value={String(value)}
-        onChange={(event) => onChange(Number(event.target.value) || 0)}
-      />
+      <div className="grid gap-2 sm:grid-cols-[6rem_1fr]">
+        <div className="deck-screen flex items-center justify-center px-3">
+          <span className="console-readout text-lg">{value}</span>
+        </div>
+        <Input
+          type="number"
+          value={String(value)}
+          onChange={(event) => onChange(Number(event.target.value) || 0)}
+        />
+      </div>
     </LabeledField>
   );
 }
@@ -503,12 +509,17 @@ function FloatField({
 }) {
   return (
     <LabeledField label={label}>
-      <Input
-        type="number"
-        step="0.1"
-        value={String(value)}
-        onChange={(event) => onChange(Number(event.target.value) || 0)}
-      />
+      <div className="grid gap-2 sm:grid-cols-[6rem_1fr]">
+        <div className="deck-screen flex items-center justify-center px-3">
+          <span className="console-readout text-lg">{value}</span>
+        </div>
+        <Input
+          type="number"
+          step="0.1"
+          value={String(value)}
+          onChange={(event) => onChange(Number(event.target.value) || 0)}
+        />
+      </div>
     </LabeledField>
   );
 }

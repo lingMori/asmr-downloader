@@ -3,18 +3,18 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ChevronDown,
-  ChevronUp,
-  Download,
-  FileDown,
-  Flame,
-  RotateCcw,
-  Search,
+  ArrowClockwise,
+  CaretDown,
+  CaretUp,
+  DownloadSimple,
+  FileArrowDown,
+  Fire,
+  MagnifyingGlass,
   SlidersHorizontal,
-  Sparkles,
+  Sparkle,
   Tag,
   Wrench,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,8 @@ type FacetItem = {
   value: string;
   count: number;
 };
+
+type BadgeSemantic = "decal" | "live" | "signal" | "warn" | "halt" | "mute";
 
 const defaultDiscoverFilters: DiscoverFilters = {
   q: "",
@@ -335,12 +337,12 @@ export function Discover() {
           title="发现雷达与检索终端"
           description="检索远端作品索引，支持结构化筛选、高级语法、导出和批量投递。URL 查询状态保持可回放，适合连续筛选和任务调度。"
           meta={
-            <div className="space-y-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 shadow-[var(--shadow-glass)]">
+            <div className="deck-screen space-y-3 p-4">
               <div className="flex flex-wrap gap-2">
-                <Badge variant={draftIsLegacyQuery ? "violet" : "pink"} active={!draftIsLegacyQuery}>
+                <Badge variant={draftIsLegacyQuery ? "warn" : "live"} active={!draftIsLegacyQuery}>
                   条件搜索
                 </Badge>
-                <Badge variant={draftIsLegacyQuery ? "pink" : "ghost"} active={draftIsLegacyQuery}>
+                <Badge variant={draftIsLegacyQuery ? "live" : "mute"} active={draftIsLegacyQuery}>
                   高级语法
                 </Badge>
               </div>
@@ -362,7 +364,7 @@ export function Discover() {
                 submitSearch();
               }}
             >
-              <div className="console-panel rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4">
+              <div className="deck-plate p-4">
                 <div className="flex flex-col gap-3 xl:flex-row">
                   <div className="min-w-0 flex-1">
                     <Input
@@ -376,7 +378,7 @@ export function Discover() {
                   </div>
                   <div className="flex flex-wrap gap-3">
                     <Button type="submit" className="h-14 px-6">
-                      <Search className="h-4 w-4" />
+                      <MagnifyingGlass className="h-4 w-4" />
                       搜索
                     </Button>
                     <Button
@@ -388,9 +390,9 @@ export function Discover() {
                       <SlidersHorizontal className="h-4 w-4" />
                       筛选
                       {showFilters ? (
-                        <ChevronUp className="h-4 w-4" />
+                        <CaretUp className="h-4 w-4" />
                       ) : (
-                        <ChevronDown className="h-4 w-4" />
+                        <CaretDown className="h-4 w-4" />
                       )}
                     </Button>
                     <Button
@@ -402,36 +404,36 @@ export function Discover() {
                       <Wrench className="h-4 w-4" />
                       工具
                       {showTools ? (
-                        <ChevronUp className="h-4 w-4" />
+                        <CaretUp className="h-4 w-4" />
                       ) : (
-                        <ChevronDown className="h-4 w-4" />
+                        <CaretDown className="h-4 w-4" />
                       )}
                     </Button>
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="secondary"
                       className="h-14 px-5"
                       onClick={resetSearchPanel}
                     >
-                      <RotateCcw className="h-4 w-4" />
+                      <ArrowClockwise className="h-4 w-4" />
                       重置
                     </Button>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 py-3">
+              <div className="deck-plate flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div className="flex flex-wrap gap-2">
                   {activeFilters.length === 0 && (
-                    <Badge variant="ghost">还没有激活筛选条件</Badge>
+                    <Badge variant="mute">还没有激活筛选条件</Badge>
                   )}
                   {activeFilters.map((item) => (
-                    <Badge key={item} variant="blue">
+                    <Badge key={item} variant="signal">
                       {item}
                     </Badge>
                   ))}
                 </div>
-                <Badge variant="gold">
+                <Badge variant="warn">
                   第 {page} / {totalPages} 页
                 </Badge>
               </div>
@@ -445,7 +447,7 @@ export function Discover() {
                     transition={{ duration: 0.24 }}
                     className="overflow-hidden"
                   >
-                    <div className="rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-5">
+                    <div className="deck-plate p-5">
                       <div className="grid gap-5 xl:grid-cols-[1.2fr_0.95fr]">
                         <div className="space-y-4">
                           <PanelLabel
@@ -467,7 +469,7 @@ export function Discover() {
                                   <button
                                     key={tagValue}
                                     type="button"
-                                    className="rounded border border-[rgba(225,104,84,0.55)] bg-[rgba(225,104,84,0.12)] px-3 py-1 font-mono text-xs font-medium uppercase tracking-[0.08em] text-[color:var(--accent-red)] transition hover:border-[color:var(--interactive-border)]"
+                                    className="deck-decal transition hover:border-[color:var(--telltale-amber)]"
                                     onClick={() =>
                                       setDraft((prev) => ({
                                         ...prev,
@@ -506,7 +508,7 @@ export function Discover() {
                             </div>
                             <div className="space-y-2">
                               <FieldLabel>附加条件</FieldLabel>
-                              <label className="flex h-12 items-center gap-3 rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 text-sm text-[color:var(--text-strong)]">
+                              <label className="deck-plate flex h-12 items-center gap-3 px-4 text-sm text-[color:var(--text-display)]">
                                 <input
                                   type="checkbox"
                                   checked={draft.subtitle}
@@ -588,7 +590,7 @@ export function Discover() {
                     transition={{ duration: 0.24 }}
                     className="overflow-hidden"
                   >
-                    <div className="rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-5">
+                    <div className="deck-plate p-5">
                       <div className="grid gap-5 xl:grid-cols-[1fr_0.95fr]">
                         <div className="space-y-4">
                           <PanelLabel
@@ -604,28 +606,31 @@ export function Discover() {
                             <Button
                               type="button"
                               variant="secondary"
+                              busy={searchDownloadMutation.isPending}
                               onClick={() => searchDownloadMutation.mutate()}
                               disabled={!canQueueSearch || searchDownloadMutation.isPending}
                             >
-                              <Download className="h-4 w-4" />
+                              <DownloadSimple className="h-4 w-4" />
                               下载结果
                             </Button>
                             <Button
                               type="button"
                               variant="secondary"
+                              busy={exportMutation.isPending}
                               onClick={() => exportMutation.mutate("csv")}
                               disabled={!canQueueSearch || exportMutation.isPending}
                             >
-                              <FileDown className="h-4 w-4" />
+                              <FileArrowDown className="h-4 w-4" />
                               CSV
                             </Button>
                             <Button
                               type="button"
                               variant="secondary"
+                              busy={exportMutation.isPending}
                               onClick={() => exportMutation.mutate("json")}
                               disabled={!canQueueSearch || exportMutation.isPending}
                             >
-                              <FileDown className="h-4 w-4" />
+                              <FileArrowDown className="h-4 w-4" />
                               JSON
                             </Button>
                           </div>
@@ -644,13 +649,14 @@ export function Discover() {
                             />
                             <Button
                               type="button"
+                              busy={directDownloadMutation.isPending}
                               onClick={() => directDownloadMutation.mutate("batch")}
                               disabled={
                                 parseIds(directIds).length === 0 ||
                                 directDownloadMutation.isPending
                               }
                             >
-                              <Download className="h-4 w-4" />
+                              <DownloadSimple className="h-4 w-4" />
                               批量下载
                             </Button>
                           </div>
@@ -665,10 +671,11 @@ export function Discover() {
                             <Button
                               type="button"
                               variant="secondary"
+                              busy={directDownloadMutation.isPending}
                               onClick={() => directDownloadMutation.mutate("hot100")}
                               disabled={directDownloadMutation.isPending}
                             >
-                              <Flame className="h-4 w-4" />
+                              <Fire className="h-4 w-4" />
                               下载 Hot100
                             </Button>
                           </div>
@@ -699,7 +706,7 @@ export function Discover() {
               Array.from({ length: 6 }).map((_, index) => (
                 <Card key={index} className="overflow-hidden">
                   <CardContent className="space-y-4 p-5">
-                    <div className="h-52 animate-pulse rounded-lg bg-[color:var(--interactive-bg)]" />
+                    <div className="deck-screen h-52 animate-pulse" />
                     <div className="h-4 animate-pulse rounded-md bg-[color:var(--interactive-bg)]" />
                     <div className="h-4 w-2/3 animate-pulse rounded-md bg-[color:var(--interactive-bg)]" />
                   </CardContent>
@@ -735,7 +742,7 @@ export function Discover() {
             )}
           </motion.div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 py-3">
+          <div className="deck-plate flex flex-wrap items-center justify-between gap-3 px-4 py-3">
             <div className="text-sm text-[color:var(--text-body)]">
               第 {page} / {totalPages} 页，共 {searchQuery.data?.total ?? 0} 个作品
             </div>
@@ -764,7 +771,7 @@ export function Discover() {
           <FacetCard
             title="热门标签"
             items={facets.tags}
-            variant="pink"
+            variant="decal"
             onPick={(value) => {
               const nextFilters = { ...filters, tag: appendFilterValue(filters.tag, value) };
               void navigate({
@@ -776,7 +783,7 @@ export function Discover() {
           <FacetCard
             title="热门社团"
             items={facets.circles}
-            variant="mint"
+            variant="signal"
             onPick={(value) => {
               const nextFilters = { ...filters, circle: value };
               void navigate({
@@ -788,7 +795,7 @@ export function Discover() {
           <FacetCard
             title="热门声优"
             items={facets.vas}
-            variant="violet"
+            variant="live"
             onPick={(value) => {
               const nextFilters = { ...filters, va: value };
               void navigate({
@@ -818,8 +825,8 @@ function PanelLabel({
 }) {
   return (
     <div className="space-y-1">
-      <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.2em] text-[color:var(--accent-amber)]">
-        <Sparkles className="h-3.5 w-3.5" />
+      <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.2em] text-[color:var(--telltale-amber)]">
+        <Sparkle className="h-3.5 w-3.5" />
         {title}
       </div>
       <div className="text-sm text-[color:var(--text-body)]">{description}</div>
@@ -829,7 +836,7 @@ function PanelLabel({
 
 function FieldLabel({ children }: { children: string }) {
   return (
-    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
+    <div className="deck-decal">
       {children}
     </div>
   );
@@ -849,43 +856,42 @@ function WorkCard({
   return (
     <Card interactive foil className="h-full overflow-hidden" onClick={onSelect}>
       <CardContent className="flex h-full flex-col gap-5 p-5">
-        <div className="relative overflow-hidden rounded-lg">
+        <div className="deck-screen aspect-[16/10]">
           {work.main_cover_url || work.thumbnail_url ? (
             <img
               src={work.main_cover_url || work.thumbnail_url}
               alt={work.title}
-              className="h-60 w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+              className="h-full w-full object-cover opacity-90 transition duration-500 group-hover:brightness-110"
             />
           ) : (
-            <div className="flex h-60 items-center justify-center bg-[color:var(--interactive-bg)] text-sm text-[color:var(--text-muted)]">
+            <div className="flex h-full items-center justify-center text-sm text-[color:var(--text-mute)]">
               暂无封面
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[rgba(3,10,8,0.62)] via-transparent to-transparent" />
           <div className="absolute bottom-3 right-3">
-            <Badge variant="pink">{work.circle || "未知社团"}</Badge>
+            <Badge variant="decal">{work.circle || "未知社团"}</Badge>
           </div>
         </div>
 
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <Badge variant="gold" className="shrink-0">
+            <Badge variant="warn" className="shrink-0">
               {work.source_id}
             </Badge>
-            <span className="text-xs text-[color:var(--text-muted)]">{work.release}</span>
+            <span className="console-mono text-xs text-[color:var(--text-mute)]">{work.release}</span>
           </div>
-          <h3 className="line-clamp-2 text-lg font-semibold leading-7 text-[color:var(--text-strong)]">
+          <h3 className="console-title line-clamp-2 text-xl font-black leading-7 text-[color:var(--text-display)]">
             {work.title}
           </h3>
         </div>
 
         <div className="grid grid-cols-3 gap-3">
-          <MiniMetric label="下载量" value={String(work.dl_count)} variant="blue" />
-          <MiniMetric label="评分" value={work.rate.toFixed(2)} variant="mint" />
+          <MiniMetric label="下载量" value={String(work.dl_count)} variant="signal" />
+          <MiniMetric label="评分" value={work.rate.toFixed(2)} variant="warn" />
           <MiniMetric
             label="字幕"
             value={work.has_subtitle ? "有" : "无"}
-            variant={work.has_subtitle ? "violet" : "ghost"}
+            variant={work.has_subtitle ? "live" : "mute"}
           />
         </div>
 
@@ -905,14 +911,14 @@ function WorkCard({
               onQueue();
             }}
           >
-            <Download className="h-4 w-4" />
+            <DownloadSimple className="h-4 w-4" />
             加入下载队列
           </Button>
           <Link
             to="/discover/$sourceId"
             params={{ sourceId: work.source_id }}
             search={detailSearch}
-            className="block rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 py-3 text-center text-sm font-medium text-[color:var(--text-strong)] transition hover:-translate-y-0.5 hover:bg-[color:var(--interactive-bg-strong)]"
+            className="deck-button-secondary inline-flex h-[38px] items-center justify-center border px-4 py-2 text-center text-xs font-bold transition hover:brightness-110"
             onClick={(event) => event.stopPropagation()}
           >
             查看详情页
@@ -930,15 +936,15 @@ function MiniMetric({
 }: {
   label: string;
   value: string;
-  variant: "pink" | "mint" | "violet" | "blue" | "gold" | "ghost";
+  variant: BadgeSemantic;
 }) {
   return (
-    <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-3 py-3">
-      <div className="text-[11px] uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
+    <div className="deck-screen px-3 py-3">
+      <div className="text-[11px] uppercase tracking-[0.18em] text-[color:var(--text-mute)]">
         {label}
       </div>
       <div className="mt-2 flex items-center justify-between gap-2">
-        <span className="text-sm font-semibold text-[color:var(--text-strong)]">{value}</span>
+        <span className="console-readout text-sm">{value}</span>
         <Badge variant={variant}>•</Badge>
       </div>
     </div>
@@ -953,25 +959,25 @@ function FacetCard({
 }: {
   title: string;
   items: FacetItem[];
-  variant: "pink" | "mint" | "violet";
+  variant: BadgeSemantic;
   onPick: (value: string) => void;
 }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Tag className="h-4 w-4 text-[color:var(--accent-rose)]" />
+          <Tag className="h-4 w-4 text-[color:var(--tape-pink)]" weight="duotone" />
           {title}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2">
         {items.length === 0 && (
-          <div className="text-sm text-[color:var(--text-muted)]">暂无可用聚合</div>
+          <div className="text-sm text-[color:var(--text-mute)]">暂无可用聚合</div>
         )}
         {items.map((item) => (
           <button
             key={`${title}-${item.value}`}
-            className="transition hover:scale-105"
+            className="transition hover:brightness-110"
             onClick={() => onPick(item.value)}
           >
             <Badge variant={variant} active>
@@ -1011,38 +1017,38 @@ function WorkDetailCard({
         )}
         {loading && (
           <div className="space-y-4">
-            <div className="h-44 animate-pulse rounded-lg bg-[color:var(--interactive-bg)]" />
+            <div className="deck-screen h-44 animate-pulse" />
             <div className="h-4 animate-pulse rounded-md bg-[color:var(--interactive-bg)]" />
             <div className="h-4 w-2/3 animate-pulse rounded-md bg-[color:var(--interactive-bg)]" />
           </div>
         )}
         {detail && (
           <>
-            <div className="overflow-hidden rounded-lg">
+            <div className="deck-screen h-52">
               {detail.summary.main_cover_url || detail.summary.thumbnail_url ? (
                 <img
                   src={detail.summary.main_cover_url || detail.summary.thumbnail_url}
                   alt={detail.summary.title}
-                  className="h-52 w-full object-cover"
+                  className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="flex h-52 items-center justify-center bg-[color:var(--interactive-bg)] text-sm text-[color:var(--text-muted)]">
+                <div className="flex h-full items-center justify-center text-sm text-[color:var(--text-mute)]">
                   暂无封面
                 </div>
               )}
             </div>
             <div className="space-y-2">
-              <Badge variant="gold">{detail.summary.source_id}</Badge>
-              <h3 className="text-xl font-semibold text-[color:var(--text-strong)]">
+              <Badge variant="warn">{detail.summary.source_id}</Badge>
+              <h3 className="console-title text-xl font-black text-[color:var(--text-display)]">
                 {detail.summary.title}
               </h3>
               <p className="text-sm text-[color:var(--text-body)]">{detail.summary.circle}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <MiniMetric label="发售日" value={detail.summary.release || "-"} variant="pink" />
-              <MiniMetric label="价格" value={String(detail.price)} variant="gold" />
-              <MiniMetric label="评论数" value={String(detail.review_count)} variant="blue" />
-              <MiniMetric label="音轨数" value={String(detail.tracks.length)} variant="mint" />
+              <MiniMetric label="发售日" value={detail.summary.release || "-"} variant="decal" />
+              <MiniMetric label="价格" value={String(detail.price)} variant="warn" />
+              <MiniMetric label="评论数" value={String(detail.review_count)} variant="signal" />
+              <MiniMetric label="音轨数" value={String(detail.tracks.length)} variant="live" />
             </div>
             <div className="space-y-2">
               <div className="text-sm font-semibold text-[color:var(--text-body)]">音轨预览</div>
@@ -1050,7 +1056,7 @@ function WorkDetailCard({
                 {detail.tracks.slice(0, 6).map((track, index) => (
                   <div
                     key={`${track.title}-${index}`}
-                    className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-3 text-sm text-[color:var(--text-strong)]"
+                    className="deck-screen p-3 text-sm text-[color:var(--text-display)]"
                   >
                     {track.title}
                   </div>
@@ -1058,14 +1064,14 @@ function WorkDetailCard({
               </div>
             </div>
             <Button className="w-full" onClick={() => onQueue(detail.summary.source_id)}>
-              <Download className="h-4 w-4" />
+              <DownloadSimple className="h-4 w-4" />
               下载当前作品
             </Button>
             <Link
               to="/discover/$sourceId"
               params={{ sourceId: detail.summary.source_id }}
               search={detailSearch}
-              className="block rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 py-3 text-center text-sm font-medium text-[color:var(--text-strong)] transition hover:-translate-y-0.5 hover:bg-[color:var(--interactive-bg-strong)]"
+              className="deck-button-secondary inline-flex h-[38px] items-center justify-center border px-4 py-2 text-center text-xs font-bold transition hover:brightness-110"
             >
               打开独立详情页
             </Link>
@@ -1079,15 +1085,15 @@ function WorkDetailCard({
 function tagVariant(tag: string) {
   const value = tag.toLowerCase();
   if (value.includes("全年龄") || value.includes("heal")) {
-    return "mint" as const;
+    return "signal" as const;
   }
   if (value.includes("耳") || value.includes("催眠") || value.includes("asmr")) {
-    return "pink" as const;
+    return "decal" as const;
   }
   if (value.includes("cv") || value.includes("声优")) {
-    return "violet" as const;
+    return "live" as const;
   }
-  return "blue" as const;
+  return "signal" as const;
 }
 
 function buildLegacyQuery(filters: DiscoverFilters) {

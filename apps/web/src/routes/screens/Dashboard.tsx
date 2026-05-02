@@ -4,20 +4,19 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Archive,
-  ArrowRightCircle,
+  ArrowCircleRight,
   Database,
-  DownloadCloud,
+  DownloadSimple,
   Gauge,
-  Radar,
-  RadioTower,
+  HardDrives,
   SlidersHorizontal,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  EmptyState,
   PageHeader,
   ProgressTrack,
-  StatCard,
   fadeUpItem,
   staggerContainer,
 } from "@/components/ui/sweet";
@@ -37,9 +36,13 @@ export function Dashboard() {
     queryFn: () => apiClient.getLibraryWorks({ page: 1, pageSize: 6 }),
   });
 
+  const tasks = tasksQuery.data?.items ?? [];
+  const runningTasks = tasks.filter((task) => task.status === "RUNNING").length;
+  const totalIndex = reportQuery.data?.totals.metadata ?? 0;
+
   return (
     <motion.section
-      className="space-y-6"
+      className="space-y-5"
       variants={staggerContainer}
       initial="hidden"
       animate="show"
@@ -48,19 +51,19 @@ export function Dashboard() {
         <PageHeader
           kicker="Dashboard"
           title="总控状态屏"
-          description="集中监控远端索引、任务队列、同步进度与本地媒体档案。所有模块保持在线读数，适合长时间停留和快速调度。"
+          description="集中监控远端索引、任务队列、同步进度与本地媒体档案。这个界面应该像一台仍在通电的助眠节目控制台。"
           meta={
-            <div className="rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 shadow-[var(--shadow-glass)]">
-              <div className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text-strong)]">
-                <RadioTower className="h-4 w-4 text-[color:var(--accent-green)]" />
-                SIGNAL METER
-              </div>
+            <div className="deck-screen min-w-[15rem] p-4">
+              <div className="deck-decal">SIGNAL METER</div>
               <div className="visualizer mt-4">
                 {Array.from({ length: 6 }).map((_, index) => (
                   <span
                     key={index}
                     className="visualizer-dot"
-                    style={{ width: `${0.72 + index * 0.03}rem` }}
+                    style={{
+                      width: `${0.64 + index * 0.04}rem`,
+                      height: `${0.7 + Math.min(1, runningTasks / 4) * (index + 1) * 0.28}rem`,
+                    }}
                   />
                 ))}
               </div>
@@ -69,28 +72,64 @@ export function Dashboard() {
         />
       </motion.div>
 
-      <motion.div variants={fadeUpItem} className="grid gap-4 lg:grid-cols-3">
-        <StatCard
-          label="已索引元数据"
-          value={reportQuery.data?.totals.metadata ?? 0}
-          hint="远端作品池已进入本地索引的条目数"
-          icon={<Database className="h-5 w-5" />}
-          accentClassName="from-emerald-400 to-amber-400"
-        />
-        <StatCard
-          label="任务总数"
-          value={tasksQuery.data?.total ?? 0}
-          hint="包含下载、同步和失败重试"
-          icon={<DownloadCloud className="h-5 w-5" />}
-          accentClassName="from-blue-400 to-emerald-400"
-        />
-        <StatCard
-          label="媒体库作品"
-          value={libraryQuery.data?.total ?? 0}
-          hint="已经落地到本地的作品收藏"
-          icon={<Archive className="h-5 w-5" />}
-          accentClassName="from-amber-400 to-red-400"
-        />
+      <motion.div variants={fadeUpItem} className="grid gap-4 xl:grid-cols-[1.6fr_0.62fr_0.44fr]">
+        <Card surface="screen" foil className="min-h-[28rem]">
+          <CardContent className="flex min-h-[28rem] flex-col gap-5 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="deck-decal">TOTAL INDEX</div>
+                <div className="console-readout mt-4 text-5xl md:text-7xl">
+                  {totalIndex.toLocaleString()}
+                </div>
+              </div>
+              <Badge variant="signal">PHOSPHOR ONLINE</Badge>
+            </div>
+            <div className="mt-auto border-t border-[color:var(--phosphor-mid)] pt-4">
+              <div className="console-mono mb-3 text-[10px] uppercase tracking-[0.2em] text-[color:var(--telltale-amber)]">
+                Live Task Feed
+              </div>
+              <div className="space-y-2">
+                {tasks.slice(0, 8).map((task) => (
+                  <div key={task.id} className="console-mono flex gap-3 text-xs text-[color:var(--text-body)]">
+                    <span className="text-[color:var(--phosphor-primary)]">&gt;</span>
+                    <span>{formatTaskTime(task.updated_at || task.created_at)}</span>
+                    <span>task#{task.id}</span>
+                    <span className={task.status === "RUNNING" ? "text-[color:var(--tape-pink)]" : ""}>
+                      {task.status}
+                    </span>
+                  </div>
+                ))}
+                {tasks.length === 0 ? (
+                  <div className="console-mono text-xs text-[color:var(--text-mute)]">
+                    &gt; no active packet on this channel
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="min-h-[28rem]">
+          <CardHeader>
+            <CardTitle>Signal Rail</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Meter label="RUNNING" value={runningTasks} max={6} variant="live" />
+            <Meter label="LIBRARY" value={libraryQuery.data?.total ?? 0} max={Math.max(1, libraryQuery.data?.total ?? 1)} variant="signal" />
+            <Meter label="FAILED" value={reportQuery.data?.downloads.failed ?? 0} max={Math.max(1, reportQuery.data?.downloads.failed ?? 1)} variant="halt" />
+          </CardContent>
+        </Card>
+
+        <Card surface="screen" className="min-h-[28rem]">
+          <CardHeader>
+            <CardTitle>Task Rail</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <RailReadout label="TASKS" value={tasksQuery.data?.total ?? 0} />
+            <RailReadout label="ARCH" value={libraryQuery.data?.total ?? 0} />
+            <RailReadout label="PEND" value={reportQuery.data?.downloads.pending ?? 0} />
+          </CardContent>
+        </Card>
       </motion.div>
 
       <motion.div variants={fadeUpItem} className="grid gap-4 lg:grid-cols-3">
@@ -98,146 +137,69 @@ export function Dashboard() {
           to="/discover"
           title="发现雷达"
           description="检索远端索引，筛选标签、声优、社团并投递下载任务。"
-          icon={<Radar className="h-5 w-5" />}
-          accentClassName="from-emerald-400 to-amber-400"
+          icon={<Gauge className="h-5 w-5" weight="duotone" />}
         />
         <QuickLink
           to="/queue"
           title="任务调度台"
           description="查看运行、失败、排队任务，并执行取消、重试和清理。"
-          icon={<SlidersHorizontal className="h-5 w-5" />}
-          accentClassName="from-blue-400 to-emerald-400"
+          icon={<SlidersHorizontal className="h-5 w-5" weight="duotone" />}
         />
         <QuickLink
           to="/library"
           title="媒体档案"
           description="浏览本地落盘作品，在监听台播放音频并匹配字幕轨。"
-          icon={<Archive className="h-5 w-5" />}
-          accentClassName="from-amber-400 to-red-400"
+          icon={<Archive className="h-5 w-5" weight="duotone" />}
         />
       </motion.div>
 
-      <motion.div variants={fadeUpItem} className="grid gap-4 xl:grid-cols-[1.25fr_0.95fr]">
-        <Card foil className="min-h-[26rem]">
+      <motion.div variants={fadeUpItem} className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        <Card foil>
           <CardHeader className="flex flex-row items-center justify-between gap-3">
             <div>
-              <CardTitle className="text-base">最近任务</CardTitle>
-              <p className="mt-2 text-sm text-[color:var(--text-body)]">
-                调度台正在推进的动作会优先显示在这里。
-              </p>
+              <CardTitle>同步赛道</CardTitle>
+              <p className="mt-2 text-sm text-[color:var(--text-body)]">磁带式进度会在运行任务存在时进入传输态。</p>
             </div>
-            <Badge variant="blue">实时刷新</Badge>
+            <Badge variant="signal">SYNC BUS</Badge>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {(tasksQuery.data?.items ?? []).slice(0, 5).map((task, index) => (
-              <motion.div
-                key={task.id}
-                initial={{ opacity: 0, x: -12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.05 * index }}
-                className="beam-border rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="text-sm font-semibold text-[color:var(--text-strong)]">
-                      {task.name}
-                    </div>
-                    <div className="text-xs text-[color:var(--text-muted)]">
-                      {translateTaskType(task.type)}
-                    </div>
-                  </div>
-                  <Badge variant={statusBadgeVariant(task.status)}>
-                    {translateTaskStatus(task.status)}
-                  </Badge>
-                </div>
-                <div className="mt-4">
-                  <ProgressTrack
-                    label="执行进度"
-                    value={task.progress ?? 0}
-                    mascot="MARK"
-                    hint={task.message || "任务正在等待更多日志。"}
-                  />
-                </div>
-              </motion.div>
-            ))}
-            {(tasksQuery.data?.items?.length ?? 0) === 0 && (
-              <div className="sweet-empty-state min-h-[18rem]">
-                <div className="sweet-empty-bubble">EMPTY</div>
-                <div className="console-title text-2xl font-bold text-[color:var(--text-strong)]">
-                  当前还没有活跃任务
-                </div>
-                <p className="max-w-md text-sm leading-7 text-[color:var(--text-body)]">
-                  当前没有可显示任务。前往发现雷达或同步舱创建新的下载与同步动作。
-                </p>
-              </div>
-            )}
+          <CardContent className="space-y-5">
+            <ProgressTrack
+              label="总体进度"
+              value={reportQuery.data?.progress.overall ?? 0}
+              running={runningTasks > 0}
+              hint="全量元数据与下载落地进度"
+            />
+            <ProgressTrack
+              label="字幕作品进度"
+              value={reportQuery.data?.progress.with_subtitle ?? 0}
+              running={runningTasks > 0}
+              hint="适合优先推进有字幕的作品集"
+            />
           </CardContent>
         </Card>
 
-        <div className="space-y-4">
-          <Card className="overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between gap-3">
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <CardTitle className="text-base">同步赛道</CardTitle>
-                <p className="mt-2 text-sm text-[color:var(--text-body)]">
-                  以仪表读数监控同步推进。
-                </p>
-              </div>
-              <Badge variant="mint">SYNC BUS</Badge>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <ProgressTrack
-                label="总体进度"
-                value={reportQuery.data?.progress.overall ?? 0}
-                mascot="MARK"
-                hint="全量元数据与下载落地进度"
-              />
-              <ProgressTrack
-                label="字幕作品进度"
-                value={reportQuery.data?.progress.with_subtitle ?? 0}
-                mascot="MARK"
-                hint="适合优先推进有字幕的作品集"
-              />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <SummaryCard
-                  label="已完成下载"
-                  value={reportQuery.data?.downloads.completed ?? 0}
-                  accentClassName="from-emerald-400 to-blue-400"
-                />
-                <SummaryCard
-                  label="失败待处理"
-                  value={reportQuery.data?.downloads.failed ?? 0}
-                  accentClassName="from-red-400 to-amber-400"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card foil className="overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-sm font-semibold text-[color:var(--text-body)]">
-                    收藏偏好
-                  </div>
-                  <div className="console-title mt-2 text-2xl font-bold text-[color:var(--text-strong)]">
-                    推荐操作序列
-                  </div>
+                <div className="deck-decal">OPS HINT</div>
+                <div className="console-title mt-3 text-2xl font-black text-[color:var(--text-display)]">
+                  推荐操作序列
                 </div>
-                <Badge variant="pink">OPS HINT</Badge>
               </div>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <Badge variant="pink">失败清理</Badge>
-                <Badge variant="mint">高评分检索</Badge>
-                <Badge variant="violet">字幕优先</Badge>
-                <Badge variant="blue">增量同步</Badge>
-              </div>
-              <p className="mt-4 text-sm leading-7 text-[color:var(--text-body)]">
-                建议先清理失败任务，再通过发现雷达筛选高评分或有字幕作品，最后进入同步舱执行批量落盘。
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+              <HardDrives className="h-8 w-8 text-[color:var(--telltale-amber)]" weight="duotone" />
+            </div>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Badge variant="halt">失败清理</Badge>
+              <Badge variant="signal">高评分检索</Badge>
+              <Badge variant="live">字幕优先</Badge>
+              <Badge variant="warn">增量同步</Badge>
+            </div>
+            <p className="mt-4 text-sm leading-7 text-[color:var(--text-body)]">
+              建议先清理失败任务，再通过发现雷达筛选高评分或有字幕作品，最后进入同步舱执行批量落盘。
+            </p>
+          </CardContent>
+        </Card>
       </motion.div>
     </motion.section>
   );
@@ -248,28 +210,24 @@ function QuickLink({
   title,
   description,
   icon,
-  accentClassName,
 }: {
   to: "/" | "/discover" | "/queue" | "/library" | "/sync" | "/settings";
   title: string;
   description: string;
   icon: ReactNode;
-  accentClassName: string;
 }) {
   return (
     <Link to={to}>
       <Card interactive foil className="h-full">
         <CardContent className="flex h-full flex-col justify-between gap-4 p-5">
           <div className="flex items-start justify-between gap-4">
-            <span
-              className={`flex h-12 w-12 items-center justify-center rounded-md bg-gradient-to-br text-white shadow-[var(--shadow-glow)] ${accentClassName}`}
-            >
+            <span className="deck-screen flex h-12 w-12 items-center justify-center text-[color:var(--phosphor-primary)]">
               {icon}
             </span>
-            <ArrowRightCircle className="h-5 w-5 text-[color:var(--text-muted)]" />
+            <ArrowCircleRight className="h-5 w-5 text-[color:var(--text-mute)]" weight="duotone" />
           </div>
           <div className="space-y-2">
-            <div className="console-title text-xl font-bold text-[color:var(--text-strong)]">
+            <div className="console-title text-xl font-black text-[color:var(--text-display)]">
               {title}
             </div>
             <div className="text-sm leading-7 text-[color:var(--text-body)]">{description}</div>
@@ -280,77 +238,47 @@ function QuickLink({
   );
 }
 
-function SummaryCard({
+function Meter({
   label,
   value,
-  accentClassName,
+  max,
+  variant,
 }: {
   label: string;
   value: number;
-  accentClassName: string;
+  max: number;
+  variant: "live" | "signal" | "halt";
 }) {
+  const percent = Math.max(4, Math.min(100, (value / max) * 100));
   return (
-    <div className="rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 shadow-[var(--shadow-glass)]">
-      <div className="flex items-center gap-3">
-        <span
-          className={`flex h-10 w-10 items-center justify-center rounded-md bg-gradient-to-br ${accentClassName}`}
-        >
-          <Gauge className="h-4 w-4 text-[#06100b]" />
-        </span>
-        <div className="text-sm font-semibold text-[color:var(--text-body)]">{label}</div>
+    <div className="deck-screen p-3">
+      <div className="flex items-center justify-between gap-3">
+        <Badge variant={variant}>{label}</Badge>
+        <span className="console-readout text-sm">{value}</span>
       </div>
-      <div className="console-title mt-4 text-3xl font-extrabold text-[color:var(--text-strong)]">
-        {value}
+      <div className="mt-4 h-2 border border-[color:var(--phosphor-mid)] bg-[color:var(--screen-void)]">
+        <div className="h-full bg-[color:var(--phosphor-primary)] shadow-[var(--glow-phosphor)]" style={{ width: `${percent}%` }} />
       </div>
     </div>
   );
 }
 
-function statusBadgeVariant(status: string) {
-  switch (status) {
-    case "SUCCESS":
-      return "mint" as const;
-    case "FAILED":
-      return "danger" as const;
-    case "RUNNING":
-      return "blue" as const;
-    case "QUEUED":
-      return "violet" as const;
-    default:
-      return "default" as const;
-  }
+function RailReadout({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="border-b border-[color:var(--phosphor-mid)] pb-3">
+      <div className="console-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--text-mute)]">{label}</div>
+      <div className="console-readout mt-2 text-3xl">{value}</div>
+    </div>
+  );
 }
 
-function translateTaskType(type: string) {
-  switch (type) {
-    case "download":
-      return "下载";
-    case "sync":
-      return "元数据同步";
-    case "sync-download":
-      return "同步下载";
-    case "sync-retry":
-      return "同步重试";
-    default:
-      return type;
+function formatTaskTime(value?: string) {
+  if (!value) {
+    return "--:--:--";
   }
-}
-
-function translateTaskStatus(status: string) {
-  switch (status) {
-    case "QUEUED":
-      return "排队中";
-    case "RUNNING":
-      return "运行中";
-    case "SUCCESS":
-      return "成功";
-    case "FAILED":
-      return "失败";
-    case "CANCELED":
-      return "已取消";
-    case "TERMINATED":
-      return "已终止";
-    default:
-      return status;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "--:--:--";
   }
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}:${String(date.getSeconds()).padStart(2, "0")}`;
 }

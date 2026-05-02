@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, RefreshCcw, RotateCcw, ServerCrash } from "lucide-react";
+import { ArrowClockwise, Database, DownloadSimple } from "@phosphor-icons/react";
+import type { Icon } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,6 +87,12 @@ export function Sync() {
     },
   });
 
+  const running = queueMutation.isPending;
+  const progress = reportQuery.data?.progress;
+  const totals = reportQuery.data?.totals;
+  const downloads = reportQuery.data?.downloads;
+  const pipePercent = Math.round((progress?.overall ?? 0) * 100);
+
   return (
     <motion.section
       className="space-y-6"
@@ -97,13 +104,11 @@ export function Sync() {
         <PageHeader
           kicker="Sync"
           title="同步舱与批量任务"
-          description="把元数据同步、批量下载和失败重试收进统一的编队面板。你可以在这里先看赛道进度，再决定下一步让哪支队伍出击。"
+          description="把元数据同步、批量下载和失败重试收进磁带复制工作站。来源机、目标机和传输管道会一起显示当前库存推进。"
           meta={
-            <div className="space-y-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 shadow-[var(--shadow-glass)]">
-              <Badge variant="violet">同步中心</Badge>
-              <div className="text-sm text-[color:var(--text-body)]">
-                总体进度 {Math.round((reportQuery.data?.progress.overall ?? 0) * 100)}%
-              </div>
+            <div className="deck-screen min-w-[13rem] p-4">
+              <Badge variant={running ? "live" : "warn"}>同步中心</Badge>
+              <div className="console-readout mt-3 text-2xl">{pipePercent}%</div>
             </div>
           }
         />
@@ -113,10 +118,10 @@ export function Sync() {
         <ActionCard
           title="元数据同步"
           description="从远端刷新作品索引。适合先让资料库跟上最新状态。"
-          icon={RefreshCcw}
-          accentClassName="from-emerald-400 to-amber-400"
+          icon={ArrowClockwise}
+          busy={queueMutation.isPending}
           onClick={() => queueMutation.mutate("metadata")}
-          controls={
+          panelSlot={
             <Select
               value={syncScope}
               onChange={(event) =>
@@ -131,41 +136,46 @@ export function Sync() {
         <ActionCard
           title="同步下载"
           description="批量抓取同步清单里尚未下载的作品。"
-          icon={ServerCrash}
-          accentClassName="from-blue-400 to-emerald-400"
+          icon={Database}
+          busy={queueMutation.isPending}
           onClick={() => queueMutation.mutate("download")}
         />
         <ActionCard
           title="失败重试"
           description="把失败任务重新拉回轨道，避免库存断层。"
-          icon={RotateCcw}
-          accentClassName="from-emerald-400 to-blue-400"
+          icon={ArrowClockwise}
+          busy={queueMutation.isPending}
           onClick={() => queueMutation.mutate("retry")}
         />
       </motion.div>
 
       <motion.div variants={fadeUpItem} className="grid gap-4 xl:grid-cols-[1.15fr_0.95fr]">
-        <Card foil className="overflow-hidden">
+        <Card foil={running}>
           <CardHeader>
-            <CardTitle className="text-base">同步赛道</CardTitle>
+            <CardTitle>磁带传输管道</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
+            <MachineDeck label="REMOTE INDEX" value={totals?.metadata ?? 0} icon={<Database className="h-8 w-8" weight="duotone" />} />
+              <TransferPipe running={running} percent={pipePercent} />
+              <MachineDeck label="LOCAL ARCHIVE" value={downloads?.completed ?? 0} icon={<DownloadSimple className="h-8 w-8" weight="duotone" />} />
+            </div>
             <ProgressTrack
               label="总体进度"
-              value={reportQuery.data?.progress.overall ?? 0}
-              mascot="MARK"
+              value={progress?.overall ?? 0}
+              running={running}
               hint="整体元数据与下载落地推进情况"
             />
             <ProgressTrack
               label="字幕作品进度"
-              value={reportQuery.data?.progress.with_subtitle ?? 0}
-              mascot="MARK"
+              value={progress?.with_subtitle ?? 0}
+              running={running}
               hint="适合优先保证可读性较高的作品库存"
             />
             <ProgressTrack
               label="无字幕作品进度"
-              value={reportQuery.data?.progress.without_subtitle ?? 0}
-              mascot="MARK"
+              value={progress?.without_subtitle ?? 0}
+              running={running}
               hint="补全库存的尾段通常会落在这里"
             />
           </CardContent>
@@ -174,49 +184,43 @@ export function Sync() {
         <div className="grid gap-4 sm:grid-cols-2">
           <StatCard
             label="元数据作品数"
-            value={reportQuery.data?.totals.metadata ?? 0}
-            icon={<RefreshCcw className="h-5 w-5" />}
-            accentClassName="from-emerald-400 to-amber-400"
+            value={totals?.metadata ?? 0}
+            icon={<ArrowClockwise className="h-5 w-5" weight="duotone" />}
           />
           <StatCard
             label="字幕作品数"
-            value={reportQuery.data?.totals.subtitle ?? 0}
-            icon={<Download className="h-5 w-5" />}
-            accentClassName="from-blue-400 to-emerald-400"
+            value={totals?.subtitle ?? 0}
+            icon={<DownloadSimple className="h-5 w-5" weight="duotone" />}
           />
           <StatCard
             label="无字幕作品数"
-            value={reportQuery.data?.totals.without_subtitle ?? 0}
-            icon={<ServerCrash className="h-5 w-5" />}
-            accentClassName="from-violet-400 to-blue-400"
+            value={totals?.without_subtitle ?? 0}
+            icon={<Database className="h-5 w-5" weight="duotone" />}
           />
           <StatCard
             label="待下载"
-            value={reportQuery.data?.downloads.pending ?? 0}
-            icon={<RotateCcw className="h-5 w-5" />}
-            accentClassName="from-emerald-400 to-blue-400"
+            value={downloads?.pending ?? 0}
+            icon={<ArrowClockwise className="h-5 w-5" weight="duotone" />}
           />
           <StatCard
             label="已完成下载"
-            value={reportQuery.data?.downloads.completed ?? 0}
-            icon={<Download className="h-5 w-5" />}
-            accentClassName="from-emerald-400 to-amber-400"
+            value={downloads?.completed ?? 0}
+            icon={<DownloadSimple className="h-5 w-5" weight="duotone" />}
             className="sm:col-span-2"
           />
           <StatCard
             label="失败下载"
-            value={reportQuery.data?.downloads.failed ?? 0}
-            icon={<ServerCrash className="h-5 w-5" />}
-            accentClassName="from-red-400 to-amber-400"
+            value={downloads?.failed ?? 0}
+            icon={<Database className="h-5 w-5" weight="duotone" />}
             className="sm:col-span-2"
           />
         </div>
       </motion.div>
 
       <motion.div variants={fadeUpItem}>
-        <Card className="overflow-hidden">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-base">同步导出</CardTitle>
+            <CardTitle>同步导出</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
@@ -244,6 +248,7 @@ export function Sync() {
               </Select>
               <Button
                 variant="secondary"
+                busy={exportMutation.isPending}
                 onClick={() =>
                   exportMutation.mutate({
                     status: exportStatus,
@@ -252,7 +257,7 @@ export function Sync() {
                 }
                 disabled={exportMutation.isPending}
               >
-                <Download className="h-4 w-4" />
+                <DownloadSimple className="h-4 w-4" weight="duotone" />
                 导出当前选择
               </Button>
             </div>
@@ -261,21 +266,25 @@ export function Sync() {
               <QuickExportButton
                 onClick={() => exportMutation.mutate({ status: "failed", format: "csv" })}
                 disabled={exportMutation.isPending}
+                busy={exportMutation.isPending}
                 label="失败 CSV"
               />
               <QuickExportButton
                 onClick={() => exportMutation.mutate({ status: "failed", format: "json" })}
                 disabled={exportMutation.isPending}
+                busy={exportMutation.isPending}
                 label="失败 JSON"
               />
               <QuickExportButton
                 onClick={() => exportMutation.mutate({ status: "success", format: "csv" })}
                 disabled={exportMutation.isPending}
+                busy={exportMutation.isPending}
                 label="成功 CSV"
               />
               <QuickExportButton
                 onClick={() => exportMutation.mutate({ status: "success", format: "json" })}
                 disabled={exportMutation.isPending}
+                busy={exportMutation.isPending}
                 label="成功 JSON"
               />
             </div>
@@ -291,32 +300,30 @@ function ActionCard({
   description,
   icon: Icon,
   onClick,
-  controls,
-  accentClassName,
+  panelSlot,
+  busy,
 }: {
   title: string;
   description: string;
-  icon: typeof RefreshCcw;
+  icon: Icon;
   onClick: () => void;
-  controls?: ReactNode;
-  accentClassName: string;
+  panelSlot?: ReactNode;
+  busy?: boolean;
 }) {
   return (
     <Card interactive foil className="h-full">
       <CardContent className="flex h-full flex-col gap-4 p-5">
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="text-sm font-semibold text-[color:var(--text-body)]">{title}</div>
-            <div className="text-sm leading-6 text-[color:var(--text-muted)]">{description}</div>
+            <div className="console-title text-xl font-black text-[color:var(--text-display)]">{title}</div>
+            <div className="text-sm leading-6 text-[color:var(--text-body)]">{description}</div>
           </div>
-          <span
-            className={`flex h-12 w-12 items-center justify-center rounded-md bg-gradient-to-br text-white shadow-[var(--shadow-glow)] ${accentClassName}`}
-          >
-            <Icon className="h-5 w-5" />
+          <span className="deck-screen flex h-12 w-12 items-center justify-center text-[color:var(--phosphor-primary)]">
+            <Icon className="h-5 w-5" weight="duotone" />
           </span>
         </div>
-        {controls}
-        <Button className="mt-auto w-full" onClick={onClick}>
+        {panelSlot}
+        <Button className="mt-auto w-full" busy={busy} onClick={onClick} disabled={busy}>
           执行操作
         </Button>
       </CardContent>
@@ -324,18 +331,57 @@ function ActionCard({
   );
 }
 
+function MachineDeck({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: number;
+  icon: ReactNode;
+}) {
+  return (
+    <div className="deck-screen p-4 text-center">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center text-[color:var(--telltale-amber)]">
+        {icon}
+      </div>
+      <div className="deck-decal mt-3 justify-center">{label}</div>
+      <div className="console-readout mt-4 text-3xl">{value}</div>
+    </div>
+  );
+}
+
+function TransferPipe({ running, percent }: { running: boolean; percent: number }) {
+  return (
+    <div className="min-w-[9rem]">
+      <div className="mascot-progress grid-cols-[34px_minmax(0,1fr)_34px]">
+        <div className="tape-reel" data-running={running ? "true" : undefined} />
+        <div className="tape-track" data-running={running ? "true" : undefined}>
+          <div className="tape-track__fill" style={{ width: `${percent}%` }} />
+        </div>
+        <div className="tape-reel" data-running={running ? "true" : undefined} />
+      </div>
+      <div className="console-mono mt-2 text-center text-[10px] uppercase tracking-[0.16em] text-[color:var(--text-mute)]">
+        TAPE BUS
+      </div>
+    </div>
+  );
+}
+
 function QuickExportButton({
   onClick,
   disabled,
+  busy,
   label,
 }: {
   onClick: () => void;
   disabled: boolean;
+  busy?: boolean;
   label: string;
 }) {
   return (
-    <Button variant="secondary" onClick={onClick} disabled={disabled}>
-      <Download className="h-4 w-4" />
+    <Button variant="secondary" busy={busy} onClick={onClick} disabled={disabled}>
+      <DownloadSimple className="h-4 w-4" weight="duotone" />
       {label}
     </Button>
   );

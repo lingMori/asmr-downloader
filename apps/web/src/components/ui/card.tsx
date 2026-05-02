@@ -2,35 +2,48 @@ import type { HTMLAttributes } from "react";
 import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 
+type CardProps = HTMLMotionProps<"div"> & {
+  interactive?: boolean;
+  foil?: boolean;
+  surface?: "chassis" | "screen";
+};
+
 export function Card({
   className,
   interactive = false,
   foil = false,
+  surface = "chassis",
   ...props
-}: HTMLMotionProps<"div"> & {
-  interactive?: boolean;
-  foil?: boolean;
-}) {
+}: CardProps) {
+  const Surface = surface === "screen" ? "deck-screen" : "deck-chassis";
   return (
     <motion.div
       whileHover={
         interactive
           ? {
-              y: -8,
-              scale: 1.01,
+              filter: "brightness(1.06)",
             }
           : undefined
       }
-      transition={{ type: "spring", stiffness: 220, damping: 18 }}
+      transition={{ duration: 0.16, ease: [0.6, 0, 0.4, 1] }}
+      data-live={foil ? "true" : undefined}
       className={cn(
-        "console-panel group relative overflow-hidden rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--panel-bg)] shadow-[var(--shadow-glass)] backdrop-blur-xl",
-        interactive &&
-          "sweet-card-interactive cursor-pointer border-[color:var(--panel-border-strong)] shadow-[var(--shadow-glow)]",
+        "group relative overflow-hidden",
+        Surface,
+        interactive && "cursor-pointer",
         className,
       )}
       {...props}
     />
   );
+}
+
+export function ChassisCard(props: Omit<CardProps, "surface">) {
+  return <Card surface="chassis" {...props} />;
+}
+
+export function ScreenCard(props: Omit<CardProps, "surface">) {
+  return <Card surface="screen" {...props} />;
 }
 
 export function CardContent({

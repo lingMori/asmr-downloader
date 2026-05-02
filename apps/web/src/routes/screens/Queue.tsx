@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, Clock3, DownloadCloud, RefreshCcw, Trash2, XCircle } from "lucide-react";
+import { ArrowClockwise, Clock, DownloadSimple, Pulse, Trash, XCircle } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,13 @@ import {
   EmptyState,
   PageHeader,
   ProgressTrack,
-  StatCard,
   fadeUpItem,
   staggerContainer,
 } from "@/components/ui/sweet";
 import { apiClient, type Task } from "@/lib/api";
 import { useTaskEvents } from "@/lib/useTaskEvents";
+
+type BadgeTone = "live" | "signal" | "warn" | "halt";
 
 const retryableTaskTypes = new Set([
   "download",
@@ -167,8 +168,8 @@ export function Queue() {
           title="任务调度台"
           description="集中查看下载与同步状态流。失败、排队、进行中和可再次处理的任务会以统一状态色和进度读数展示。"
           meta={
-            <div className="space-y-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 shadow-[var(--shadow-glass)]">
-              <Badge variant="blue">自动刷新</Badge>
+            <div className="deck-screen space-y-3 p-4">
+              <Badge variant="signal">自动刷新</Badge>
               <div className="text-sm leading-6 text-[color:var(--text-body)]">
                 当前命中 {tasksQuery.data?.total ?? 0} 条任务
               </div>
@@ -178,26 +179,26 @@ export function Queue() {
       </motion.div>
 
       <motion.div variants={fadeUpItem} className="grid gap-4 md:grid-cols-3">
-        <StatCard
+        <VuMeter
           label="运行中"
           value={summary.running}
           hint="当前正在推进的任务数量"
-          icon={<Clock3 className="h-5 w-5" />}
-          accentClassName="from-blue-400 to-emerald-400"
+          icon={<Clock className="h-5 w-5" weight="duotone" />}
+          tone="live"
         />
-        <StatCard
+        <VuMeter
           label="失败"
           value={summary.failed}
           hint="建议优先检查日志并重试"
-          icon={<Activity className="h-5 w-5" />}
-          accentClassName="from-red-400 to-amber-400"
+          icon={<Pulse className="h-5 w-5" weight="duotone" />}
+          tone="halt"
         />
-        <StatCard
+        <VuMeter
           label="命中任务数"
           value={summary.total}
           hint="筛选条件下可见的全部任务"
-          icon={<DownloadCloud className="h-5 w-5" />}
-          accentClassName="from-amber-400 to-red-400"
+          icon={<DownloadSimple className="h-5 w-5" weight="duotone" />}
+          tone="warn"
         />
       </motion.div>
 
@@ -279,7 +280,7 @@ export function Queue() {
                 点击任意任务卡查看参数、日志和操作按钮。
               </p>
             </div>
-            <Badge variant="violet">
+            <Badge variant="warn">
               第 {filters.page} / {totalPages} 页
             </Badge>
           </CardHeader>
@@ -288,19 +289,19 @@ export function Queue() {
               <button
                 key={task.id}
                 type="button"
-                className={`beam-border block w-full rounded-lg border p-4 text-left transition ${
+                className={`block w-full border p-4 text-left transition ${
                   selectedTaskId === task.id
-                    ? "border-[color:var(--panel-border-strong)] bg-[color:var(--interactive-bg-strong)]"
-                    : "border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] hover:-translate-y-0.5 hover:bg-[color:var(--interactive-bg-strong)]"
+                    ? "deck-live border-[color:var(--tape-pink)] bg-[color:var(--screen-void)]"
+                    : "deck-plate hover:border-[color:var(--telltale-amber)]"
                 }`}
                 onClick={() => setSelectedTaskId(task.id)}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-1">
-                    <div className="text-sm font-semibold text-[color:var(--text-strong)]">
+                    <div className="console-mono text-sm font-semibold text-[color:var(--text-display)]">
                       {task.name}
                     </div>
-                    <div className="text-xs text-[color:var(--text-muted)]">
+                    <div className="console-mono text-xs text-[color:var(--text-mute)]">
                       #{task.id} · {translateTaskType(task.type)}
                     </div>
                   </div>
@@ -312,7 +313,7 @@ export function Queue() {
                   <ProgressTrack
                     label="进度"
                     value={task.progress ?? 0}
-                    mascot="MARK"
+                    running={task.status === "RUNNING"}
                     hint={task.message || "等待更多日志..."}
                   />
                 </div>
@@ -328,7 +329,7 @@ export function Queue() {
               />
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 py-3">
+            <div className="deck-plate flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <span className="text-sm text-[color:var(--text-body)]">
                 第 {filters.page} / {totalPages} 页
               </span>
@@ -379,34 +380,38 @@ export function Queue() {
                 <div className="flex flex-wrap gap-3">
                   <Button
                     variant="secondary"
+                    busy={cancelMutation.isPending}
                     onClick={() => cancelMutation.mutate(selectedTask.id)}
                     disabled={!canCancel || cancelMutation.isPending}
                   >
-                    <XCircle className="h-4 w-4" />
+                    <XCircle className="h-4 w-4" weight="duotone" />
                     取消任务
                   </Button>
                   <Button
                     variant="secondary"
+                    busy={retryMutation.isPending}
                     onClick={() => retryMutation.mutate(selectedTask.id)}
                     disabled={!canRetry || retryMutation.isPending}
                   >
-                    <RefreshCcw className="h-4 w-4" />
+                    <ArrowClockwise className="h-4 w-4" weight="duotone" />
                     重试任务
                   </Button>
                   <Button
                     variant="danger"
+                    busy={deleteMutation.isPending}
                     onClick={() => deleteMutation.mutate(selectedTask.id)}
                     disabled={!canDelete || deleteMutation.isPending}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash className="h-4 w-4" weight="duotone" />
                     删除任务
                   </Button>
                   <Button
                     variant="danger"
+                    busy={deleteWithFilesMutation.isPending}
                     onClick={() => deleteWithFilesMutation.mutate(selectedTask.id)}
                     disabled={!canDeleteWithFiles || deleteWithFilesMutation.isPending}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash className="h-4 w-4" weight="duotone" />
                     清理文件并移除记录
                   </Button>
                 </div>
@@ -414,7 +419,7 @@ export function Queue() {
                 <ProgressTrack
                   label="当前任务进度"
                   value={selectedTask.progress ?? 0}
-                  mascot="MARK"
+                  running={selectedTask.status === "RUNNING"}
                   hint={selectedTask.message || "任务还没有返回额外消息。"}
                 />
 
@@ -434,18 +439,18 @@ export function Queue() {
                   <div className="text-sm font-semibold text-[color:var(--text-body)]">日志</div>
                   <div className="space-y-2">
                     {(selectedTask.logs ?? []).length === 0 && (
-                      <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-3 text-sm text-[color:var(--text-muted)]">
+                      <div className="deck-screen p-3 text-sm text-[color:var(--text-mute)]">
                         暂无日志输出。
                       </div>
                     )}
                     {(selectedTask.logs ?? []).map((log) => (
                       <div
                         key={log.id}
-                        className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-3 text-sm text-[color:var(--text-strong)]"
+                        className="deck-screen p-3 text-sm text-[color:var(--text-display)]"
                       >
                         <div>{log.message}</div>
                         {log.created_at ? (
-                          <div className="mt-2 text-xs text-[color:var(--text-muted)]">
+                          <div className="mt-2 text-xs text-[color:var(--text-mute)]">
                             {log.created_at}
                           </div>
                         ) : null}
@@ -464,12 +469,47 @@ export function Queue() {
 
 function Summary({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4">
-      <div className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
+    <div className="deck-screen p-4">
+      <div className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-mute)]">
         {label}
       </div>
-      <div className="mt-2 text-sm font-semibold text-[color:var(--text-strong)]">{value}</div>
+      <div className="mt-2 text-sm font-semibold text-[color:var(--text-display)]">{value}</div>
     </div>
+  );
+}
+
+function VuMeter({
+  label,
+  value,
+  hint,
+  icon,
+  tone,
+}: {
+  label: string;
+  value: number;
+  hint: string;
+  icon: ReactNode;
+  tone: BadgeTone;
+}) {
+  const angle = Math.max(-42, Math.min(42, -36 + value * 12));
+  return (
+    <Card>
+      <CardContent className="space-y-4 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <Badge variant={tone}>{label}</Badge>
+          <span className="deck-plate flex h-10 w-10 items-center justify-center text-[color:var(--telltale-amber)]">
+            {icon}
+          </span>
+        </div>
+        <div className="deck-screen relative h-28 overflow-hidden">
+          <div className="absolute inset-x-4 bottom-3 h-20 rounded-t-full border border-b-0 border-[color:var(--phosphor-mid)]" />
+          <div className="absolute bottom-3 left-1/2 h-[72px] w-px origin-bottom bg-[color:var(--telltale-amber)] shadow-[var(--glow-amber)]" style={{ transform: `rotate(${angle}deg)` }} />
+          <div className="absolute bottom-1 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[color:var(--telltale-amber)] shadow-[var(--glow-amber)]" />
+          <div className="console-readout absolute left-4 top-4 text-3xl">{value}</div>
+        </div>
+        <p className="text-xs leading-5 text-[color:var(--text-body)]">{hint}</p>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -477,7 +517,7 @@ function CodeBlock({ title, value }: { title: string; value: string }) {
   return (
     <div className="space-y-2">
       <div className="text-sm font-semibold text-[color:var(--text-body)]">{title}</div>
-      <pre className="overflow-auto rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 text-xs text-[color:var(--text-strong)]">
+      <pre className="deck-screen overflow-auto p-4 text-xs text-[color:var(--text-display)]">
         {value}
       </pre>
     </div>
@@ -487,19 +527,19 @@ function CodeBlock({ title, value }: { title: string; value: string }) {
 function statusBadgeVariant(status: string) {
   switch (status) {
     case "QUEUED":
-      return "violet" as const;
+      return "warn" as const;
     case "RUNNING":
-      return "blue" as const;
+      return "live" as const;
     case "SUCCESS":
-      return "mint" as const;
+      return "signal" as const;
     case "FAILED":
-      return "danger" as const;
+      return "halt" as const;
     case "CANCELED":
-      return "ghost" as const;
+      return "mute" as const;
     case "TERMINATED":
-      return "ghost" as const;
+      return "mute" as const;
     default:
-      return "default" as const;
+      return "decal" as const;
   }
 }
 

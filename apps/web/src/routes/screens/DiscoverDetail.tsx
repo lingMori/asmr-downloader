@@ -2,25 +2,24 @@ import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Link, getRouteApi } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { LucideIcon } from "lucide-react";
+import type { Icon } from "@phosphor-icons/react";
 import {
   ArrowLeft,
-  AudioLines,
-  BadgeInfo,
-  Building2,
-  CalendarDays,
-  CircleDollarSign,
-  Clock3,
+  ChatText,
+  CurrencyDollar,
   Download,
   FileText,
   Globe,
-  MessageSquareText,
-  Music4,
+  Info,
+  MusicNotes,
   ShieldCheck,
   Star,
-  Tags,
-  UserRound,
-} from "lucide-react";
+  Tag,
+  UserCircle,
+  Buildings,
+  Calendar,
+  Clock,
+} from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,7 +30,7 @@ import { apiClient, type TrackNode } from "@/lib/api";
 
 const routeApi = getRouteApi("/discover/$sourceId");
 const pillActionClass =
-  "inline-flex items-center gap-2 rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 py-3 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-strong)] transition hover:border-[color:var(--interactive-border)] hover:bg-[color:var(--interactive-bg-strong)] hover:shadow-[var(--interactive-shadow)]";
+  "deck-button-secondary inline-flex h-[38px] items-center justify-center gap-2 border px-4 py-2 text-xs font-bold transition hover:brightness-110";
 
 export function DiscoverDetail() {
   const { sourceId } = routeApi.useParams();
@@ -63,7 +62,7 @@ export function DiscoverDetail() {
   }
 
   if (detailQuery.isError || !detailQuery.data) {
-    return <div className="text-[color:var(--accent-red)]">作品详情加载失败。</div>;
+    return <div className="text-[color:var(--telltale-red)]">作品详情加载失败。</div>;
   }
 
   const detail = detailQuery.data;
@@ -82,7 +81,11 @@ export function DiscoverDetail() {
             <ArrowLeft className="h-4 w-4" />
             返回作品搜索
           </Link>
-          <Button onClick={() => downloadMutation.mutate()} disabled={downloadMutation.isPending}>
+          <Button
+            busy={downloadMutation.isPending}
+            onClick={() => downloadMutation.mutate()}
+            disabled={downloadMutation.isPending}
+          >
             <Download className="h-4 w-4" />
             下载当前作品
           </Button>
@@ -95,10 +98,10 @@ export function DiscoverDetail() {
           title={detail.summary.title}
           description="作品档案页集中显示封面、核心指标、标签、声优、补充信息与音轨树，便于快速判断是否投递下载。"
           meta={
-            <div className="grid gap-2 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 shadow-[var(--shadow-glass)]">
-              <Badge variant="gold">{detail.summary.source_id}</Badge>
-              <Badge variant="pink">{detail.summary.circle || "未知社团"}</Badge>
-              {detail.age_category ? <Badge variant="violet">{detail.age_category}</Badge> : null}
+            <div className="deck-screen grid gap-2 p-4">
+              <Badge variant="warn">{detail.summary.source_id}</Badge>
+              <Badge variant="decal">{detail.summary.circle || "未知社团"}</Badge>
+              {detail.age_category ? <Badge variant="live">{detail.age_category}</Badge> : null}
             </div>
           }
         />
@@ -111,8 +114,8 @@ export function DiscoverDetail() {
         <div className="space-y-4">
           <Card foil className="overflow-hidden">
             <CardContent className="space-y-4 p-4">
-              <div className="rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-3 shadow-[var(--shadow-glass)] lg:p-4">
-                <div className="relative overflow-hidden rounded-lg bg-[color:var(--interactive-bg-strong)]">
+              <div className="deck-bezel">
+                <div className="deck-screen">
                   {coverUrl ? (
                     <>
                       <img
@@ -129,7 +132,7 @@ export function DiscoverDetail() {
                       />
                     </>
                   ) : (
-                    <div className="flex aspect-[4/5] items-center justify-center text-sm text-[color:var(--text-muted)]">
+                    <div className="flex aspect-[4/5] items-center justify-center text-sm text-[color:var(--text-mute)]">
                       暂无封面
                     </div>
                   )}
@@ -137,73 +140,65 @@ export function DiscoverDetail() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Badge variant="gold">{detail.summary.source_id}</Badge>
-                <Badge variant="pink">{detail.summary.circle || "未知社团"}</Badge>
-                {detail.age_category ? <Badge variant="violet">{detail.age_category}</Badge> : null}
-                <Badge variant={detail.summary.has_subtitle ? "mint" : "ghost"}>
+                <Badge variant="warn">{detail.summary.source_id}</Badge>
+                <Badge variant="decal">{detail.summary.circle || "未知社团"}</Badge>
+                {detail.age_category ? <Badge variant="live">{detail.age_category}</Badge> : null}
+                <Badge variant={detail.summary.has_subtitle ? "signal" : "mute"}>
                   {detail.summary.has_subtitle ? "有字幕" : "无字幕"}
                 </Badge>
               </div>
 
               <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
                 <InfoStat
-                  icon={CalendarDays}
+                  icon={Calendar}
                   label="发售日"
                   value={detail.summary.release || "-"}
-                  accentClassName="from-amber-400 to-red-400"
                 />
                 <InfoStat
-                  icon={CircleDollarSign}
+                  icon={CurrencyDollar}
                   label="价格"
                   value={String(detail.price)}
-                  accentClassName="from-emerald-400 to-blue-400"
                 />
                 <InfoStat
                   icon={Download}
                   label="下载量"
                   value={String(detail.summary.dl_count)}
-                  accentClassName="from-red-400 to-amber-400"
                 />
                 <InfoStat
                   icon={Star}
                   label="评分"
                   value={detail.summary.rate.toFixed(2)}
-                  accentClassName="from-amber-400 to-emerald-400"
                 />
                 <InfoStat
-                  icon={MessageSquareText}
+                  icon={ChatText}
                   label="评论数"
                   value={String(detail.review_count)}
-                  accentClassName="from-violet-400 to-blue-400"
                 />
                 <InfoStat
-                  icon={BadgeInfo}
+                  icon={Info}
                   label="评分人数"
                   value={String(detail.rate_count)}
-                  accentClassName="from-violet-400 to-emerald-400"
                 />
                 <InfoStat
-                  icon={Music4}
+                  icon={MusicNotes}
                   label="音轨数"
                   value={String(detail.tracks.length)}
-                  accentClassName="from-blue-400 to-emerald-400"
                 />
                 <InfoStat
-                  icon={Clock3}
+                  icon={Clock}
                   label="时长"
                   value={formatDuration(detail.summary.duration)}
-                  accentClassName="from-emerald-400 to-amber-400"
                 />
               </div>
 
               <div className="grid gap-2.5 sm:grid-cols-2 2xl:grid-cols-3">
                 <CompactInfoRow
-                  icon={Building2}
+                  icon={Buildings}
                   label="社团"
                   value={detail.summary.circle || "-"}
                 />
                 <CompactInfoRow
-                  icon={BadgeInfo}
+                  icon={Info}
                   label="社团 ID"
                   value={String(detail.circle_id)}
                 />
@@ -213,7 +208,7 @@ export function DiscoverDetail() {
                   value={detail.age_category || "-"}
                 />
                 <CompactInfoRow
-                  icon={AudioLines}
+                  icon={MusicNotes}
                   label="作品属性"
                   value={detail.work_attributes || "-"}
                 />
@@ -223,37 +218,37 @@ export function DiscoverDetail() {
                   value={detail.summary.has_subtitle ? "有字幕" : "无字幕"}
                 />
                 <CompactInfoRow
-                  icon={CalendarDays}
+                  icon={Calendar}
                   label="创建日期"
                   value={detail.create_date || "-"}
                 />
               </div>
 
               <div className="grid gap-3 lg:grid-cols-2">
-                <MetaBlock title="标签" icon={Tags}>
+                <MetaBlock title="标签" icon={Tag}>
                   <div className="flex flex-wrap gap-2">
                     {detail.summary.tags.length > 0 ? (
                       detail.summary.tags.map((tag) => (
-                        <Badge key={tag} variant="pink">
+                        <Badge key={tag} variant="decal">
                           #{tag}
                         </Badge>
                       ))
                     ) : (
-                      <Badge variant="ghost">暂无标签</Badge>
+                      <Badge variant="mute">暂无标签</Badge>
                     )}
                   </div>
                 </MetaBlock>
 
-                <MetaBlock title="声优" icon={UserRound}>
+                <MetaBlock title="声优" icon={UserCircle}>
                   <div className="flex flex-wrap gap-2">
                     {detail.summary.vas.length > 0 ? (
                       detail.summary.vas.map((va) => (
-                        <Badge key={va} variant="violet">
+                        <Badge key={va} variant="live">
                           {va}
                         </Badge>
                       ))
                     ) : (
-                      <Badge variant="ghost">暂无声优信息</Badge>
+                      <Badge variant="mute">暂无声优信息</Badge>
                     )}
                   </div>
                 </MetaBlock>
@@ -264,7 +259,7 @@ export function DiscoverDetail() {
           <Card className="overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <AudioLines className="h-4 w-4 text-[color:var(--accent-rose)]" />
+                <MusicNotes className="h-4 w-4 text-[color:var(--tape-pink)]" weight="duotone" />
                 音轨树
               </CardTitle>
             </CardHeader>
@@ -280,13 +275,14 @@ export function DiscoverDetail() {
           <Card foil className="overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Globe className="h-4 w-4 text-[color:var(--accent-rose)]" />
+                <Globe className="h-4 w-4 text-[color:var(--tape-pink)]" weight="duotone" />
                 快速操作
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <Button
                 className="w-full"
+                busy={downloadMutation.isPending}
                 onClick={() => downloadMutation.mutate()}
                 disabled={downloadMutation.isPending}
               >
@@ -308,7 +304,7 @@ export function DiscoverDetail() {
           <Card className="overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Star className="h-4 w-4 text-[color:var(--accent-rose)]" />
+                <Star className="h-4 w-4 text-[color:var(--tape-pink)]" weight="duotone" />
                 作品概览
               </CardTitle>
             </CardHeader>
@@ -334,26 +330,22 @@ function InfoStat({
   icon: Icon,
   label,
   value,
-  accentClassName,
 }: {
-  icon: LucideIcon;
+  icon: Icon;
   label: string;
   value: string;
-  accentClassName: string;
 }) {
   return (
-    <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-3 py-2.5">
+    <div className="deck-screen px-3 py-2.5">
       <div className="flex items-center gap-2.5">
-        <span
-          className={`flex h-9 w-9 items-center justify-center rounded-md bg-gradient-to-br text-white shadow-[var(--shadow-glow)] ${accentClassName}`}
-        >
-          <Icon className="h-4 w-4" />
+        <span className="deck-plate flex h-9 w-9 items-center justify-center text-[color:var(--telltale-amber)]">
+          <Icon className="h-4 w-4" weight="duotone" />
         </span>
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+          <div className="text-[10px] uppercase tracking-[0.16em] text-[color:var(--text-mute)]">
             {label}
           </div>
-          <div className="mt-0.5 truncate text-sm font-semibold text-[color:var(--text-strong)]">
+          <div className="console-readout mt-0.5 truncate text-sm">
             {value}
           </div>
         </div>
@@ -368,14 +360,14 @@ function MetaBlock({
   children,
 }: {
   title: string;
-  icon: LucideIcon;
+  icon: Icon;
   children: ReactNode;
 }) {
   return (
-    <Card className="bg-[color:var(--interactive-bg)]">
+    <Card surface="screen">
       <CardHeader className="pb-0">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Icon className="h-4 w-4 text-[color:var(--accent-amber)]" />
+          <Icon className="h-4 w-4 text-[color:var(--telltale-amber)]" weight="duotone" />
           {title}
         </CardTitle>
       </CardHeader>
@@ -389,21 +381,21 @@ function CompactInfoRow({
   label,
   value,
 }: {
-  icon: LucideIcon;
+  icon: Icon;
   label: string;
   value: string;
 }) {
   return (
-    <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-3 py-2.5">
+    <div className="deck-screen px-3 py-2.5">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] text-[color:var(--accent-amber)]">
-          <Icon className="h-4 w-4" />
+        <span className="deck-plate mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center text-[color:var(--telltale-amber)]">
+          <Icon className="h-4 w-4" weight="duotone" />
         </span>
         <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+          <div className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--text-mute)]">
             {label}
           </div>
-          <div className="mt-1 text-sm font-semibold leading-6 text-[color:var(--text-strong)]">
+          <div className="mt-1 text-sm font-semibold leading-6 text-[color:var(--text-display)]">
             {value}
           </div>
         </div>
@@ -414,11 +406,11 @@ function CompactInfoRow({
 
 function SummaryTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-3 py-2.5">
-      <div className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+    <div className="deck-screen px-3 py-2.5">
+      <div className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--text-mute)]">
         {label}
       </div>
-      <div className="mt-2 text-sm font-semibold text-[color:var(--text-strong)]">{value}</div>
+      <div className="mt-2 text-sm font-semibold text-[color:var(--text-display)]">{value}</div>
     </div>
   );
 }
@@ -429,16 +421,16 @@ function TrackTree({ node, depth }: { node: TrackNode; depth: number }) {
   return (
     <div className="space-y-2">
       <div
-        className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 py-3 text-sm text-[color:var(--text-strong)]"
+        className="deck-screen px-4 py-3 text-sm text-[color:var(--text-display)]"
         style={{ marginLeft: `${depth * 16}px` }}
       >
         <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] text-[color:var(--accent-amber)]">
-            <Icon className="h-4 w-4" />
+          <span className="deck-plate flex h-9 w-9 shrink-0 items-center justify-center text-[color:var(--telltale-amber)]">
+            <Icon className="h-4 w-4" weight="duotone" />
           </span>
           <div className="min-w-0">
             <div className="truncate font-medium">{node.title}</div>
-            <div className="mt-1 text-xs text-[color:var(--text-muted)]">{node.type}</div>
+            <div className="mt-1 text-xs text-[color:var(--text-mute)]">{node.type}</div>
           </div>
         </div>
       </div>
@@ -449,15 +441,15 @@ function TrackTree({ node, depth }: { node: TrackNode; depth: number }) {
   );
 }
 
-function trackTypeIcon(type: string): LucideIcon {
+function trackTypeIcon(type: string): Icon {
   const value = type.toLowerCase();
   if (value.includes("audio") || value.includes("track")) {
-    return Music4;
+    return MusicNotes;
   }
   if (value.includes("folder") || value.includes("album")) {
-    return Tags;
+    return Tag;
   }
-  return AudioLines;
+  return MusicNotes;
 }
 
 function formatDuration(seconds: number) {

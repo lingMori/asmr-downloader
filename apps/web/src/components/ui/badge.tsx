@@ -3,34 +3,46 @@ import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded border px-2.5 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] transition duration-200",
+  "deck-badge inline-flex items-center border px-2 py-0.5 font-bold transition duration-150",
   {
     variants: {
       variant: {
         default:
-          "border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] text-[color:var(--text-strong)]",
+          "border-[color-mix(in_srgb,var(--tape-pink)_42%,transparent)] bg-[color:var(--tape-pink-trail)] text-[color:var(--tape-pink)]",
+        decal:
+          "border-[color-mix(in_srgb,var(--tape-pink)_42%,transparent)] bg-[color:var(--tape-pink-trail)] text-[color:var(--tape-pink)]",
+        live:
+          "border-[color:var(--tape-pink)] bg-[color:var(--tape-pink-trail)] text-[color:var(--tape-pink)] shadow-[var(--glow-tape)] animate-[flicker_2s_steps(3,end)_infinite]",
+        signal:
+          "border-[color:var(--phosphor-mid)] bg-[color:var(--phosphor-trail)] text-[color:var(--phosphor-primary)] shadow-[var(--glow-phosphor)]",
+        warn:
+          "border-[color:var(--telltale-amber)] bg-[rgba(242,169,59,0.14)] text-[color:var(--telltale-amber)] shadow-[var(--glow-amber)]",
+        halt:
+          "border-[color:var(--telltale-red)] bg-[rgba(255,90,60,0.14)] text-[color:var(--telltale-red)] shadow-[0_0_12px_rgba(255,90,60,0.28)]",
+        mute:
+          "border-[color:var(--chassis-edge)] bg-transparent text-[color:var(--text-mute)]",
         pink:
-          "border-[rgba(225,104,84,0.55)] bg-[rgba(225,104,84,0.13)] text-[color:var(--accent-red)] shadow-[0_0_18px_rgba(225,104,84,0.08)]",
+          "border-[color-mix(in_srgb,var(--tape-pink)_42%,transparent)] bg-[color:var(--tape-pink-trail)] text-[color:var(--tape-pink)]",
         mint:
-          "border-[rgba(90,193,176,0.55)] bg-[rgba(90,193,176,0.12)] text-[color:var(--accent-mint)] shadow-[0_0_18px_rgba(90,193,176,0.08)]",
+          "border-[color:var(--phosphor-mid)] bg-[color:var(--phosphor-trail)] text-[color:var(--phosphor-primary)] shadow-[var(--glow-phosphor)]",
         violet:
-          "border-[rgba(164,145,208,0.52)] bg-[rgba(164,145,208,0.13)] text-[color:var(--accent-violet)] shadow-[0_0_18px_rgba(164,145,208,0.08)]",
+          "border-[color:var(--tape-pink)] bg-[color:var(--tape-pink-trail)] text-[color:var(--tape-pink)]",
         blue:
-          "border-[rgba(95,155,211,0.55)] bg-[rgba(95,155,211,0.12)] text-[color:var(--accent-blue)] shadow-[0_0_18px_rgba(95,155,211,0.08)]",
+          "border-[color:var(--telltale-cyan)] bg-[rgba(93,211,243,0.12)] text-[color:var(--telltale-cyan)]",
         gold:
-          "border-[rgba(228,164,72,0.6)] bg-[rgba(228,164,72,0.13)] text-[color:var(--accent-amber)] shadow-[0_0_18px_rgba(228,164,72,0.08)]",
+          "border-[color:var(--telltale-amber)] bg-[rgba(242,169,59,0.14)] text-[color:var(--telltale-amber)]",
         danger:
-          "border-[rgba(225,104,84,0.7)] bg-[rgba(225,104,84,0.18)] text-[color:var(--accent-red)] shadow-[0_0_18px_rgba(225,104,84,0.12)]",
+          "border-[color:var(--telltale-red)] bg-[rgba(255,90,60,0.14)] text-[color:var(--telltale-red)] shadow-[0_0_12px_rgba(255,90,60,0.28)]",
         ghost:
-          "border-[color:var(--panel-border)] bg-transparent text-[color:var(--text-body)]",
+          "border-[color:var(--chassis-edge)] bg-transparent text-[color:var(--text-mute)]",
       },
       active: {
-        true: "border-[color:var(--interactive-border)] shadow-[0_0_0_3px_rgba(68,190,129,0.12)]",
+        true: "shadow-[0_0_0_2px_var(--tape-pink-trail)]",
         false: "",
       },
     },
     defaultVariants: {
-      variant: "default",
+      variant: "decal",
       active: false,
     },
   },
@@ -43,12 +55,6 @@ export function Badge({
   ...props
 }: HTMLAttributes<HTMLSpanElement> & VariantProps<typeof badgeVariants>) {
   return (
-    <span
-      className={cn(
-        badgeVariants({ variant, active }),
-        className,
-      )}
-      {...props}
-    />
+    <span className={cn(badgeVariants({ variant, active }), className)} {...props} />
   );
 }

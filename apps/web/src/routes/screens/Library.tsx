@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { FolderOpen, Music4, PlayCircle, Subtitles } from "lucide-react";
+import { FolderOpen, MusicNotes, Subtitles } from "@phosphor-icons/react";
+import type { Icon } from "@phosphor-icons/react";
+import { AudioDeck } from "@/components/AudioDeck";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,13 +72,11 @@ export function Library() {
         <PageHeader
           kicker="Library"
           title="媒体档案库与监听台"
-          description="这里替代旧的 listen 页面。雷达墙负责浏览和筛选，右侧终端面板负责播放、字幕匹配和文件访问。"
+          description="雷达墙负责浏览和筛选，右侧监听台负责播放、字幕匹配和文件访问。播放器已经接管原生控件，变成一块真正的录音控制面板。"
           meta={
-            <div className="space-y-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 shadow-[var(--shadow-glass)]">
-              <Badge variant="mint">本地作品 {libraryQuery.data?.total ?? 0}</Badge>
-              <div className="text-sm leading-6 text-[color:var(--text-body)]">
-                当前页 <span className="font-semibold">{page}</span> / {totalPages}
-              </div>
+            <div className="deck-screen min-w-[12rem] p-4">
+              <Badge variant="signal">本地作品 {libraryQuery.data?.total ?? 0}</Badge>
+              <div className="console-readout mt-3 text-xl">{page} / {totalPages}</div>
             </div>
           }
         />
@@ -94,7 +94,7 @@ export function Library() {
               placeholder="按标题或 RJ 编号搜索本地媒体库..."
               className="flex-1"
             />
-            <Badge variant="blue">页内展示 24 项</Badge>
+            <Badge variant="warn">PAGE SIZE 24</Badge>
           </CardContent>
         </Card>
       </motion.div>
@@ -111,56 +111,54 @@ export function Library() {
               <motion.div key={work.id} variants={fadeUpItem} transition={{ delay: index * 0.02 }}>
                 <Card
                   interactive
-                  foil
-                  className={
-                    selectedId === work.id
-                      ? "border-[color:var(--panel-border-strong)] bg-[color:var(--interactive-bg-strong)]"
-                      : undefined
-                  }
+                  foil={selectedId === work.id}
+                  className={selectedId === work.id ? "border-[color:var(--tape-pink)]" : undefined}
                   onClick={() => setSelectedId(work.id)}
                 >
                   <CardContent className="flex h-full flex-col gap-4 p-4">
-                    <div className="relative overflow-hidden rounded-lg">
+                    <div className="deck-screen aspect-[4/3]">
                       {work.thumbnail_url ? (
                         <img
                           src={work.thumbnail_url}
                           alt={work.title}
-                          className="h-52 w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                          className="h-full w-full object-cover opacity-90 transition duration-500 group-hover:brightness-110"
                         />
                       ) : (
-                        <div className="flex h-52 items-center justify-center bg-[color:var(--interactive-bg)] text-sm text-[color:var(--text-muted)]">
-                          暂无封面
+                        <div className="flex h-full items-center justify-center text-sm text-[color:var(--text-mute)]">
+                          NO COVER
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-[rgba(25,10,24,0.42)] via-transparent to-transparent" />
                       <div className="absolute bottom-3 left-3">
-                        <Badge variant="gold">{work.media_id}</Badge>
+                        <Badge variant="warn">{work.media_id}</Badge>
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <h3 className="line-clamp-2 text-lg font-semibold text-[color:var(--text-strong)]">
+                      <h3 className="console-title line-clamp-2 text-xl font-black leading-7 text-[color:var(--text-display)]">
                         {work.title}
                       </h3>
-                      <div className="text-sm text-[color:var(--text-body)]">{work.release_date}</div>
+                      <div className="console-mono text-[10px] uppercase tracking-[0.16em] text-[color:var(--text-mute)]">
+                        {work.release_date || "NO DATE"}
+                      </div>
+                    </div>
+
+                    <div className="deck-decal justify-between">
+                      <span>ASMRoner</span>
+                      <span>TYPE-II</span>
                     </div>
 
                     <div className="grid grid-cols-3 gap-2">
-                      <MiniStat icon={FolderOpen} value={String(work.file_count)} label="文件" />
-                      <MiniStat icon={Music4} value={String(work.audio_file_count)} label="音频" />
-                      <MiniStat
-                        icon={Subtitles}
-                        value={String(work.subtitle_count)}
-                        label="字幕"
-                      />
+                      <MiniStat icon={FolderOpen} value={String(work.file_count)} label="FILES" />
+                      <MiniStat icon={MusicNotes} value={String(work.audio_file_count)} label="AUDIO" />
+                      <MiniStat icon={Subtitles} value={String(work.subtitle_count)} label="SUB" />
                     </div>
 
                     <div className="mt-auto flex flex-wrap gap-2">
-                      <Badge variant="pink">收藏卡</Badge>
+                      <Badge variant="decal">TAPE CASE</Badge>
                       {work.has_subtitles ? (
-                        <Badge variant="mint">已配字幕</Badge>
+                        <Badge variant="signal">CC READY</Badge>
                       ) : (
-                        <Badge variant="ghost">暂无字幕</Badge>
+                        <Badge variant="mute">NO CC</Badge>
                       )}
                     </div>
                   </CardContent>
@@ -181,7 +179,7 @@ export function Library() {
             )}
           </motion.div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 py-3">
+          <div className="deck-plate flex flex-wrap items-center justify-between gap-3 px-4 py-3">
             <span className="text-sm text-[color:var(--text-body)]">
               第 {page} / {totalPages} 页，共 {libraryQuery.data?.total ?? 0} 个作品
             </span>
@@ -206,9 +204,9 @@ export function Library() {
           </div>
         </div>
 
-        <Card foil className="h-fit overflow-hidden xl:sticky xl:top-24">
+        <Card foil className="h-fit overflow-hidden xl:sticky xl:top-28">
           <CardHeader>
-            <CardTitle className="text-base">播放器与作品详情</CardTitle>
+            <CardTitle>播放器与作品详情</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
             {!selectedId && (
@@ -222,119 +220,68 @@ export function Library() {
 
             {detailQuery.data && (
               <>
-                <div className="space-y-4">
-                  {coverUrl ? (
-                    <img
-                      src={coverUrl}
-                      alt={detailQuery.data.summary.title}
-                      className="h-60 w-full rounded-lg object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-60 items-center justify-center rounded-lg bg-[color:var(--interactive-bg)] text-sm text-[color:var(--text-muted)]">
-                      暂无封面
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <Badge variant="gold">{detailQuery.data.summary.media_id}</Badge>
-                    <div className="text-2xl font-semibold text-[color:var(--text-strong)]">
-                      {detailQuery.data.summary.title}
-                    </div>
-                  </div>
-                </div>
+                <AudioDeck
+                  tracks={audioFiles}
+                  selectedPath={selectedAudioPath}
+                  onSelect={setSelectedAudioPath}
+                  subtitle={selectedSubtitle}
+                  title={detailQuery.data.summary.title}
+                  mediaId={detailQuery.data.summary.media_id}
+                  coverUrl={coverUrl}
+                  onEnded={() =>
+                    selectedAudio
+                      ? playNextAudio(audioFiles, selectedAudio.path, setSelectedAudioPath)
+                      : undefined
+                  }
+                />
 
                 <div className="grid grid-cols-3 gap-2">
                   <MiniStat
                     icon={FolderOpen}
                     value={String(detailQuery.data.summary.file_count)}
-                    label="文件"
+                    label="FILES"
                   />
                   <MiniStat
-                    icon={Music4}
+                    icon={MusicNotes}
                     value={String(detailQuery.data.summary.audio_file_count)}
-                    label="音频"
+                    label="AUDIO"
                   />
                   <MiniStat
                     icon={Subtitles}
                     value={String(detailQuery.data.summary.subtitle_count)}
-                    label="字幕"
+                    label="SUB"
                   />
                 </div>
 
-                <div className="space-y-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold text-[color:var(--text-body)]">
-                      当前播放器
-                    </div>
-                    <div className="visualizer h-6">
-                      {Array.from({ length: 4 }).map((_, index) => (
-                        <span key={index} className="visualizer-dot" style={{ width: "0.55rem" }} />
-                      ))}
-                    </div>
-                  </div>
-                  {selectedAudio ? (
-                    <>
-                      <div className="flex items-center gap-2 text-sm text-[color:var(--text-strong)]">
-                        <PlayCircle className="h-4 w-4 text-[color:var(--accent-rose)]" />
-                        {selectedAudio.name}
-                      </div>
-                      <audio
-                        key={selectedAudio.url}
-                        controls
-                        autoPlay
-                        className="w-full"
-                        onEnded={() =>
-                          playNextAudio(audioFiles, selectedAudio.path, setSelectedAudioPath)
-                        }
-                      >
-                        <source src={selectedAudio.url} />
-                        {selectedSubtitle && (
-                          <track
-                            kind="captions"
-                            label="Captions"
-                            srcLang="zh"
-                            src={selectedSubtitle.url}
-                            default
-                          />
-                        )}
-                      </audio>
-                      <div className="text-xs text-[color:var(--text-muted)]">
-                        {selectedSubtitle
-                          ? `字幕轨：${selectedSubtitle.name}`
-                          : "没有找到和当前音频匹配的字幕文件。"}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 text-sm text-[color:var(--text-muted)]">
-                      当前作品未找到可播放音频文件。
-                    </div>
-                  )}
-                </div>
-
                 <div className="space-y-3">
-                  <div className="text-sm font-semibold text-[color:var(--text-body)]">播放列表</div>
+                  <div className="deck-decal">PLAYLIST</div>
                   <div className="space-y-2">
                     {audioFiles.map((file, index) => (
                       <button
                         key={file.path}
-                        className={`flex w-full items-center gap-3 rounded-md border px-3 py-3 text-left text-sm transition ${
+                        className={`deck-plate flex w-full items-center gap-3 px-3 py-3 text-left text-sm transition ${
                           selectedAudioPath === file.path
-                            ? "border-[color:var(--panel-border-strong)] bg-[color:var(--interactive-bg-strong)] text-[color:var(--text-strong)]"
-                            : "border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] text-[color:var(--text-body)] hover:bg-[color:var(--interactive-bg-strong)]"
+                            ? "border-[color:var(--tape-pink)] text-[color:var(--text-display)] shadow-[var(--glow-tape)]"
+                            : "text-[color:var(--text-body)] hover:border-[color:var(--telltale-amber)]"
                         }`}
                         onClick={() => setSelectedAudioPath(file.path)}
                       >
-                        <Badge variant={selectedAudioPath === file.path ? "pink" : "ghost"}>
-                          {index + 1}
+                        <Badge variant={selectedAudioPath === file.path ? "live" : "mute"}>
+                          {String(index + 1).padStart(2, "0")}
                         </Badge>
                         <span className="truncate">{file.name}</span>
                       </button>
                     ))}
+                    {audioFiles.length === 0 ? (
+                      <div className="deck-screen p-4 text-sm text-[color:var(--text-mute)]">
+                        当前作品未找到可播放音频文件。
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="text-sm font-semibold text-[color:var(--text-body)]">全部文件</div>
+                  <div className="deck-decal">FILE DRAWER</div>
                   <div className="space-y-2">
                     {detailQuery.data.files.map((file) => (
                       <a
@@ -342,10 +289,10 @@ export function Library() {
                         href={file.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="block rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-3 text-sm transition hover:-translate-y-0.5 hover:bg-[color:var(--interactive-bg-strong)]"
+                        className="deck-plate block p-3 text-sm transition hover:border-[color:var(--telltale-amber)]"
                       >
-                        <div className="font-medium text-[color:var(--text-strong)]">{file.name}</div>
-                        <div className="mt-1 text-xs text-[color:var(--text-muted)]">{file.kind}</div>
+                        <div className="font-medium text-[color:var(--text-display)]">{file.name}</div>
+                        <div className="mt-1 text-xs text-[color:var(--text-mute)]">{file.kind}</div>
                       </a>
                     ))}
                   </div>
@@ -364,17 +311,17 @@ function MiniStat({
   value,
   label,
 }: {
-  icon: typeof FolderOpen;
+  icon: Icon;
   value: string;
   label: string;
 }) {
   return (
-    <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-3 py-3">
-      <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
-        <Icon className="h-3.5 w-3.5" />
+    <div className="deck-screen px-3 py-3">
+      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-[color:var(--text-mute)]">
+        <Icon className="h-3.5 w-3.5" weight="duotone" />
         {label}
       </div>
-      <div className="mt-2 text-sm font-semibold text-[color:var(--text-strong)]">{value}</div>
+      <div className="console-readout mt-2 text-sm">{value}</div>
     </div>
   );
 }

@@ -3,10 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ASMRoner Dashboard</title>
+    <title>ASMRoner Sonic Mission Control</title>
+    <link rel="preload" href="/fonts/DepartureMono-Regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/DSEG14Classic-Regular.woff2" as="font" type="font/woff2" crossorigin />
     <script>
       try {
-        const mode = localStorage.getItem("sweet-whispers-theme") || "system";
+        const mode = localStorage.getItem("asmroner-command-theme") || "system";
         const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
         const resolved = mode === "system" ? (systemDark ? "dark" : "light") : mode;
         document.documentElement.dataset.theme = resolved;
