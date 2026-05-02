@@ -38,19 +38,19 @@ export function PageHeader({
   meta?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 rounded-[2.25rem] border border-[color:var(--panel-border)] bg-[color:var(--panel-bg)] p-6 shadow-[var(--shadow-glass)] backdrop-blur-2xl md:flex-row md:items-end md:justify-between">
-      <div className="space-y-3">
-        <p className="text-[0.72rem] font-bold uppercase tracking-[0.42em] text-[color:var(--accent-rose)]">
+    <div className="console-panel flex flex-col gap-4 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--panel-bg)] p-4 shadow-[var(--shadow-glass)] backdrop-blur-xl md:flex-row md:items-end md:justify-between">
+      <div className="relative z-10 space-y-2">
+        <p className="font-mono text-[0.68rem] font-bold uppercase tracking-[0.28em] text-[color:var(--accent-amber)]">
           {kicker}
         </p>
-        <h1 className="sweet-title text-3xl font-extrabold tracking-tight text-[color:var(--text-strong)] md:text-5xl">
+        <h1 className="console-title text-2xl font-extrabold uppercase text-[color:var(--text-strong)] md:text-4xl">
           {title}
         </h1>
-        <p className="max-w-3xl text-sm leading-7 text-[color:var(--text-body)] md:text-base">
+        <p className="max-w-4xl text-sm leading-6 text-[color:var(--text-body)]">
           {description}
         </p>
       </div>
-      {meta ? <div className="shrink-0">{meta}</div> : null}
+      {meta ? <div className="relative z-10 shrink-0">{meta}</div> : null}
     </div>
   );
 }
@@ -71,15 +71,15 @@ export function StatCard({
   className?: string;
 }) {
   return (
-    <Card interactive className={cn("min-h-[10.5rem]", className)}>
-      <CardContent className="flex h-full flex-col justify-between gap-5 p-5">
+    <Card interactive className={cn("min-h-[8.75rem]", className)}>
+      <CardContent className="flex h-full flex-col justify-between gap-4 p-4">
         <div className="flex items-center justify-between gap-4">
-          <div className="text-sm font-semibold text-[color:var(--text-body)]">{label}</div>
+          <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--text-body)]">{label}</div>
           {icon ? (
             <div
               className={cn(
-                "flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br text-white shadow-[0_12px_24px_rgba(255,182,193,0.22)]",
-                accentClassName ?? "from-rose-300 to-sky-300",
+                "flex h-10 w-10 items-center justify-center rounded-md border border-[color:var(--panel-border)] bg-gradient-to-br text-[#06100b] shadow-[var(--shadow-glow)]",
+                accentClassName ?? "from-emerald-400 to-amber-400",
               )}
             >
               {icon}
@@ -87,11 +87,11 @@ export function StatCard({
           ) : null}
         </div>
         <div>
-          <div className="sweet-title text-4xl font-extrabold text-[color:var(--text-strong)]">
+          <div className="console-readout text-3xl font-bold text-[color:var(--text-strong)]">
             {value}
           </div>
           {hint ? (
-            <div className="mt-2 text-sm leading-6 text-[color:var(--text-muted)]">{hint}</div>
+            <div className="mt-1 text-xs leading-5 text-[color:var(--text-muted)]">{hint}</div>
           ) : null}
         </div>
       </CardContent>
@@ -100,7 +100,7 @@ export function StatCard({
 }
 
 export function EmptyState({
-  symbol = "૮ ˶ᵔ ᵕ ᵔ˶ ა",
+  symbol = "NO DATA",
   title,
   description,
   className,
@@ -113,10 +113,10 @@ export function EmptyState({
   return (
     <div className={cn("sweet-empty-state", className)}>
       <div className="sweet-empty-bubble">{symbol}</div>
-      <div className="sweet-title text-2xl font-bold text-[color:var(--text-strong)]">
+      <div className="console-title text-xl font-bold uppercase text-[color:var(--text-strong)]">
         {title}
       </div>
-      <p className="max-w-md text-sm leading-7 text-[color:var(--text-body)]">
+      <p className="max-w-md text-sm leading-6 text-[color:var(--text-body)]">
         {description}
       </p>
     </div>
@@ -127,7 +127,7 @@ export function ProgressTrack({
   label,
   value,
   hint,
-  mascot = "🐾",
+  mascot: _mascot = "MARK",
   className,
 }: {
   label: string;
@@ -142,12 +142,12 @@ export function ProgressTrack({
     <div className={cn("space-y-3", className)}>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold text-[color:var(--text-strong)]">{label}</div>
+          <div className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text-strong)]">{label}</div>
           {hint ? (
             <div className="text-xs text-[color:var(--text-muted)]">{hint}</div>
           ) : null}
         </div>
-        <div className="sweet-title text-lg font-bold text-[color:var(--text-strong)]">
+        <div className="console-readout text-base font-bold text-[color:var(--text-strong)]">
           {percent}%
         </div>
       </div>
@@ -158,7 +158,7 @@ export function ProgressTrack({
           animate={{ left: `${percent}%` }}
           transition={{ type: "spring", stiffness: 140, damping: 20 }}
         >
-          <span className="text-lg">{mascot}</span>
+          <span>{_mascot}</span>
         </motion.div>
       </div>
     </div>

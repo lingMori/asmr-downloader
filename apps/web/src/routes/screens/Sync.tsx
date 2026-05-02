@@ -96,10 +96,10 @@ export function Sync() {
       <motion.div variants={fadeUpItem}>
         <PageHeader
           kicker="Sync"
-          title="同步编队与批量下载"
+          title="同步舱与批量任务"
           description="把元数据同步、批量下载和失败重试收进统一的编队面板。你可以在这里先看赛道进度，再决定下一步让哪支队伍出击。"
           meta={
-            <div className="space-y-3 rounded-[1.8rem] border border-white/40 bg-white/45 p-4 shadow-[0_16px_34px_rgba(255,182,193,0.12)]">
+            <div className="space-y-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 shadow-[var(--shadow-glass)]">
               <Badge variant="violet">同步中心</Badge>
               <div className="text-sm text-[color:var(--text-body)]">
                 总体进度 {Math.round((reportQuery.data?.progress.overall ?? 0) * 100)}%
@@ -114,7 +114,7 @@ export function Sync() {
           title="元数据同步"
           description="从远端刷新作品索引。适合先让资料库跟上最新状态。"
           icon={RefreshCcw}
-          accentClassName="from-amber-300 to-rose-300"
+          accentClassName="from-emerald-400 to-amber-400"
           onClick={() => queueMutation.mutate("metadata")}
           controls={
             <Select
@@ -132,14 +132,14 @@ export function Sync() {
           title="同步下载"
           description="批量抓取同步清单里尚未下载的作品。"
           icon={ServerCrash}
-          accentClassName="from-sky-300 to-violet-300"
+          accentClassName="from-blue-400 to-emerald-400"
           onClick={() => queueMutation.mutate("download")}
         />
         <ActionCard
           title="失败重试"
           description="把失败任务重新拉回轨道，避免库存断层。"
           icon={RotateCcw}
-          accentClassName="from-emerald-300 to-cyan-300"
+          accentClassName="from-emerald-400 to-blue-400"
           onClick={() => queueMutation.mutate("retry")}
         />
       </motion.div>
@@ -153,19 +153,19 @@ export function Sync() {
             <ProgressTrack
               label="总体进度"
               value={reportQuery.data?.progress.overall ?? 0}
-              mascot="🐾"
+              mascot="MARK"
               hint="整体元数据与下载落地推进情况"
             />
             <ProgressTrack
               label="字幕作品进度"
               value={reportQuery.data?.progress.with_subtitle ?? 0}
-              mascot="🎧"
+              mascot="MARK"
               hint="适合优先保证可读性较高的作品库存"
             />
             <ProgressTrack
               label="无字幕作品进度"
               value={reportQuery.data?.progress.without_subtitle ?? 0}
-              mascot="📦"
+              mascot="MARK"
               hint="补全库存的尾段通常会落在这里"
             />
           </CardContent>
@@ -176,38 +176,38 @@ export function Sync() {
             label="元数据作品数"
             value={reportQuery.data?.totals.metadata ?? 0}
             icon={<RefreshCcw className="h-5 w-5" />}
-            accentClassName="from-amber-300 to-rose-300"
+            accentClassName="from-emerald-400 to-amber-400"
           />
           <StatCard
             label="字幕作品数"
             value={reportQuery.data?.totals.subtitle ?? 0}
             icon={<Download className="h-5 w-5" />}
-            accentClassName="from-sky-300 to-violet-300"
+            accentClassName="from-blue-400 to-emerald-400"
           />
           <StatCard
             label="无字幕作品数"
             value={reportQuery.data?.totals.without_subtitle ?? 0}
             icon={<ServerCrash className="h-5 w-5" />}
-            accentClassName="from-violet-300 to-fuchsia-300"
+            accentClassName="from-violet-400 to-blue-400"
           />
           <StatCard
             label="待下载"
             value={reportQuery.data?.downloads.pending ?? 0}
             icon={<RotateCcw className="h-5 w-5" />}
-            accentClassName="from-emerald-300 to-cyan-300"
+            accentClassName="from-emerald-400 to-blue-400"
           />
           <StatCard
             label="已完成下载"
             value={reportQuery.data?.downloads.completed ?? 0}
             icon={<Download className="h-5 w-5" />}
-            accentClassName="from-emerald-300 to-teal-300"
+            accentClassName="from-emerald-400 to-amber-400"
             className="sm:col-span-2"
           />
           <StatCard
             label="失败下载"
             value={reportQuery.data?.downloads.failed ?? 0}
             icon={<ServerCrash className="h-5 w-5" />}
-            accentClassName="from-rose-300 to-pink-300"
+            accentClassName="from-red-400 to-amber-400"
             className="sm:col-span-2"
           />
         </div>
@@ -310,7 +310,7 @@ function ActionCard({
             <div className="text-sm leading-6 text-[color:var(--text-muted)]">{description}</div>
           </div>
           <span
-            className={`flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br text-white shadow-[0_14px_26px_rgba(255,182,193,0.22)] ${accentClassName}`}
+            className={`flex h-12 w-12 items-center justify-center rounded-md bg-gradient-to-br text-white shadow-[var(--shadow-glow)] ${accentClassName}`}
           >
             <Icon className="h-5 w-5" />
           </span>

@@ -69,10 +69,10 @@ export function Library() {
       <motion.div variants={fadeUpItem}>
         <PageHeader
           kicker="Library"
-          title="收藏卡册与听音台"
-          description="这里替代旧的 listen 页面。封面墙负责浏览和筛选，右侧玻璃面板负责播放、字幕匹配和文件访问。"
+          title="媒体档案库与监听台"
+          description="这里替代旧的 listen 页面。雷达墙负责浏览和筛选，右侧终端面板负责播放、字幕匹配和文件访问。"
           meta={
-            <div className="space-y-3 rounded-[1.8rem] border border-white/40 bg-white/45 p-4 shadow-[0_16px_34px_rgba(255,182,193,0.12)]">
+            <div className="space-y-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 shadow-[var(--shadow-glass)]">
               <Badge variant="mint">本地作品 {libraryQuery.data?.total ?? 0}</Badge>
               <div className="text-sm leading-6 text-[color:var(--text-body)]">
                 当前页 <span className="font-semibold">{page}</span> / {totalPages}
@@ -114,13 +114,13 @@ export function Library() {
                   foil
                   className={
                     selectedId === work.id
-                      ? "border-[color:var(--panel-border-strong)] bg-white/78"
+                      ? "border-[color:var(--panel-border-strong)] bg-[color:var(--interactive-bg-strong)]"
                       : undefined
                   }
                   onClick={() => setSelectedId(work.id)}
                 >
                   <CardContent className="flex h-full flex-col gap-4 p-4">
-                    <div className="relative overflow-hidden rounded-[1.7rem]">
+                    <div className="relative overflow-hidden rounded-lg">
                       {work.thumbnail_url ? (
                         <img
                           src={work.thumbnail_url}
@@ -128,7 +128,7 @@ export function Library() {
                           className="h-52 w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                         />
                       ) : (
-                        <div className="flex h-52 items-center justify-center bg-white/45 text-sm text-[color:var(--text-muted)]">
+                        <div className="flex h-52 items-center justify-center bg-[color:var(--interactive-bg)] text-sm text-[color:var(--text-muted)]">
                           暂无封面
                         </div>
                       )}
@@ -172,7 +172,7 @@ export function Library() {
               <Card className="md:col-span-2 xl:col-span-3">
                 <CardContent>
                   <EmptyState
-                    symbol="૮₍ ˃ ⤙ ˂ ₎ა"
+                    symbol="NO DATA"
                     title="这里还没有收藏落地"
                     description="当前搜索条件下没有匹配的本地作品。去发现页把喜欢的作品拉进来，这里就会慢慢变满。"
                   />
@@ -181,7 +181,7 @@ export function Library() {
             )}
           </motion.div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-white/40 bg-white/46 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 py-3">
             <span className="text-sm text-[color:var(--text-body)]">
               第 {page} / {totalPages} 页，共 {libraryQuery.data?.total ?? 0} 个作品
             </span>
@@ -213,8 +213,8 @@ export function Library() {
           <CardContent className="space-y-5">
             {!selectedId && (
               <EmptyState
-                symbol="🎧"
-                title="挑一张卡开始听吧"
+                symbol="MONITOR"
+                title="选择媒体档案"
                 description="选中左侧任意作品后，这里会显示封面、播放列表、字幕轨和全部文件。"
                 className="min-h-[28rem]"
               />
@@ -227,10 +227,10 @@ export function Library() {
                     <img
                       src={coverUrl}
                       alt={detailQuery.data.summary.title}
-                      className="h-60 w-full rounded-[1.8rem] object-cover"
+                      className="h-60 w-full rounded-lg object-cover"
                     />
                   ) : (
-                    <div className="flex h-60 items-center justify-center rounded-[1.8rem] bg-white/45 text-sm text-[color:var(--text-muted)]">
+                    <div className="flex h-60 items-center justify-center rounded-lg bg-[color:var(--interactive-bg)] text-sm text-[color:var(--text-muted)]">
                       暂无封面
                     </div>
                   )}
@@ -261,7 +261,7 @@ export function Library() {
                   />
                 </div>
 
-                <div className="space-y-3 rounded-[1.7rem] border border-white/40 bg-white/46 p-4">
+                <div className="space-y-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-semibold text-[color:var(--text-body)]">
                       当前播放器
@@ -305,7 +305,7 @@ export function Library() {
                       </div>
                     </>
                   ) : (
-                    <div className="rounded-[1.4rem] border border-white/40 bg-white/42 p-4 text-sm text-[color:var(--text-muted)]">
+                    <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 text-sm text-[color:var(--text-muted)]">
                       当前作品未找到可播放音频文件。
                     </div>
                   )}
@@ -317,10 +317,10 @@ export function Library() {
                     {audioFiles.map((file, index) => (
                       <button
                         key={file.path}
-                        className={`flex w-full items-center gap-3 rounded-[1.3rem] border px-3 py-3 text-left text-sm transition ${
+                        className={`flex w-full items-center gap-3 rounded-md border px-3 py-3 text-left text-sm transition ${
                           selectedAudioPath === file.path
-                            ? "border-[color:var(--panel-border-strong)] bg-white/78 text-[color:var(--text-strong)]"
-                            : "border-white/40 bg-white/42 text-[color:var(--text-body)] hover:bg-white/62"
+                            ? "border-[color:var(--panel-border-strong)] bg-[color:var(--interactive-bg-strong)] text-[color:var(--text-strong)]"
+                            : "border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] text-[color:var(--text-body)] hover:bg-[color:var(--interactive-bg-strong)]"
                         }`}
                         onClick={() => setSelectedAudioPath(file.path)}
                       >
@@ -342,7 +342,7 @@ export function Library() {
                         href={file.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="block rounded-[1.3rem] border border-white/40 bg-white/42 p-3 text-sm transition hover:-translate-y-0.5 hover:bg-white/62"
+                        className="block rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-3 text-sm transition hover:-translate-y-0.5 hover:bg-[color:var(--interactive-bg-strong)]"
                       >
                         <div className="font-medium text-[color:var(--text-strong)]">{file.name}</div>
                         <div className="mt-1 text-xs text-[color:var(--text-muted)]">{file.kind}</div>
@@ -369,7 +369,7 @@ function MiniStat({
   label: string;
 }) {
   return (
-    <div className="rounded-[1.35rem] border border-white/40 bg-white/42 px-3 py-3">
+    <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-3 py-3">
       <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
         <Icon className="h-3.5 w-3.5" />
         {label}

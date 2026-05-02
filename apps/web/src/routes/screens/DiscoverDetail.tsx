@@ -31,7 +31,7 @@ import { apiClient, type TrackNode } from "@/lib/api";
 
 const routeApi = getRouteApi("/discover/$sourceId");
 const pillActionClass =
-  "inline-flex items-center gap-2 rounded-full border border-[color:var(--panel-border)] bg-white/58 px-4 py-3 text-sm font-medium text-[color:var(--text-strong)] transition hover:-translate-y-0.5 hover:border-[color:var(--interactive-border)] hover:bg-[color:var(--interactive-bg)] hover:shadow-[var(--interactive-shadow)]";
+  "inline-flex items-center gap-2 rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 py-3 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-strong)] transition hover:border-[color:var(--interactive-border)] hover:bg-[color:var(--interactive-bg-strong)] hover:shadow-[var(--interactive-shadow)]";
 
 export function DiscoverDetail() {
   const { sourceId } = routeApi.useParams();
@@ -63,7 +63,7 @@ export function DiscoverDetail() {
   }
 
   if (detailQuery.isError || !detailQuery.data) {
-    return <div className="text-rose-500">作品详情加载失败。</div>;
+    return <div className="text-[color:var(--accent-red)]">作品详情加载失败。</div>;
   }
 
   const detail = detailQuery.data;
@@ -93,9 +93,9 @@ export function DiscoverDetail() {
         <PageHeader
           kicker="Discover Detail"
           title={detail.summary.title}
-          description="改成更高密度的作品资料页后，封面、核心指标、标签、声优、补充信息和音轨树会同时留在视野里，不需要来回扫大段空白。"
+          description="作品档案页集中显示封面、核心指标、标签、声优、补充信息与音轨树，便于快速判断是否投递下载。"
           meta={
-            <div className="grid gap-2 rounded-[1.8rem] border border-white/40 bg-white/45 p-4 shadow-[0_16px_34px_rgba(255,182,193,0.12)]">
+            <div className="grid gap-2 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 shadow-[var(--shadow-glass)]">
               <Badge variant="gold">{detail.summary.source_id}</Badge>
               <Badge variant="pink">{detail.summary.circle || "未知社团"}</Badge>
               {detail.age_category ? <Badge variant="violet">{detail.age_category}</Badge> : null}
@@ -111,8 +111,8 @@ export function DiscoverDetail() {
         <div className="space-y-4">
           <Card foil className="overflow-hidden">
             <CardContent className="space-y-4 p-4">
-              <div className="rounded-[1.8rem] border border-white/45 bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(255,239,246,0.72))] p-3 shadow-[0_18px_36px_rgba(255,182,193,0.14)] lg:p-4">
-                <div className="relative overflow-hidden rounded-[1.55rem] bg-white/82">
+              <div className="rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-3 shadow-[var(--shadow-glass)] lg:p-4">
+                <div className="relative overflow-hidden rounded-lg bg-[color:var(--interactive-bg-strong)]">
                   {coverUrl ? (
                     <>
                       <img
@@ -121,7 +121,7 @@ export function DiscoverDetail() {
                         aria-hidden="true"
                         className="absolute inset-0 h-full w-full scale-110 object-cover opacity-20 blur-3xl"
                       />
-                      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.2),rgba(255,255,255,0.72))]" />
+                      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,12,9,0.04),rgba(5,12,9,0.62))]" />
                       <img
                         src={coverUrl}
                         alt={detail.summary.title}
@@ -150,49 +150,49 @@ export function DiscoverDetail() {
                   icon={CalendarDays}
                   label="发售日"
                   value={detail.summary.release || "-"}
-                  accentClassName="from-amber-300 to-orange-300"
+                  accentClassName="from-amber-400 to-red-400"
                 />
                 <InfoStat
                   icon={CircleDollarSign}
                   label="价格"
                   value={String(detail.price)}
-                  accentClassName="from-emerald-300 to-cyan-300"
+                  accentClassName="from-emerald-400 to-blue-400"
                 />
                 <InfoStat
                   icon={Download}
                   label="下载量"
                   value={String(detail.summary.dl_count)}
-                  accentClassName="from-rose-300 to-pink-300"
+                  accentClassName="from-red-400 to-amber-400"
                 />
                 <InfoStat
                   icon={Star}
                   label="评分"
                   value={detail.summary.rate.toFixed(2)}
-                  accentClassName="from-amber-200 to-rose-300"
+                  accentClassName="from-amber-400 to-emerald-400"
                 />
                 <InfoStat
                   icon={MessageSquareText}
                   label="评论数"
                   value={String(detail.review_count)}
-                  accentClassName="from-violet-300 to-fuchsia-300"
+                  accentClassName="from-violet-400 to-blue-400"
                 />
                 <InfoStat
                   icon={BadgeInfo}
                   label="评分人数"
                   value={String(detail.rate_count)}
-                  accentClassName="from-violet-300 to-sky-300"
+                  accentClassName="from-violet-400 to-emerald-400"
                 />
                 <InfoStat
                   icon={Music4}
                   label="音轨数"
                   value={String(detail.tracks.length)}
-                  accentClassName="from-sky-300 to-blue-300"
+                  accentClassName="from-blue-400 to-emerald-400"
                 />
                 <InfoStat
                   icon={Clock3}
                   label="时长"
                   value={formatDuration(detail.summary.duration)}
-                  accentClassName="from-emerald-300 to-teal-300"
+                  accentClassName="from-emerald-400 to-amber-400"
                 />
               </div>
 
@@ -342,10 +342,10 @@ function InfoStat({
   accentClassName: string;
 }) {
   return (
-    <div className="rounded-[1.3rem] border border-white/40 bg-white/42 px-3 py-2.5">
+    <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-3 py-2.5">
       <div className="flex items-center gap-2.5">
         <span
-          className={`flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br text-white shadow-[0_10px_20px_rgba(255,182,193,0.18)] ${accentClassName}`}
+          className={`flex h-9 w-9 items-center justify-center rounded-md bg-gradient-to-br text-white shadow-[var(--shadow-glow)] ${accentClassName}`}
         >
           <Icon className="h-4 w-4" />
         </span>
@@ -372,10 +372,10 @@ function MetaBlock({
   children: ReactNode;
 }) {
   return (
-    <Card className="bg-white/42">
+    <Card className="bg-[color:var(--interactive-bg)]">
       <CardHeader className="pb-0">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Icon className="h-4 w-4 text-[color:var(--accent-rose)]" />
+          <Icon className="h-4 w-4 text-[color:var(--accent-amber)]" />
           {title}
         </CardTitle>
       </CardHeader>
@@ -394,9 +394,9 @@ function CompactInfoRow({
   value: string;
 }) {
   return (
-    <div className="rounded-[1.15rem] border border-white/40 bg-white/42 px-3 py-2.5">
+    <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-3 py-2.5">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color:var(--interactive-bg)] text-[color:var(--accent-rose)]">
+        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] text-[color:var(--accent-amber)]">
           <Icon className="h-4 w-4" />
         </span>
         <div className="min-w-0">
@@ -414,7 +414,7 @@ function CompactInfoRow({
 
 function SummaryTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.15rem] border border-white/40 bg-white/42 px-3 py-2.5">
+    <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-3 py-2.5">
       <div className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
         {label}
       </div>
@@ -429,11 +429,11 @@ function TrackTree({ node, depth }: { node: TrackNode; depth: number }) {
   return (
     <div className="space-y-2">
       <div
-        className="rounded-[1.35rem] border border-white/40 bg-white/42 px-4 py-3 text-sm text-[color:var(--text-strong)]"
+        className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 py-3 text-sm text-[color:var(--text-strong)]"
         style={{ marginLeft: `${depth * 16}px` }}
       >
         <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color:var(--interactive-bg)] text-[color:var(--accent-rose)]">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] text-[color:var(--accent-amber)]">
             <Icon className="h-4 w-4" />
           </span>
           <div className="min-w-0">

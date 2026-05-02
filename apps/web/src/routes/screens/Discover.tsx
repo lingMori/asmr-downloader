@@ -332,10 +332,10 @@ export function Discover() {
       <motion.div variants={fadeUpItem}>
         <PageHeader
           kicker="Discover"
-          title="抽卡式封面发现页"
-          description="保留原本的普通搜索、高级语法和批量工具，但把入口换成更顺手的卡牌探索体验。你可以边筛边点，像在挑今天想听的收藏。"
+          title="发现雷达与检索终端"
+          description="检索远端作品索引，支持结构化筛选、高级语法、导出和批量投递。URL 查询状态保持可回放，适合连续筛选和任务调度。"
           meta={
-            <div className="space-y-3 rounded-[1.8rem] border border-white/40 bg-white/45 p-4 shadow-[0_16px_34px_rgba(255,182,193,0.12)]">
+            <div className="space-y-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 shadow-[var(--shadow-glass)]">
               <div className="flex flex-wrap gap-2">
                 <Badge variant={draftIsLegacyQuery ? "violet" : "pink"} active={!draftIsLegacyQuery}>
                   条件搜索
@@ -362,7 +362,7 @@ export function Discover() {
                 submitSearch();
               }}
             >
-              <div className="rounded-[2rem] border border-white/40 bg-[linear-gradient(135deg,rgba(255,138,101,0.14),rgba(255,255,255,0.28),rgba(124,184,255,0.08))] p-4">
+              <div className="console-panel rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4">
                 <div className="flex flex-col gap-3 xl:flex-row">
                   <div className="min-w-0 flex-1">
                     <Input
@@ -420,7 +420,7 @@ export function Discover() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-white/40 bg-white/46 px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 py-3">
                 <div className="flex flex-wrap gap-2">
                   {activeFilters.length === 0 && (
                     <Badge variant="ghost">还没有激活筛选条件</Badge>
@@ -445,11 +445,11 @@ export function Discover() {
                     transition={{ duration: 0.24 }}
                     className="overflow-hidden"
                   >
-                    <div className="rounded-[2rem] border border-white/40 bg-white/44 p-5">
+                    <div className="rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-5">
                       <div className="grid gap-5 xl:grid-cols-[1.2fr_0.95fr]">
                         <div className="space-y-4">
                           <PanelLabel
-                            title="彩色筛选胶囊"
+                            title="筛选矩阵"
                             description="标签支持多个值，使用逗号或换行分隔。"
                           />
                           <div className="space-y-2">
@@ -467,7 +467,7 @@ export function Discover() {
                                   <button
                                     key={tagValue}
                                     type="button"
-                                    className="rounded-full border border-rose-300/60 bg-rose-100/90 px-3 py-1 text-xs font-medium text-rose-700 transition hover:scale-105"
+                                    className="rounded border border-[rgba(225,104,84,0.55)] bg-[rgba(225,104,84,0.12)] px-3 py-1 font-mono text-xs font-medium uppercase tracking-[0.08em] text-[color:var(--accent-red)] transition hover:border-[color:var(--interactive-border)]"
                                     onClick={() =>
                                       setDraft((prev) => ({
                                         ...prev,
@@ -506,7 +506,7 @@ export function Discover() {
                             </div>
                             <div className="space-y-2">
                               <FieldLabel>附加条件</FieldLabel>
-                              <label className="flex h-12 items-center gap-3 rounded-[1.4rem] border border-[color:var(--panel-border)] bg-white/65 px-4 text-sm text-[color:var(--text-strong)]">
+                              <label className="flex h-12 items-center gap-3 rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 text-sm text-[color:var(--text-strong)]">
                                 <input
                                   type="checkbox"
                                   checked={draft.subtitle}
@@ -526,7 +526,7 @@ export function Discover() {
                         <div className="space-y-4">
                           <PanelLabel
                             title="排序与密度"
-                            description="决定封面墙的刷新节奏和结果密度。"
+                            description="决定雷达墙的刷新节奏和结果密度。"
                           />
                           <div className="grid gap-4 md:grid-cols-3">
                             <div className="space-y-2 md:col-span-2">
@@ -588,12 +588,12 @@ export function Discover() {
                     transition={{ duration: 0.24 }}
                     className="overflow-hidden"
                   >
-                    <div className="rounded-[2rem] border border-white/40 bg-white/44 p-5">
+                    <div className="rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-5">
                       <div className="grid gap-5 xl:grid-cols-[1fr_0.95fr]">
                         <div className="space-y-4">
                           <PanelLabel
                             title="结果工具"
-                            description="导出当前结果，或者直接把这一屏结果扔进下载队列。"
+                            description="导出当前结果，或将本页命中项投递到下载队列。"
                           />
                           <div className="grid gap-3 md:grid-cols-[1.15fr_auto_auto_auto]">
                             <Input
@@ -699,9 +699,9 @@ export function Discover() {
               Array.from({ length: 6 }).map((_, index) => (
                 <Card key={index} className="overflow-hidden">
                   <CardContent className="space-y-4 p-5">
-                    <div className="h-52 animate-pulse rounded-[1.6rem] bg-white/45" />
-                    <div className="h-4 animate-pulse rounded-full bg-white/45" />
-                    <div className="h-4 w-2/3 animate-pulse rounded-full bg-white/45" />
+                    <div className="h-52 animate-pulse rounded-lg bg-[color:var(--interactive-bg)]" />
+                    <div className="h-4 animate-pulse rounded-md bg-[color:var(--interactive-bg)]" />
+                    <div className="h-4 w-2/3 animate-pulse rounded-md bg-[color:var(--interactive-bg)]" />
                   </CardContent>
                 </Card>
               ))}
@@ -726,16 +726,16 @@ export function Discover() {
               <Card className="md:col-span-2 2xl:col-span-3">
                 <CardContent>
                   <EmptyState
-                    symbol="(˘･_･˘)"
-                    title="这里还没有掉落作品"
-                    description="当前筛选条件下没有匹配结果。试着减少几个限制，或者切回高级语法看看能不能捞到新的收藏。"
+                    symbol="NO MATCH"
+                    title="没有匹配信号"
+                    description="当前筛选条件下没有匹配结果。可以减少限制，或切回高级语法重新扫描索引。"
                   />
                 </CardContent>
               </Card>
             )}
           </motion.div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-white/40 bg-white/46 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 py-3">
             <div className="text-sm text-[color:var(--text-body)]">
               第 {page} / {totalPages} 页，共 {searchQuery.data?.total ?? 0} 个作品
             </div>
@@ -818,7 +818,7 @@ function PanelLabel({
 }) {
   return (
     <div className="space-y-1">
-      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-[color:var(--accent-rose)]">
+      <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.2em] text-[color:var(--accent-amber)]">
         <Sparkles className="h-3.5 w-3.5" />
         {title}
       </div>
@@ -849,7 +849,7 @@ function WorkCard({
   return (
     <Card interactive foil className="h-full overflow-hidden" onClick={onSelect}>
       <CardContent className="flex h-full flex-col gap-5 p-5">
-        <div className="relative overflow-hidden rounded-[1.9rem]">
+        <div className="relative overflow-hidden rounded-lg">
           {work.main_cover_url || work.thumbnail_url ? (
             <img
               src={work.main_cover_url || work.thumbnail_url}
@@ -857,11 +857,11 @@ function WorkCard({
               className="h-60 w-full object-cover transition duration-500 group-hover:scale-[1.03]"
             />
           ) : (
-            <div className="flex h-60 items-center justify-center bg-white/45 text-sm text-[color:var(--text-muted)]">
+            <div className="flex h-60 items-center justify-center bg-[color:var(--interactive-bg)] text-sm text-[color:var(--text-muted)]">
               暂无封面
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[rgba(25,10,24,0.42)] via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[rgba(3,10,8,0.62)] via-transparent to-transparent" />
           <div className="absolute bottom-3 right-3">
             <Badge variant="pink">{work.circle || "未知社团"}</Badge>
           </div>
@@ -912,7 +912,7 @@ function WorkCard({
             to="/discover/$sourceId"
             params={{ sourceId: work.source_id }}
             search={detailSearch}
-            className="block rounded-full border border-[color:var(--panel-border)] bg-white/58 px-4 py-3 text-center text-sm font-medium text-[color:var(--text-strong)] transition hover:-translate-y-0.5 hover:bg-white/78"
+            className="block rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 py-3 text-center text-sm font-medium text-[color:var(--text-strong)] transition hover:-translate-y-0.5 hover:bg-[color:var(--interactive-bg-strong)]"
             onClick={(event) => event.stopPropagation()}
           >
             查看详情页
@@ -933,7 +933,7 @@ function MiniMetric({
   variant: "pink" | "mint" | "violet" | "blue" | "gold" | "ghost";
 }) {
   return (
-    <div className="rounded-[1.35rem] border border-white/40 bg-white/42 px-3 py-3">
+    <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-3 py-3">
       <div className="text-[11px] uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
         {label}
       </div>
@@ -1003,22 +1003,22 @@ function WorkDetailCard({
       <CardContent className="space-y-4">
         {!detail && !loading && (
           <EmptyState
-            symbol="ฅ^•ﻌ•^ฅ"
-            title="点一张卡看看吧"
-            description="选择一个作品后，这里会显示快速详情、音轨预览和独立详情页入口。"
+            symbol="SELECT"
+            title="选择扫描目标"
+            description="选择一个作品后，这里会显示快速详情、音轨预览和独立档案入口。"
             className="min-h-[20rem]"
           />
         )}
         {loading && (
           <div className="space-y-4">
-            <div className="h-44 animate-pulse rounded-[1.7rem] bg-white/45" />
-            <div className="h-4 animate-pulse rounded-full bg-white/45" />
-            <div className="h-4 w-2/3 animate-pulse rounded-full bg-white/45" />
+            <div className="h-44 animate-pulse rounded-lg bg-[color:var(--interactive-bg)]" />
+            <div className="h-4 animate-pulse rounded-md bg-[color:var(--interactive-bg)]" />
+            <div className="h-4 w-2/3 animate-pulse rounded-md bg-[color:var(--interactive-bg)]" />
           </div>
         )}
         {detail && (
           <>
-            <div className="overflow-hidden rounded-[1.7rem]">
+            <div className="overflow-hidden rounded-lg">
               {detail.summary.main_cover_url || detail.summary.thumbnail_url ? (
                 <img
                   src={detail.summary.main_cover_url || detail.summary.thumbnail_url}
@@ -1026,7 +1026,7 @@ function WorkDetailCard({
                   className="h-52 w-full object-cover"
                 />
               ) : (
-                <div className="flex h-52 items-center justify-center bg-white/45 text-sm text-[color:var(--text-muted)]">
+                <div className="flex h-52 items-center justify-center bg-[color:var(--interactive-bg)] text-sm text-[color:var(--text-muted)]">
                   暂无封面
                 </div>
               )}
@@ -1050,7 +1050,7 @@ function WorkDetailCard({
                 {detail.tracks.slice(0, 6).map((track, index) => (
                   <div
                     key={`${track.title}-${index}`}
-                    className="rounded-[1.2rem] border border-white/40 bg-white/44 p-3 text-sm text-[color:var(--text-strong)]"
+                    className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-3 text-sm text-[color:var(--text-strong)]"
                   >
                     {track.title}
                   </div>
@@ -1065,7 +1065,7 @@ function WorkDetailCard({
               to="/discover/$sourceId"
               params={{ sourceId: detail.summary.source_id }}
               search={detailSearch}
-              className="block rounded-full border border-[color:var(--panel-border)] bg-white/58 px-4 py-3 text-center text-sm font-medium text-[color:var(--text-strong)] transition hover:-translate-y-0.5 hover:bg-white/78"
+              className="block rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 py-3 text-center text-sm font-medium text-[color:var(--text-strong)] transition hover:-translate-y-0.5 hover:bg-[color:var(--interactive-bg-strong)]"
             >
               打开独立详情页
             </Link>

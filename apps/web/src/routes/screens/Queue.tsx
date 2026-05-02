@@ -151,7 +151,7 @@ export function Queue() {
   }
 
   if (tasksQuery.isError) {
-    return <div className="text-rose-500">任务列表加载失败。</div>;
+    return <div className="text-[color:var(--accent-red)]">任务列表加载失败。</div>;
   }
 
   return (
@@ -164,10 +164,10 @@ export function Queue() {
       <motion.div variants={fadeUpItem}>
         <PageHeader
           kicker="Queue"
-          title="后勤任务面板"
-          description="把下载与同步的状态流从传统表格改成更像游戏后勤面板的卡组视图。失败、排队、进行中和可再次处理的任务会更容易被一眼识别。"
+          title="任务调度台"
+          description="集中查看下载与同步状态流。失败、排队、进行中和可再次处理的任务会以统一状态色和进度读数展示。"
           meta={
-            <div className="space-y-3 rounded-[1.8rem] border border-white/40 bg-white/45 p-4 shadow-[0_16px_34px_rgba(255,182,193,0.12)]">
+            <div className="space-y-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 shadow-[var(--shadow-glass)]">
               <Badge variant="blue">自动刷新</Badge>
               <div className="text-sm leading-6 text-[color:var(--text-body)]">
                 当前命中 {tasksQuery.data?.total ?? 0} 条任务
@@ -183,21 +183,21 @@ export function Queue() {
           value={summary.running}
           hint="当前正在推进的任务数量"
           icon={<Clock3 className="h-5 w-5" />}
-          accentClassName="from-sky-300 to-violet-300"
+          accentClassName="from-blue-400 to-emerald-400"
         />
         <StatCard
           label="失败"
           value={summary.failed}
           hint="建议优先检查日志并重试"
           icon={<Activity className="h-5 w-5" />}
-          accentClassName="from-rose-300 to-pink-300"
+          accentClassName="from-red-400 to-amber-400"
         />
         <StatCard
           label="命中任务数"
           value={summary.total}
           hint="筛选条件下可见的全部任务"
           icon={<DownloadCloud className="h-5 w-5" />}
-          accentClassName="from-amber-300 to-orange-300"
+          accentClassName="from-amber-400 to-red-400"
         />
       </motion.div>
 
@@ -288,10 +288,10 @@ export function Queue() {
               <button
                 key={task.id}
                 type="button"
-                className={`beam-border block w-full rounded-[1.7rem] border p-4 text-left transition ${
+                className={`beam-border block w-full rounded-lg border p-4 text-left transition ${
                   selectedTaskId === task.id
-                    ? "border-[color:var(--panel-border-strong)] bg-white/78"
-                    : "border-white/40 bg-white/46 hover:-translate-y-0.5 hover:bg-white/62"
+                    ? "border-[color:var(--panel-border-strong)] bg-[color:var(--interactive-bg-strong)]"
+                    : "border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] hover:-translate-y-0.5 hover:bg-[color:var(--interactive-bg-strong)]"
                 }`}
                 onClick={() => setSelectedTaskId(task.id)}
               >
@@ -312,7 +312,7 @@ export function Queue() {
                   <ProgressTrack
                     label="进度"
                     value={task.progress ?? 0}
-                    mascot={task.status === "SUCCESS" ? "✨" : task.status === "FAILED" ? "💥" : "🏃"}
+                    mascot="MARK"
                     hint={task.message || "等待更多日志..."}
                   />
                 </div>
@@ -321,14 +321,14 @@ export function Queue() {
 
             {(tasksQuery.data?.items.length ?? 0) === 0 && (
               <EmptyState
-                symbol="🪄"
+                symbol="EMPTY"
                 title="当前筛选下没有任务"
                 description="试着放宽搜索条件，或者回到发现页、同步页创建新的下载和同步任务。"
                 className="min-h-[24rem]"
               />
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-white/40 bg-white/42 px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] px-4 py-3">
               <span className="text-sm text-[color:var(--text-body)]">
                 第 {filters.page} / {totalPages} 页
               </span>
@@ -365,7 +365,7 @@ export function Queue() {
           <CardContent className="space-y-4">
             {!selectedTaskId && (
               <EmptyState
-                symbol="📮"
+                symbol="SELECT"
                 title="先选一个任务"
                 description="选中左侧任意任务后，可以查看请求参数、执行结果、日志，并进行取消、重试或删除。"
                 className="min-h-[28rem]"
@@ -414,7 +414,7 @@ export function Queue() {
                 <ProgressTrack
                   label="当前任务进度"
                   value={selectedTask.progress ?? 0}
-                  mascot={selectedTask.status === "SUCCESS" ? "🏁" : "📦"}
+                  mascot="MARK"
                   hint={selectedTask.message || "任务还没有返回额外消息。"}
                 />
 
@@ -434,14 +434,14 @@ export function Queue() {
                   <div className="text-sm font-semibold text-[color:var(--text-body)]">日志</div>
                   <div className="space-y-2">
                     {(selectedTask.logs ?? []).length === 0 && (
-                      <div className="rounded-[1.4rem] border border-white/40 bg-white/42 p-3 text-sm text-[color:var(--text-muted)]">
+                      <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-3 text-sm text-[color:var(--text-muted)]">
                         暂无日志输出。
                       </div>
                     )}
                     {(selectedTask.logs ?? []).map((log) => (
                       <div
                         key={log.id}
-                        className="rounded-[1.4rem] border border-white/40 bg-white/42 p-3 text-sm text-[color:var(--text-strong)]"
+                        className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-3 text-sm text-[color:var(--text-strong)]"
                       >
                         <div>{log.message}</div>
                         {log.created_at ? (
@@ -464,7 +464,7 @@ export function Queue() {
 
 function Summary({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.4rem] border border-white/40 bg-white/42 p-4">
+    <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4">
       <div className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
         {label}
       </div>
@@ -477,7 +477,7 @@ function CodeBlock({ title, value }: { title: string; value: string }) {
   return (
     <div className="space-y-2">
       <div className="text-sm font-semibold text-[color:var(--text-body)]">{title}</div>
-      <pre className="overflow-auto rounded-[1.5rem] border border-white/40 bg-[rgba(255,255,255,0.42)] p-4 text-xs text-[color:var(--text-strong)]">
+      <pre className="overflow-auto rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 text-xs text-[color:var(--text-strong)]">
         {value}
       </pre>
     </div>

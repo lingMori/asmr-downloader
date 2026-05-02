@@ -23,9 +23,9 @@ export function Card({
       }
       transition={{ type: "spring", stiffness: 220, damping: 18 }}
       className={cn(
-        "group relative overflow-hidden rounded-[2rem] border border-[color:var(--panel-border)] bg-[color:var(--panel-bg)] shadow-[var(--shadow-glass)] backdrop-blur-2xl",
+        "console-panel group relative overflow-hidden rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--panel-bg)] shadow-[var(--shadow-glass)] backdrop-blur-xl",
         interactive &&
-          "sweet-card-interactive cursor-pointer border-[color:var(--panel-border-strong)] shadow-[0_18px_40px_rgba(255,182,193,0.22)]",
+          "sweet-card-interactive cursor-pointer border-[color:var(--panel-border-strong)] shadow-[var(--shadow-glow)]",
         className,
       )}
       {...props}
@@ -37,14 +37,14 @@ export function CardContent({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("p-5", className)} {...props} />;
+  return <div className={cn("relative z-10 p-4", className)} {...props} />;
 }
 
 export function CardHeader({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("p-5 pb-0", className)} {...props} />;
+  return <div className={cn("relative z-10 p-4 pb-0", className)} {...props} />;
 }
 
 export function CardTitle({
@@ -54,7 +54,7 @@ export function CardTitle({
   return (
     <h3
       className={cn(
-        "sweet-title text-sm font-bold uppercase tracking-[0.18em] text-[color:var(--text-body)]",
+        "console-title text-sm font-bold uppercase tracking-[0.18em] text-[color:var(--text-body)]",
         className,
       )}
       {...props}

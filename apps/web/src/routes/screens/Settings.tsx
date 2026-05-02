@@ -47,7 +47,7 @@ export function Settings() {
 
   if (configQuery.isError) {
     return (
-      <div className="rounded-[2rem] border border-rose-300/50 bg-rose-100/80 p-6 text-rose-700">
+      <div className="rounded-lg border border-[rgba(225,104,84,0.55)] bg-[rgba(225,104,84,0.12)] p-6 text-[color:var(--accent-red)]">
         从后端加载配置失败。
       </div>
     );
@@ -63,10 +63,10 @@ export function Settings() {
       <motion.div variants={fadeUpItem}>
         <PageHeader
           kicker="Settings"
-          title="运行参数与后台配置"
+          title="系统参数面板"
           description="这里替代旧的 config 命令，负责整理账号、下载器和限流参数。结构上改成更容易扫读的表单分区，避免长表单直接压到一整屏。"
           meta={
-            <div className="space-y-3 rounded-[1.8rem] border border-white/40 bg-white/45 p-4 shadow-[0_16px_34px_rgba(255,182,193,0.12)]">
+            <div className="space-y-3 rounded-lg border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] p-4 shadow-[var(--shadow-glass)]">
               <Badge variant="gold">配置中心</Badge>
               <div className="text-sm text-[color:var(--text-body)]">
                 修改会持久化到 `.asmroner-data/config.toml`

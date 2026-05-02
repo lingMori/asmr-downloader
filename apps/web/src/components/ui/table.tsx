@@ -7,7 +7,7 @@ export function Table({
 }: TableHTMLAttributes<HTMLTableElement>) {
   return (
     <table
-      className={cn("w-full border-separate border-spacing-y-2 text-sm", className)}
+      className={cn("w-full border-separate border-spacing-y-1 font-mono text-sm", className)}
       {...props}
     />
   );
@@ -20,7 +20,7 @@ export function TableHead({
   return (
     <thead
       className={cn(
-        "text-[11px] uppercase tracking-[0.18em] text-[color:var(--text-muted)]",
+        "text-[10px] uppercase tracking-[0.18em] text-[color:var(--text-muted)]",
         className,
       )}
       {...props}
@@ -42,7 +42,7 @@ export function TableRow({
   return (
     <tr
       className={cn(
-        "rounded-[1.5rem] bg-white/46 shadow-[0_12px_24px_rgba(255,182,193,0.08)] transition hover:-translate-y-0.5 hover:bg-white/70",
+        "rounded-md border border-[color:var(--panel-border)] bg-[color:var(--interactive-bg)] transition hover:border-[color:var(--interactive-border)] hover:bg-[color:var(--interactive-bg-strong)]",
         className,
       )}
       {...props}
@@ -54,7 +54,7 @@ export function TableCell({
   className,
   ...props
 }: HTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn("px-4 py-4 align-middle", className)} {...props} />;
+  return <td className={cn("px-3 py-3 align-middle", className)} {...props} />;
 }
 
 export function TableHeaderCell({
@@ -63,7 +63,7 @@ export function TableHeaderCell({
 }: HTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
-      className={cn("px-4 py-3 text-left font-medium", className)}
+      className={cn("px-3 py-2 text-left font-medium", className)}
       {...props}
     />
   );
