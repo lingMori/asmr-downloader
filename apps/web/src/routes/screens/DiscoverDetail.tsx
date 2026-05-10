@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Link, getRouteApi } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -17,8 +17,11 @@ import {
   Tag,
   UserCircle,
   Buildings,
+  CaretDown,
+  CaretRight,
   Calendar,
   Clock,
+  FolderOpen,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -115,24 +118,26 @@ export function DiscoverDetail() {
           <Card foil className="overflow-hidden">
             <CardContent className="space-y-4 p-4">
               <div className="deck-bezel">
-                <div className="deck-screen">
+                <div className="deck-screen min-h-[24rem] p-3 sm:min-h-[30rem]">
                   {coverUrl ? (
                     <>
                       <img
                         src={coverUrl}
                         alt=""
                         aria-hidden="true"
-                        className="absolute inset-0 h-full w-full scale-110 object-cover opacity-20 blur-3xl"
+                        className="deck-screen-fill h-full w-full scale-110 object-cover opacity-20 blur-3xl"
                       />
-                      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,12,9,0.04),rgba(5,12,9,0.62))]" />
-                      <img
-                        src={coverUrl}
-                        alt={detail.summary.title}
-                        className="relative z-10 mx-auto max-h-[42rem] w-auto max-w-full object-contain"
-                      />
+                      <div className="deck-screen-fill bg-[linear-gradient(180deg,rgba(5,12,9,0.04),rgba(5,12,9,0.62))]" />
+                      <div className="deck-screen-content flex min-h-[22rem] items-center justify-center sm:min-h-[28rem]">
+                        <img
+                          src={coverUrl}
+                          alt={detail.summary.title}
+                          className="max-h-[min(68vh,42rem)] w-full max-w-full object-contain"
+                        />
+                      </div>
                     </>
                   ) : (
-                    <div className="flex aspect-[4/5] items-center justify-center text-sm text-[color:var(--text-mute)]">
+                    <div className="flex min-h-[22rem] items-center justify-center text-sm text-[color:var(--text-mute)] sm:min-h-[28rem]">
                       暂无封面
                     </div>
                   )}
@@ -260,7 +265,7 @@ export function DiscoverDetail() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <MusicNotes className="h-4 w-4 text-[color:var(--tape-pink)]" weight="duotone" />
-                音轨树
+                文件树
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -416,27 +421,50 @@ function SummaryTile({ label, value }: { label: string; value: string }) {
 }
 
 function TrackTree({ node, depth }: { node: TrackNode; depth: number }) {
-  const Icon = trackTypeIcon(node.type);
+  const isFolder = isTrackFolder(node);
+  const [expanded, setExpanded] = useState(depth < 1);
+  const Icon = isFolder ? FolderOpen : trackTypeIcon(node.type);
+  const childCount = countTrackChildren(node);
 
   return (
-    <div className="space-y-2">
-      <div
-        className="deck-screen px-4 py-3 text-sm text-[color:var(--text-display)]"
-        style={{ marginLeft: `${depth * 16}px` }}
+    <div className="space-y-1">
+      <button
+        type="button"
+        aria-expanded={isFolder ? expanded : undefined}
+        className="deck-plate group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[color:var(--text-display)] transition hover:border-[color:var(--telltale-amber)] hover:brightness-110"
+        style={{ paddingLeft: `${12 + depth * 14}px` }}
+        onClick={() => {
+          if (isFolder) {
+            setExpanded((value) => !value);
+          }
+        }}
       >
-        <div className="flex items-center gap-3">
-          <span className="deck-plate flex h-9 w-9 shrink-0 items-center justify-center text-[color:var(--telltale-amber)]">
-            <Icon className="h-4 w-4" weight="duotone" />
-          </span>
-          <div className="min-w-0">
-            <div className="truncate font-medium">{node.title}</div>
-            <div className="mt-1 text-xs text-[color:var(--text-mute)]">{node.type}</div>
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center text-[color:var(--text-mute)]">
+          {isFolder ? (
+            expanded ? (
+              <CaretDown className="h-4 w-4" weight="bold" />
+            ) : (
+              <CaretRight className="h-4 w-4" weight="bold" />
+            )
+          ) : null}
+        </span>
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center text-[color:var(--telltale-amber)]">
+          <Icon className="h-4 w-4" weight="duotone" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-medium">{node.title}</div>
+          <div className="mt-0.5 truncate text-xs text-[color:var(--text-mute)]">
+            {isFolder ? `${childCount} 个项目` : node.type || "file"}
           </div>
         </div>
-      </div>
-      {node.children?.map((child, index) => (
-        <TrackTree key={`${child.title}-${index}`} node={child} depth={depth + 1} />
-      ))}
+      </button>
+      {isFolder && expanded ? (
+        <div className="ml-5 border-l border-[color:var(--chassis-edge)] pl-2">
+          {node.children?.map((child, index) => (
+            <TrackTree key={`${child.title}-${index}`} node={child} depth={depth + 1} />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -450,6 +478,17 @@ function trackTypeIcon(type: string): Icon {
     return Tag;
   }
   return MusicNotes;
+}
+
+function isTrackFolder(node: TrackNode) {
+  return node.type.toLowerCase().includes("folder") || Boolean(node.children?.length);
+}
+
+function countTrackChildren(node: TrackNode): number {
+  if (!node.children?.length) {
+    return 0;
+  }
+  return node.children.reduce((total, child) => total + 1 + countTrackChildren(child), 0);
 }
 
 function formatDuration(seconds: number) {

@@ -16,7 +16,6 @@ import {
   staggerContainer,
 } from "@/components/ui/sweet";
 import { apiClient } from "@/lib/api";
-import { useTaskEvents } from "@/lib/useTaskEvents";
 
 export function Sync() {
   const queryClient = useQueryClient();
@@ -28,11 +27,6 @@ export function Sync() {
   const reportQuery = useQuery({
     queryKey: ["sync", "report"],
     queryFn: () => apiClient.getReport(),
-  });
-
-  useTaskEvents(() => {
-    queryClient.invalidateQueries({ queryKey: ["sync", "report"] });
-    queryClient.invalidateQueries({ queryKey: ["tasks"] });
   });
 
   const queueMutation = useMutation({

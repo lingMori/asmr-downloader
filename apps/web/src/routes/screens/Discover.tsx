@@ -1024,12 +1024,12 @@ function WorkDetailCard({
         )}
         {detail && (
           <>
-            <div className="deck-screen h-52">
+            <div className="deck-screen flex h-52 items-center justify-center p-2">
               {detail.summary.main_cover_url || detail.summary.thumbnail_url ? (
                 <img
                   src={detail.summary.main_cover_url || detail.summary.thumbnail_url}
                   alt={detail.summary.title}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-sm text-[color:var(--text-mute)]">

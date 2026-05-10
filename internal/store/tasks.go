@@ -36,6 +36,60 @@ type TaskFilter struct {
 
 const defaultTaskPageSize = 20
 
+// TerminateInterrupted marks tasks left active by a previous process as terminated.
+func (s *TaskStore) TerminateInterrupted(ctx context.Context, message string) (int64, error) {
+	if strings.TrimSpace(message) == "" {
+		message = "task interrupted by server restart"
+	}
+
+	var tasks []model.Task
+	if err := s.db.WithContext(ctx).
+		Select("id").
+		Where("status IN ?", []model.TaskStatus{model.TaskStatusQueued, model.TaskStatusRunning}).
+		Find(&tasks).Error; err != nil {
+		return 0, err
+	}
+	if len(tasks) == 0 {
+		return 0, nil
+	}
+
+	ids := make([]uint, 0, len(tasks))
+	logs := make([]model.TaskLog, 0, len(tasks))
+	for _, task := range tasks {
+		ids = append(ids, task.ID)
+		logs = append(logs, model.TaskLog{
+			TaskID:  task.ID,
+			Message: message,
+		})
+	}
+
+	now := time.Now()
+	var affected int64
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		result := tx.Model(&model.Task{}).
+			Where("id IN ?", ids).
+			Where("status IN ?", []model.TaskStatus{model.TaskStatusQueued, model.TaskStatusRunning}).
+			Updates(map[string]interface{}{
+				"status":       model.TaskStatusTerminated,
+				"message":      message,
+				"log_excerpt":  message,
+				"completed_at": now,
+			})
+		if result.Error != nil {
+			return result.Error
+		}
+		affected = result.RowsAffected
+		if affected == 0 {
+			return nil
+		}
+		return tx.Create(&logs).Error
+	})
+	if err != nil {
+		return 0, err
+	}
+	return affected, nil
+}
+
 // Create inserts a new task row and returns the persisted entity.
 func (s *TaskStore) Create(ctx context.Context, task *model.Task) error {
 	if task == nil {

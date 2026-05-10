@@ -341,6 +341,17 @@ button {
   z-index: 1;
 }
 
+.deck-screen > .deck-screen-fill {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.deck-screen > .deck-screen-content {
+  position: relative;
+  z-index: 1;
+}
+
 .deck-plate {
   border: 1px solid var(--chassis-edge);
   border-radius: var(--radius-button);

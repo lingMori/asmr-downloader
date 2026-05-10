@@ -16,7 +16,6 @@ import {
   staggerContainer,
 } from "@/components/ui/sweet";
 import { apiClient, type Task } from "@/lib/api";
-import { useTaskEvents } from "@/lib/useTaskEvents";
 
 type BadgeTone = "live" | "signal" | "warn" | "halt";
 
@@ -105,13 +104,6 @@ export function Queue() {
     onError: (error) => {
       toast.error(String(error));
     },
-  });
-
-  useTaskEvents(() => {
-    queryClient.invalidateQueries({ queryKey: ["tasks"] });
-    if (selectedTaskId !== null) {
-      queryClient.invalidateQueries({ queryKey: ["task", selectedTaskId] });
-    }
   });
 
   const summary = useMemo(() => {

@@ -15,14 +15,14 @@ type User struct {
 }
 
 type Downloader struct {
-	ApiUrl         string       `mapstructure:"api_url" json:"api_url"`
-	ProxyUrl       string       `mapstructure:"proxy_url" json:"proxy_url"`
-	MaxWorkers     int          `mapstructure:"max_workers" json:"max_workers"`
-	MaxRetries     int          `mapstructure:"max_retries" json:"max_retries"`
-	SyncDataFolder string       `mapstructure:"sync_data_folder" json:"sync_data_folder"`
-	SyncWantedSize string       `mapstructure:"sync_wanted_size" json:"sync_wanted_size"`
-	PreferMedia    string       `mapstructure:"prefer_media" json:"prefer_media"`
-	HTTP           HTTPHeaders  `mapstructure:"http" json:"http"`
+	ApiUrl         string      `mapstructure:"api_url" json:"api_url"`
+	ProxyUrl       string      `mapstructure:"proxy_url" json:"proxy_url"`
+	MaxWorkers     int         `mapstructure:"max_workers" json:"max_workers"`
+	MaxRetries     int         `mapstructure:"max_retries" json:"max_retries"`
+	SyncDataFolder string      `mapstructure:"sync_data_folder" json:"sync_data_folder"`
+	SyncWantedSize string      `mapstructure:"sync_wanted_size" json:"sync_wanted_size"`
+	PreferMedia    string      `mapstructure:"prefer_media" json:"prefer_media"`
+	HTTP           HTTPHeaders `mapstructure:"http" json:"http"`
 }
 
 // HTTPHeaders 控制对 asmr.one 发起请求时携带的浏览器指纹 / 固定头。
@@ -152,8 +152,15 @@ func SaveConfig(config *Config) error {
 	v.Set("limit.download_jitter_min", config.Limit.DownloadJitterMin)
 	v.Set("limit.download_jitter_max", config.Limit.DownloadJitterMax)
 
-	_ = os.Remove(ConfigFilePath())
-	if err := v.WriteConfigAs(ConfigFilePath()); err != nil {
+	configPath := ConfigFilePath()
+	tmpPath := filepath.Join(filepath.Dir(configPath), "."+filepath.Base(configPath)+".tmp.toml")
+	_ = os.Remove(tmpPath)
+	if err := v.WriteConfigAs(tmpPath); err != nil {
+		_ = os.Remove(tmpPath)
+		return err
+	}
+	if err := os.Rename(tmpPath, configPath); err != nil {
+		_ = os.Remove(tmpPath)
 		return err
 	}
 	return nil

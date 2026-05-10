@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -70,6 +71,11 @@ func New() (*Server, error) {
 	router.Use(requestIDMiddleware(), slogLoggerMiddleware(), slogRecoveryMiddleware(), corsMiddleware())
 
 	taskStore := store.NewTaskStore(db)
+	if terminated, err := taskStore.TerminateInterrupted(context.Background(), "server restarted before task completed"); err != nil {
+		return nil, fmt.Errorf("terminate interrupted tasks: %w", err)
+	} else if terminated > 0 {
+		logger.Logger().Warn("terminated interrupted tasks", slog.Int64("count", terminated))
+	}
 	taskSvc := services.NewTaskService(taskStore)
 	engManager := engine.NewEngineManager(cfg)
 	if engManager == nil {

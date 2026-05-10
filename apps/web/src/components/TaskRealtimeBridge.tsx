@@ -84,10 +84,10 @@ function patchTask(task: Task | undefined, payload: TaskEventPayload) {
     status: payload.status,
     progress: payload.progress,
     message: payload.message,
-    updatedAt: payload.time,
-    startedAt:
+    updated_at: payload.time,
+    started_at:
       payload.status === "RUNNING" ? task.started_at ?? payload.time : task.started_at,
-    completedAt: terminalStatuses.has(payload.status)
+    completed_at: terminalStatuses.has(payload.status)
       ? task.completed_at ?? payload.time
       : task.completed_at,
   };

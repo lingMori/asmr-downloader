@@ -1060,7 +1060,10 @@ func (m *EngineManager) DownloadHot100WithContext(ctx context.Context, count int
 		return errors.New("下载数量选择必须大于0")
 	}
 	metadataWork := result.BuildMetadataWork()
-	works := metadataWork[:count]
+	works, err := selectHotWorks(metadataWork, count)
+	if err != nil {
+		return err
+	}
 	var sourceIds []string
 	for _, work := range works {
 		sourceIds = append(sourceIds, work.SourceID)
@@ -1079,4 +1082,17 @@ func (m *EngineManager) DownloadHot100WithContext(ctx context.Context, count int
 		}
 	}
 	return nil
+}
+
+func selectHotWorks(works []model.MetadataWork, count int) ([]model.MetadataWork, error) {
+	if count <= 0 {
+		return nil, errors.New("下载数量选择必须大于0")
+	}
+	if len(works) == 0 {
+		return nil, errors.New("热门作品列表为空")
+	}
+	if count > len(works) {
+		count = len(works)
+	}
+	return works[:count], nil
 }
