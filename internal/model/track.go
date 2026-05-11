@@ -11,6 +11,7 @@ type Track struct {
 	Hash             string  `json:"hash,omitempty"`
 	WorkTitle        string  `json:"work_title,omitempty"`
 	PlayURL          string  `json:"play_url,omitempty"`
+	FileURL          string  `json:"file_url,omitempty"`
 	MediaStreamURL   string  `json:"media_stream_url,omitempty"`
 	MediaDownloadURL string  `json:"media_download_url,omitempty"`
 	Size             int64   `json:"size,omitempty"`

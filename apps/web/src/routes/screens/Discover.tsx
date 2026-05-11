@@ -39,7 +39,12 @@ import {
   type DiscoverWorkSummary,
   type SearchWorkSummary,
 } from "@/lib/api";
-import { flattenPlayableTracks, playNextTrack } from "@/lib/playback";
+import {
+  findSubtitleForAudio,
+  flattenPlayableTracks,
+  flattenSubtitleTracks,
+  playNextTrack,
+} from "@/lib/playback";
 
 const routeApi = getRouteApi("/discover");
 const PLAYER_LOG_PREFIX = "[ASMRoner Player]";
@@ -1009,6 +1014,10 @@ function WorkDetailCard({
     () => flattenPlayableTracks(detail?.tracks ?? []),
     [detail?.tracks],
   );
+  const subtitleFiles = useMemo(
+    () => flattenSubtitleTracks(detail?.tracks ?? []),
+    [detail?.tracks],
+  );
   const [selectedTrackPath, setSelectedTrackPath] = useState("");
   const audioDeckRef = useRef<AudioDeckHandle | null>(null);
 
@@ -1050,6 +1059,8 @@ function WorkDetailCard({
   }
 
   const coverUrl = detail?.summary.main_cover_url || detail?.summary.thumbnail_url;
+  const selectedAudioFile = audioFiles.find((file) => file.path === selectedTrackPath);
+  const selectedSubtitleFile = findSubtitleForAudio(subtitleFiles, selectedAudioFile);
 
   return (
     <Card foil className="overflow-hidden">
@@ -1104,10 +1115,12 @@ function WorkDetailCard({
             {audioFiles.length > 0 ? (
               <AudioDeck
                 ref={audioDeckRef}
-                tracks={audioFiles}
-                selectedPath={selectedTrackPath}
-                onSelect={setSelectedTrackPath}
-                title={detail.summary.title}
+	                tracks={audioFiles}
+	                selectedPath={selectedTrackPath}
+	                onSelect={setSelectedTrackPath}
+	                subtitle={selectedSubtitleFile}
+	                subtitles={subtitleFiles}
+	                title={detail.summary.title}
                 mediaId={detail.summary.source_id}
                 coverUrl={coverUrl}
                 onEnded={() => playNextTrack(audioFiles, selectedTrackPath, selectAndPlayTrack)}

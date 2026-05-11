@@ -26,6 +26,7 @@ func (s *Server) registerDiscoverRoutes(group *gin.RouterGroup) {
 
 	group.GET("/discover/search", s.handleDiscoverSearch)
 	group.GET("/discover/works/:sourceId/tracks/:trackId/stream", s.handleDiscoverTrackStream)
+	group.GET("/discover/works/:sourceId/tracks/:trackId/file", s.handleDiscoverTrackFile)
 	group.GET("/discover/works/:sourceId", s.handleDiscoverWorkDetail)
 }
 
@@ -104,6 +105,58 @@ func (s *Server) handleDiscoverTrackStream(ctx *gin.Context) {
 		slog.Int("upstream_status", stream.Response.StatusCode),
 		slog.String("content_type", ctx.Writer.Header().Get("Content-Type")),
 		slog.String("content_range", ctx.Writer.Header().Get("Content-Range")),
+	)
+	ctx.Status(stream.Response.StatusCode)
+	_, _ = io.Copy(ctx.Writer, stream.Response.Body)
+}
+
+func (s *Server) handleDiscoverTrackFile(ctx *gin.Context) {
+	stream, err := s.discoverSvc.OpenTrackFile(
+		ctx.Request.Context(),
+		ctx.Param("sourceId"),
+		ctx.Param("trackId"),
+		ctx.GetHeader("Range"),
+	)
+	if err != nil {
+		if isClientCanceledError(err) {
+			logger.Logger().Info("discover file canceled",
+				slog.String("source_id", ctx.Param("sourceId")),
+				slog.String("track_id", ctx.Param("trackId")),
+				slog.String("range", ctx.GetHeader("Range")),
+			)
+			ctx.AbortWithStatus(statusClientClosedRequest)
+			return
+		}
+		logger.Logger().Warn("discover file rejected",
+			slog.String("source_id", ctx.Param("sourceId")),
+			slog.String("track_id", ctx.Param("trackId")),
+			slog.String("range", ctx.GetHeader("Range")),
+			slog.String("error", err.Error()),
+		)
+		switch {
+		case errors.Is(err, services.ErrInvalidDiscoverRequest):
+			respondError(ctx, http.StatusBadRequest, "INVALID_SOURCE_ID", err)
+		case errors.Is(err, services.ErrDiscoverTrackNotFound):
+			respondError(ctx, http.StatusNotFound, "DISCOVER_TRACK_NOT_FOUND", err)
+		case errors.Is(err, services.ErrDiscoverTrackNotPlayable):
+			respondError(ctx, http.StatusBadRequest, "DISCOVER_TRACK_NOT_READABLE", err)
+		default:
+			respondError(ctx, http.StatusBadGateway, "DISCOVER_FILE_FAILED", err)
+		}
+		return
+	}
+	defer stream.Response.Body.Close()
+
+	copyStreamHeaders(ctx, stream.Response.Header)
+	ensureStreamContentType(ctx, stream.Track.Title)
+	logger.Logger().Info("discover file proxy",
+		slog.String("source_id", ctx.Param("sourceId")),
+		slog.String("track_id", ctx.Param("trackId")),
+		slog.String("track_title", stream.Track.Title),
+		slog.String("track_type", stream.Track.Type),
+		slog.String("track_hash", stream.Track.Hash),
+		slog.Int("upstream_status", stream.Response.StatusCode),
+		slog.String("content_type", ctx.Writer.Header().Get("Content-Type")),
 	)
 	ctx.Status(stream.Response.StatusCode)
 	_, _ = io.Copy(ctx.Writer, stream.Response.Body)

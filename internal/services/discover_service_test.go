@@ -68,6 +68,8 @@ func TestDiscoverWorkDetailAnnotatesPlayableTracks(t *testing.T) {
 	}
 	if lrc := detail.Tracks[0].Children[1]; lrc.PlayURL != "" {
 		t.Fatalf("lyrics file should not be playable, got %q", lrc.PlayURL)
+	} else if lrc.FileURL != "/api/discover/works/RJ123456/tracks/0.1/file" {
+		t.Fatalf("lyrics file should expose file url, got %q", lrc.FileURL)
 	}
 	if detail.Tracks[1].PlayURL != "" {
 		t.Fatalf("non-audio item without a stream url should not be playable")
@@ -208,6 +210,29 @@ func TestDiscoverOpenTrackStreamRejectsNonAudioHashTracks(t *testing.T) {
 	}
 	if fake.streamURL != "" {
 		t.Fatalf("non-audio track should not open upstream stream, got %q", fake.streamURL)
+	}
+}
+
+func TestDiscoverOpenTrackFileUsesSubtitleURL(t *testing.T) {
+	fake := &fakeDiscoverEngine{
+		tracks: []model.Track{
+			{
+				Type:  "text",
+				Title: "scene.lrc",
+				Hash:  "123/456",
+			},
+		},
+	}
+	svc := NewDiscoverService(nil, fake)
+
+	stream, err := svc.OpenTrackFile(context.Background(), "RJ123456", "0", "")
+	if err != nil {
+		t.Fatalf("OpenTrackFile() error = %v", err)
+	}
+	defer stream.Response.Body.Close()
+
+	if fake.streamURL != "https://media.example/123/456" {
+		t.Fatalf("expected subtitle url fallback, got %q", fake.streamURL)
 	}
 }
 

@@ -31,7 +31,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader, fadeUpItem, staggerContainer } from "@/components/ui/sweet";
 import type { DiscoverRouteSearch } from "@/routes/discoverSearch";
 import { apiClient, type TrackNode } from "@/lib/api";
-import { flattenPlayableTracks, isTrackFolder, playNextTrack } from "@/lib/playback";
+import {
+  findSubtitleForAudio,
+  flattenPlayableTracks,
+  flattenSubtitleTracks,
+  isTrackFolder,
+  playNextTrack,
+} from "@/lib/playback";
 import { cn } from "@/lib/utils";
 
 const routeApi = getRouteApi("/discover/$sourceId");
@@ -51,6 +57,10 @@ export function DiscoverDetail() {
   const detail = detailQuery.data;
   const remoteAudioFiles = useMemo(
     () => flattenPlayableTracks(detail?.tracks ?? []),
+    [detail?.tracks],
+  );
+  const remoteSubtitleFiles = useMemo(
+    () => flattenSubtitleTracks(detail?.tracks ?? []),
     [detail?.tracks],
   );
   const [selectedTrackPath, setSelectedTrackPath] = useState("");
@@ -77,6 +87,9 @@ export function DiscoverDetail() {
       rawTracks: detail.tracks,
     });
   }, [detail, remoteAudioFiles]);
+
+  const selectedAudioFile = remoteAudioFiles.find((file) => file.path === selectedTrackPath);
+  const selectedSubtitleFile = findSubtitleForAudio(remoteSubtitleFiles, selectedAudioFile);
 
   function selectAndPlayTrack(path: string) {
     console.info(PLAYER_LOG_PREFIX, "detail tree track clicked", {
@@ -120,7 +133,7 @@ export function DiscoverDetail() {
 
   return (
     <motion.section
-      className="space-y-6"
+      className="space-y-6 pb-36"
       variants={staggerContainer}
       initial="hidden"
       animate="show"
@@ -333,35 +346,6 @@ export function DiscoverDetail() {
           <Card foil className="overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <MusicNotes className="h-4 w-4 text-[color:var(--tape-pink)]" weight="duotone" />
-                在线播放
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {remoteAudioFiles.length > 0 ? (
-                <AudioDeck
-                  ref={audioDeckRef}
-                  tracks={remoteAudioFiles}
-                  selectedPath={selectedTrackPath}
-                  onSelect={setSelectedTrackPath}
-                  title={detail.summary.title}
-                  mediaId={detail.summary.source_id}
-                  coverUrl={coverUrl}
-                  onEnded={() =>
-                    playNextTrack(remoteAudioFiles, selectedTrackPath, selectAndPlayTrack)
-                  }
-                />
-              ) : (
-                <div className="deck-screen p-4 text-sm text-[color:var(--text-mute)]">
-                  当前作品暂无可在线播放音轨。
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card foil className="overflow-hidden">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
                 <Globe className="h-4 w-4 text-[color:var(--tape-pink)]" weight="duotone" />
                 快速操作
               </CardTitle>
@@ -409,6 +393,24 @@ export function DiscoverDetail() {
           </Card>
         </div>
       </motion.div>
+
+      {remoteAudioFiles.length > 0 ? (
+        <AudioDeck
+          ref={audioDeckRef}
+          variant="dock"
+          tracks={remoteAudioFiles}
+          selectedPath={selectedTrackPath}
+          onSelect={setSelectedTrackPath}
+          subtitle={selectedSubtitleFile}
+          subtitles={remoteSubtitleFiles}
+          title={detail.summary.title}
+          mediaId={detail.summary.source_id}
+          coverUrl={coverUrl}
+          onEnded={() =>
+            playNextTrack(remoteAudioFiles, selectedTrackPath, selectAndPlayTrack)
+          }
+        />
+      ) : null}
     </motion.section>
   );
 }

@@ -426,6 +426,71 @@ button {
   box-shadow: var(--glow-tape);
 }
 
+.audio-seek-compact {
+  padding-block: 6px;
+}
+
+.audio-seek-compact input[type="range"] {
+  height: 16px;
+}
+
+.audio-dock-shell {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: calc(2.25rem + env(safe-area-inset-bottom));
+  left: max(1rem, env(safe-area-inset-left));
+  z-index: 60;
+  width: min(1120px, calc(100vw - 2rem));
+  margin-inline: auto;
+  pointer-events: none;
+}
+
+.audio-dock-shell > * {
+  pointer-events: auto;
+}
+
+.audio-dock-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 78px;
+}
+
+.audio-dock-panel {
+  max-height: min(74vh, 720px);
+  margin-top: 10px;
+  overflow: hidden;
+  transition:
+    max-height 180ms ease,
+    opacity 140ms ease,
+    transform 180ms ease;
+}
+
+.audio-dock-panel-collapsed {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+}
+
+.audio-dock-panel-collapsed * {
+  visibility: hidden;
+}
+
+@media (max-width: 720px) {
+  .audio-dock-shell {
+    right: 0.5rem;
+    bottom: calc(2rem + env(safe-area-inset-bottom));
+    left: 0.5rem;
+    width: calc(100vw - 1rem);
+  }
+
+  .audio-dock-bar {
+    min-height: 72px;
+    gap: 8px;
+  }
+}
+
 .deck-decal {
   display: inline-flex;
   align-items: center;

@@ -256,6 +256,40 @@ func (s *DiscoverService) OpenTrackStream(ctx context.Context, sourceID string, 
 	}, nil
 }
 
+func (s *DiscoverService) OpenTrackFile(ctx context.Context, sourceID string, trackID string, rangeHeader string) (DiscoverTrackStream, error) {
+	if s.engine == nil {
+		return DiscoverTrackStream{}, errors.New("discover engine is not available")
+	}
+
+	_, number, err := normalizeDiscoverSourceID(sourceID)
+	if err != nil {
+		return DiscoverTrackStream{}, err
+	}
+
+	tracks, err := s.engine.GetVoiceTracks(number)
+	if err != nil {
+		return DiscoverTrackStream{}, err
+	}
+	track, ok := findDiscoverTrackByID(tracks, strings.TrimSpace(trackID))
+	if !ok {
+		return DiscoverTrackStream{}, ErrDiscoverTrackNotFound
+	}
+	fileURL := s.discoverTrackMediaURL(track)
+	if isDiscoverTrackFolder(track) || !isDiscoverSubtitleTrack(track) || fileURL == "" {
+		return DiscoverTrackStream{}, ErrDiscoverTrackNotPlayable
+	}
+
+	resp, err := s.engine.OpenTrackStream(ctx, fileURL, rangeHeader)
+	if err != nil {
+		return DiscoverTrackStream{}, err
+	}
+	track.ID = strings.TrimSpace(trackID)
+	return DiscoverTrackStream{
+		Track:    track,
+		Response: resp,
+	}, nil
+}
+
 func normalizeDiscoverSourceID(sourceID string) (canonicalSourceID string, number string, err error) {
 	valid, prefix, number, err := utils.IsValidDlsiteID(strings.ToUpper(strings.TrimSpace(sourceID)))
 	if err != nil || !valid {
@@ -285,6 +319,13 @@ func annotateDiscoverTrack(sourceID string, track model.Track, trackID string, r
 	if !isDiscoverTrackFolder(track) && isDiscoverPlayableAudioTrack(track) && streamURL != "" {
 		track.PlayURL = fmt.Sprintf(
 			"/api/discover/works/%s/tracks/%s/stream",
+			url.PathEscape(sourceID),
+			url.PathEscape(trackID),
+		)
+	}
+	if !isDiscoverTrackFolder(track) && isDiscoverSubtitleTrack(track) && streamURL != "" {
+		track.FileURL = fmt.Sprintf(
+			"/api/discover/works/%s/tracks/%s/file",
 			url.PathEscape(sourceID),
 			url.PathEscape(trackID),
 		)
@@ -357,6 +398,20 @@ func isDiscoverPlayableAudioTrack(track model.Track) bool {
 	}
 	title := strings.ToLower(strings.TrimSpace(track.Title))
 	for _, suffix := range []string{".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg", ".opus"} {
+		if strings.HasSuffix(title, suffix) {
+			return true
+		}
+	}
+	return false
+}
+
+func isDiscoverSubtitleTrack(track model.Track) bool {
+	trackType := strings.ToLower(strings.TrimSpace(track.Type))
+	if strings.Contains(trackType, "subtitle") {
+		return true
+	}
+	title := strings.ToLower(strings.TrimSpace(track.Title))
+	for _, suffix := range []string{".lrc", ".srt", ".vtt", ".ass", ".ssa"} {
 		if strings.HasSuffix(title, suffix) {
 			return true
 		}

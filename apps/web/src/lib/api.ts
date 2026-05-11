@@ -180,6 +180,7 @@ export type TrackNode = {
   hash?: string;
   work_title?: string;
   play_url?: string;
+  file_url?: string;
   media_stream_url?: string;
   media_download_url?: string;
   children?: TrackNode[];
@@ -317,16 +318,23 @@ function absolutizeTrackNode(track: TrackNode, sourceId: string, trackId: string
     Boolean(track.children?.length);
   const id = track.id || trackId;
   const isAudio = isPlayableAudioTrack(track);
+  const isSubtitle = isSubtitleTrack(track);
   const playUrl =
     track.play_url ||
     (!isFolder && isAudio
       ? `/api/discover/works/${encodeURIComponent(sourceId)}/tracks/${encodeURIComponent(id)}/stream`
+      : undefined);
+  const fileUrl =
+    track.file_url ||
+    (!isFolder && isSubtitle
+      ? `/api/discover/works/${encodeURIComponent(sourceId)}/tracks/${encodeURIComponent(id)}/file`
       : undefined);
 
   return {
     ...track,
     id,
     play_url: playUrl ? toAbsoluteMediaUrl(playUrl) : undefined,
+    file_url: fileUrl ? toAbsoluteMediaUrl(fileUrl) : undefined,
     children: Array.isArray(track.children)
       ? track.children.map((child, index) =>
           absolutizeTrackNode(child, sourceId, `${id}.${index}`),
@@ -341,6 +349,15 @@ function isPlayableAudioTrack(track: TrackNode) {
   return (
     type.includes("audio") ||
     /\.(mp3|wav|m4a|aac|flac|ogg|opus|webm)$/i.test(title)
+  );
+}
+
+function isSubtitleTrack(track: TrackNode) {
+  const type = track.type.toLowerCase();
+  const title = track.title.toLowerCase();
+  return (
+    type.includes("subtitle") ||
+    /\.(lrc|srt|vtt|ass|ssa)$/i.test(title)
   );
 }
 
