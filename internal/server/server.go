@@ -241,8 +241,8 @@ func corsMiddleware() gin.HandlerFunc {
 		}
 
 		ctx.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		ctx.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, Last-Event-ID")
-		ctx.Header("Access-Control-Expose-Headers", "Content-Type")
+		ctx.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, Last-Event-ID, Range")
+		ctx.Header("Access-Control-Expose-Headers", "Content-Type, Content-Length, Content-Range, Accept-Ranges, ETag")
 
 		if ctx.Request.Method == http.MethodOptions {
 			ctx.AbortWithStatus(http.StatusNoContent)

@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -542,7 +543,7 @@ func (m *EngineManager) GetVoiceTracks(id string) ([]model.Track, error) {
 }
 
 func (m *EngineManager) GetVoiceTracksWithContext(ctx context.Context, id string) ([]model.Track, error) {
-	url := m.ApiUrl + consts.AsmrApiPath.TracksPath + id
+	url := m.ApiUrl + consts.AsmrApiPath.TracksPath + id + "?v=2"
 	headers := m.cloneHeaders()
 
 	var result []model.Track
@@ -562,6 +563,66 @@ func (m *EngineManager) GetVoiceTracksWithContext(ctx context.Context, id string
 		return nil, errors.New("Request error,status code: " + strconv.Itoa(resp.StatusCode()))
 	}
 	return result, nil
+}
+
+func (m *EngineManager) BuildTrackMediaURL(hash string) string {
+	hash = strings.Trim(strings.TrimSpace(hash), "/")
+	if hash == "" {
+		return ""
+	}
+	parts := strings.Split(hash, "/")
+	for index, part := range parts {
+		parts[index] = url.PathEscape(part)
+	}
+	return strings.TrimRight(m.ApiUrl, "/") + "/api/media/" + strings.Join(parts, "/")
+}
+
+func (m *EngineManager) OpenTrackStream(ctx context.Context, streamURL string, rangeHeader string) (*http.Response, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	parsed, err := url.Parse(strings.TrimSpace(streamURL))
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return nil, errors.New("invalid track stream url")
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return nil, errors.New("unsupported track stream url scheme")
+	}
+
+	headers := m.cloneHeaders()
+	delete(headers, "content-type")
+	headers["accept"] = "audio/*, application/octet-stream, */*"
+	headers["accept-encoding"] = "identity"
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	for key, value := range headers {
+		request.Header.Set(key, value)
+	}
+	if strings.TrimSpace(m.JWTToken) != "" {
+		request.Header.Set("Authorization", m.JWTToken)
+	}
+	if strings.TrimSpace(rangeHeader) != "" {
+		request.Header.Set("Range", rangeHeader)
+	}
+
+	raw, err := m.Client.GetClient().Do(request)
+	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
+		return nil, err
+	}
+	if raw == nil {
+		return nil, errors.New("empty track stream response")
+	}
+	if raw.StatusCode < http.StatusOK || raw.StatusCode >= http.StatusMultipleChoices {
+		raw.Body.Close()
+		return nil, fmt.Errorf("track stream request failed: %s", raw.Status)
+	}
+	return raw, nil
 }
 
 func (m *EngineManager) GetWorkInfo(id string) (model.WorkInfo, error) {

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Link, getRouteApi } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -24,14 +24,18 @@ import {
   FolderOpen,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
+import { AudioDeck, type AudioDeckHandle } from "@/components/AudioDeck";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader, fadeUpItem, staggerContainer } from "@/components/ui/sweet";
 import type { DiscoverRouteSearch } from "@/routes/discoverSearch";
 import { apiClient, type TrackNode } from "@/lib/api";
+import { flattenPlayableTracks, isTrackFolder, playNextTrack } from "@/lib/playback";
+import { cn } from "@/lib/utils";
 
 const routeApi = getRouteApi("/discover/$sourceId");
+const PLAYER_LOG_PREFIX = "[ASMRoner Player]";
 const pillActionClass =
   "deck-button-secondary inline-flex h-[38px] items-center justify-center gap-2 border px-4 py-2 text-xs font-bold transition hover:brightness-110";
 
@@ -44,6 +48,50 @@ export function DiscoverDetail() {
     queryKey: ["discover", "detail-page", sourceId],
     queryFn: () => apiClient.getDiscoverWork(sourceId),
   });
+  const detail = detailQuery.data;
+  const remoteAudioFiles = useMemo(
+    () => flattenPlayableTracks(detail?.tracks ?? []),
+    [detail?.tracks],
+  );
+  const [selectedTrackPath, setSelectedTrackPath] = useState("");
+  const audioDeckRef = useRef<AudioDeckHandle | null>(null);
+
+  useEffect(() => {
+    setSelectedTrackPath((current) => {
+      if (remoteAudioFiles.some((file) => file.path === current)) {
+        return current;
+      }
+      return remoteAudioFiles[0]?.path ?? "";
+    });
+  }, [remoteAudioFiles]);
+
+  useEffect(() => {
+    if (!detail) {
+      return;
+    }
+    console.info(PLAYER_LOG_PREFIX, "detail tracks loaded", {
+      sourceId: detail.summary.source_id,
+      topLevelTrackCount: detail.tracks.length,
+      playableTrackCount: remoteAudioFiles.length,
+      playableTracks: remoteAudioFiles,
+      rawTracks: detail.tracks,
+    });
+  }, [detail, remoteAudioFiles]);
+
+  function selectAndPlayTrack(path: string) {
+    console.info(PLAYER_LOG_PREFIX, "detail tree track clicked", {
+      path,
+      hasDeck: Boolean(audioDeckRef.current),
+      audioFilesCount: remoteAudioFiles.length,
+      track: remoteAudioFiles.find((file) => file.path === path),
+      sourceId: detail?.summary.source_id,
+    });
+    if (audioDeckRef.current) {
+      void audioDeckRef.current.playTrack(path);
+      return;
+    }
+    setSelectedTrackPath(path);
+  }
 
   const downloadMutation = useMutation({
     mutationFn: () =>
@@ -64,11 +112,10 @@ export function DiscoverDetail() {
     return <div className="text-[color:var(--text-body)]">正在加载作品详情...</div>;
   }
 
-  if (detailQuery.isError || !detailQuery.data) {
+  if (detailQuery.isError || !detail) {
     return <div className="text-[color:var(--telltale-red)]">作品详情加载失败。</div>;
   }
 
-  const detail = detailQuery.data;
   const coverUrl = detail.summary.main_cover_url || detail.summary.thumbnail_url;
 
   return (
@@ -270,13 +317,48 @@ export function DiscoverDetail() {
             </CardHeader>
             <CardContent className="space-y-2">
               {detail.tracks.map((track, index) => (
-                <TrackTree key={`${track.title}-${index}`} node={track} depth={0} />
+                <TrackTree
+                  key={`${track.title}-${index}`}
+                  node={track}
+                  depth={0}
+                  selectedTrackPath={selectedTrackPath}
+                  onSelectTrack={selectAndPlayTrack}
+                />
               ))}
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-4 xl:sticky xl:top-24 xl:self-start">
+          <Card foil className="overflow-hidden">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <MusicNotes className="h-4 w-4 text-[color:var(--tape-pink)]" weight="duotone" />
+                在线播放
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {remoteAudioFiles.length > 0 ? (
+                <AudioDeck
+                  ref={audioDeckRef}
+                  tracks={remoteAudioFiles}
+                  selectedPath={selectedTrackPath}
+                  onSelect={setSelectedTrackPath}
+                  title={detail.summary.title}
+                  mediaId={detail.summary.source_id}
+                  coverUrl={coverUrl}
+                  onEnded={() =>
+                    playNextTrack(remoteAudioFiles, selectedTrackPath, selectAndPlayTrack)
+                  }
+                />
+              ) : (
+                <div className="deck-screen p-4 text-sm text-[color:var(--text-mute)]">
+                  当前作品暂无可在线播放音轨。
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card foil className="overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -420,23 +502,61 @@ function SummaryTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TrackTree({ node, depth }: { node: TrackNode; depth: number }) {
+function TrackTree({
+  node,
+  depth,
+  selectedTrackPath,
+  onSelectTrack,
+}: {
+  node: TrackNode;
+  depth: number;
+  selectedTrackPath: string;
+  onSelectTrack: (path: string) => void;
+}) {
   const isFolder = isTrackFolder(node);
   const [expanded, setExpanded] = useState(depth < 1);
   const Icon = isFolder ? FolderOpen : trackTypeIcon(node.type);
   const childCount = countTrackChildren(node);
+  const isPlayable = Boolean(node.play_url && node.id);
+  const isActive = isPlayable && selectedTrackPath === node.id;
 
   return (
     <div className="space-y-1">
       <button
         type="button"
         aria-expanded={isFolder ? expanded : undefined}
-        className="deck-plate group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[color:var(--text-display)] transition hover:border-[color:var(--telltale-amber)] hover:brightness-110"
+        aria-current={isActive ? "true" : undefined}
+        className={cn(
+          "deck-plate group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[color:var(--text-display)] transition",
+          isActive
+            ? "border-[color:var(--tape-pink)] shadow-[var(--glow-tape)]"
+            : "hover:border-[color:var(--telltale-amber)] hover:brightness-110",
+          !isFolder && !isPlayable ? "cursor-default opacity-75" : "",
+        )}
         style={{ paddingLeft: `${12 + depth * 14}px` }}
         onClick={() => {
+          console.info(PLAYER_LOG_PREFIX, "detail tree node clicked", {
+            title: node.title,
+            type: node.type,
+            id: node.id,
+            playUrl: node.play_url,
+            isFolder,
+            isPlayable,
+            depth,
+            childCount,
+          });
           if (isFolder) {
             setExpanded((value) => !value);
+            return;
           }
+          if (isPlayable && node.id) {
+            onSelectTrack(node.id);
+            return;
+          }
+          console.warn(PLAYER_LOG_PREFIX, "detail tree node is not playable", {
+            reason: !node.id ? "missing id" : "missing play_url",
+            node,
+          });
         }}
       >
         <span className="flex h-5 w-5 shrink-0 items-center justify-center text-[color:var(--text-mute)]">
@@ -454,14 +574,20 @@ function TrackTree({ node, depth }: { node: TrackNode; depth: number }) {
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium">{node.title}</div>
           <div className="mt-0.5 truncate text-xs text-[color:var(--text-mute)]">
-            {isFolder ? `${childCount} 个项目` : node.type || "file"}
+            {isFolder ? `${childCount} 个项目` : isPlayable ? "可在线播放" : node.type || "file"}
           </div>
         </div>
       </button>
       {isFolder && expanded ? (
         <div className="ml-5 border-l border-[color:var(--chassis-edge)] pl-2">
           {node.children?.map((child, index) => (
-            <TrackTree key={`${child.title}-${index}`} node={child} depth={depth + 1} />
+            <TrackTree
+              key={`${child.title}-${index}`}
+              node={child}
+              depth={depth + 1}
+              selectedTrackPath={selectedTrackPath}
+              onSelectTrack={onSelectTrack}
+            />
           ))}
         </div>
       ) : null}
@@ -477,11 +603,7 @@ function trackTypeIcon(type: string): Icon {
   if (value.includes("folder") || value.includes("album")) {
     return Tag;
   }
-  return MusicNotes;
-}
-
-function isTrackFolder(node: TrackNode) {
-  return node.type.toLowerCase().includes("folder") || Boolean(node.children?.length);
+  return FileText;
 }
 
 function countTrackChildren(node: TrackNode): number {

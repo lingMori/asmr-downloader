@@ -174,10 +174,12 @@ export type SearchListResponse = {
 };
 
 export type TrackNode = {
+  id?: string;
   type: string;
   title: string;
   hash?: string;
   work_title?: string;
+  play_url?: string;
   media_stream_url?: string;
   media_download_url?: string;
   children?: TrackNode[];
@@ -307,6 +309,39 @@ function absolutizeWorkCovers<T extends DiscoverWorkSummary | SearchWorkSummary>
       ? toAbsoluteMediaUrl(work.main_cover_url)
       : undefined,
   };
+}
+
+function absolutizeTrackNode(track: TrackNode, sourceId: string, trackId: string): TrackNode {
+  const isFolder =
+    track.type.toLowerCase().includes("folder") ||
+    Boolean(track.children?.length);
+  const id = track.id || trackId;
+  const isAudio = isPlayableAudioTrack(track);
+  const playUrl =
+    track.play_url ||
+    (!isFolder && isAudio
+      ? `/api/discover/works/${encodeURIComponent(sourceId)}/tracks/${encodeURIComponent(id)}/stream`
+      : undefined);
+
+  return {
+    ...track,
+    id,
+    play_url: playUrl ? toAbsoluteMediaUrl(playUrl) : undefined,
+    children: Array.isArray(track.children)
+      ? track.children.map((child, index) =>
+          absolutizeTrackNode(child, sourceId, `${id}.${index}`),
+        )
+      : undefined,
+  };
+}
+
+function isPlayableAudioTrack(track: TrackNode) {
+  const type = track.type.toLowerCase();
+  const title = track.title.toLowerCase();
+  return (
+    type.includes("audio") ||
+    /\.(mp3|wav|m4a|aac|flac|ogg|opus|webm)$/i.test(title)
+  );
 }
 
 function buildQueryString(
@@ -511,10 +546,15 @@ export const apiClient = {
     const data = await requestData<DiscoverWorkDetail>(
       `/discover/works/${encodeURIComponent(sourceId)}`,
     );
+    const canonicalSourceId = data.summary?.source_id || sourceId;
     return {
       ...data,
       summary: absolutizeWorkCovers(data.summary),
-      tracks: Array.isArray(data.tracks) ? data.tracks : [],
+      tracks: Array.isArray(data.tracks)
+        ? data.tracks.map((track, index) =>
+            absolutizeTrackNode(track, canonicalSourceId, String(index)),
+          )
+        : [],
     };
   },
 

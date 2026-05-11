@@ -10,12 +10,14 @@ import {
   FileArrowDown,
   Fire,
   MagnifyingGlass,
+  MusicNotes,
   SlidersHorizontal,
   Sparkle,
   Tag,
   Wrench,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
+import { AudioDeck, type AudioDeckHandle } from "@/components/AudioDeck";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,8 +39,10 @@ import {
   type DiscoverWorkSummary,
   type SearchWorkSummary,
 } from "@/lib/api";
+import { flattenPlayableTracks, playNextTrack } from "@/lib/playback";
 
 const routeApi = getRouteApi("/discover");
+const PLAYER_LOG_PREFIX = "[ASMRoner Player]";
 
 type DiscoverFilters = {
   q: string;
@@ -1001,6 +1005,52 @@ function WorkDetailCard({
   loading: boolean;
   onQueue: (sourceId: string) => void;
 }) {
+  const audioFiles = useMemo(
+    () => flattenPlayableTracks(detail?.tracks ?? []),
+    [detail?.tracks],
+  );
+  const [selectedTrackPath, setSelectedTrackPath] = useState("");
+  const audioDeckRef = useRef<AudioDeckHandle | null>(null);
+
+  useEffect(() => {
+    setSelectedTrackPath((current) => {
+      if (audioFiles.some((file) => file.path === current)) {
+        return current;
+      }
+      return audioFiles[0]?.path ?? "";
+    });
+  }, [audioFiles]);
+
+  useEffect(() => {
+    if (!detail) {
+      return;
+    }
+    console.info(PLAYER_LOG_PREFIX, "quick detail tracks loaded", {
+      sourceId: detail.summary.source_id,
+      topLevelTrackCount: detail.tracks.length,
+      playableTrackCount: audioFiles.length,
+      playableTracks: audioFiles,
+      rawTracks: detail.tracks,
+    });
+  }, [detail, audioFiles]);
+
+  function selectAndPlayTrack(path: string) {
+    console.info(PLAYER_LOG_PREFIX, "quick detail track clicked", {
+      path,
+      hasDeck: Boolean(audioDeckRef.current),
+      audioFilesCount: audioFiles.length,
+      track: audioFiles.find((file) => file.path === path),
+      sourceId: detail?.summary.source_id,
+    });
+    if (audioDeckRef.current) {
+      void audioDeckRef.current.playTrack(path);
+      return;
+    }
+    setSelectedTrackPath(path);
+  }
+
+  const coverUrl = detail?.summary.main_cover_url || detail?.summary.thumbnail_url;
+
   return (
     <Card foil className="overflow-hidden">
       <CardHeader>
@@ -1025,9 +1075,9 @@ function WorkDetailCard({
         {detail && (
           <>
             <div className="deck-screen flex h-52 items-center justify-center p-2">
-              {detail.summary.main_cover_url || detail.summary.thumbnail_url ? (
+              {coverUrl ? (
                 <img
-                  src={detail.summary.main_cover_url || detail.summary.thumbnail_url}
+                  src={coverUrl}
                   alt={detail.summary.title}
                   className="h-full w-full object-contain"
                 />
@@ -1050,17 +1100,52 @@ function WorkDetailCard({
               <MiniMetric label="评论数" value={String(detail.review_count)} variant="signal" />
               <MiniMetric label="音轨数" value={String(detail.tracks.length)} variant="live" />
             </div>
+
+            {audioFiles.length > 0 ? (
+              <AudioDeck
+                ref={audioDeckRef}
+                tracks={audioFiles}
+                selectedPath={selectedTrackPath}
+                onSelect={setSelectedTrackPath}
+                title={detail.summary.title}
+                mediaId={detail.summary.source_id}
+                coverUrl={coverUrl}
+                onEnded={() => playNextTrack(audioFiles, selectedTrackPath, selectAndPlayTrack)}
+              />
+            ) : (
+              <div className="deck-screen p-4 text-sm text-[color:var(--text-mute)]">
+                当前作品暂无可在线播放音轨。
+              </div>
+            )}
+
             <div className="space-y-2">
               <div className="text-sm font-semibold text-[color:var(--text-body)]">音轨预览</div>
               <div className="space-y-2">
-                {detail.tracks.slice(0, 6).map((track, index) => (
-                  <div
-                    key={`${track.title}-${index}`}
-                    className="deck-screen p-3 text-sm text-[color:var(--text-display)]"
+                {audioFiles.slice(0, 6).map((track, index) => (
+                  <button
+                    type="button"
+                    key={track.path}
+                    className={`deck-screen flex w-full items-center gap-3 p-3 text-left text-sm transition hover:border-[color:var(--telltale-amber)] ${
+                      selectedTrackPath === track.path
+                        ? "border-[color:var(--tape-pink)] shadow-[var(--glow-tape)]"
+                        : ""
+                    }`}
+                    onClick={() => selectAndPlayTrack(track.path)}
                   >
-                    {track.title}
-                  </div>
+                    <Badge variant={selectedTrackPath === track.path ? "live" : "mute"}>
+                      {String(index + 1).padStart(2, "0")}
+                    </Badge>
+                    <MusicNotes className="h-4 w-4 shrink-0 text-[color:var(--telltale-amber)]" weight="duotone" />
+                    <span className="min-w-0 truncate text-[color:var(--text-display)]">
+                      {track.name}
+                    </span>
+                  </button>
                 ))}
+                {audioFiles.length === 0 ? (
+                  <div className="deck-screen p-3 text-sm text-[color:var(--text-mute)]">
+                    没有可在线播放的音频文件。
+                  </div>
+                ) : null}
               </div>
             </div>
             <Button className="w-full" onClick={() => onQueue(detail.summary.source_id)}>

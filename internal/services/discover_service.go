@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
 	"net/url"
 	"sort"
 	"strconv"
@@ -14,7 +16,11 @@ import (
 	"gorm.io/gorm"
 )
 
-var ErrInvalidDiscoverRequest = errors.New("invalid discover request")
+var (
+	ErrInvalidDiscoverRequest   = errors.New("invalid discover request")
+	ErrDiscoverTrackNotFound    = errors.New("discover track not found")
+	ErrDiscoverTrackNotPlayable = errors.New("discover track is not playable")
+)
 
 type DiscoverService struct {
 	db     *gorm.DB
@@ -25,6 +31,8 @@ type DiscoverEngine interface {
 	SearchForCountResult(asmrOneQueryStr string, count int) (model.SearchResult, error)
 	GetWorkInfo(id string) (model.WorkInfo, error)
 	GetVoiceTracks(id string) ([]model.Track, error)
+	BuildTrackMediaURL(hash string) string
+	OpenTrackStream(ctx context.Context, streamURL string, rangeHeader string) (*http.Response, error)
 }
 
 type DiscoverSearchRequest struct {
@@ -84,6 +92,11 @@ type DiscoverWorkDetail struct {
 	WorkAttrs  string              `json:"work_attributes"`
 	Age        string              `json:"age_category"`
 	Tracks     []model.Track       `json:"tracks"`
+}
+
+type DiscoverTrackStream struct {
+	Track    model.Track
+	Response *http.Response
 }
 
 func NewDiscoverService(db *gorm.DB, eng DiscoverEngine) *DiscoverService {
@@ -157,9 +170,9 @@ func (s *DiscoverService) Search(ctx context.Context, req DiscoverSearchRequest)
 }
 
 func (s *DiscoverService) GetWorkDetail(_ context.Context, sourceID string) (DiscoverWorkDetail, error) {
-	valid, _, number, err := utils.IsValidDlsiteID(strings.ToUpper(strings.TrimSpace(sourceID)))
-	if err != nil || !valid {
-		return DiscoverWorkDetail{}, ErrInvalidDiscoverRequest
+	canonicalSourceID, number, err := normalizeDiscoverSourceID(sourceID)
+	if err != nil {
+		return DiscoverWorkDetail{}, err
 	}
 
 	work, err := s.engine.GetWorkInfo(number)
@@ -171,8 +184,13 @@ func (s *DiscoverService) GetWorkDetail(_ context.Context, sourceID string) (Dis
 		return DiscoverWorkDetail{}, err
 	}
 
+	if work.SourceID != "" {
+		canonicalSourceID = work.SourceID
+	}
+	tracks = annotateDiscoverTracks(canonicalSourceID, tracks, s.discoverTrackMediaURL)
+
 	summary := DiscoverWorkSummary{
-		SourceID:     work.SourceID,
+		SourceID:     canonicalSourceID,
 		Title:        work.Title,
 		Circle:       work.Circle.Name,
 		Release:      work.Release,
@@ -202,6 +220,148 @@ func (s *DiscoverService) GetWorkDetail(_ context.Context, sourceID string) (Dis
 		Age:        work.AgeCategoryString,
 		Tracks:     tracks,
 	}, nil
+}
+
+func (s *DiscoverService) OpenTrackStream(ctx context.Context, sourceID string, trackID string, rangeHeader string) (DiscoverTrackStream, error) {
+	if s.engine == nil {
+		return DiscoverTrackStream{}, errors.New("discover engine is not available")
+	}
+
+	_, number, err := normalizeDiscoverSourceID(sourceID)
+	if err != nil {
+		return DiscoverTrackStream{}, err
+	}
+
+	tracks, err := s.engine.GetVoiceTracks(number)
+	if err != nil {
+		return DiscoverTrackStream{}, err
+	}
+	track, ok := findDiscoverTrackByID(tracks, strings.TrimSpace(trackID))
+	if !ok {
+		return DiscoverTrackStream{}, ErrDiscoverTrackNotFound
+	}
+	streamURL := s.discoverTrackMediaURL(track)
+	if isDiscoverTrackFolder(track) || !isDiscoverPlayableAudioTrack(track) || streamURL == "" {
+		return DiscoverTrackStream{}, ErrDiscoverTrackNotPlayable
+	}
+
+	resp, err := s.engine.OpenTrackStream(ctx, streamURL, rangeHeader)
+	if err != nil {
+		return DiscoverTrackStream{}, err
+	}
+	track.ID = strings.TrimSpace(trackID)
+	return DiscoverTrackStream{
+		Track:    track,
+		Response: resp,
+	}, nil
+}
+
+func normalizeDiscoverSourceID(sourceID string) (canonicalSourceID string, number string, err error) {
+	valid, prefix, number, err := utils.IsValidDlsiteID(strings.ToUpper(strings.TrimSpace(sourceID)))
+	if err != nil || !valid {
+		return "", "", ErrInvalidDiscoverRequest
+	}
+	return strings.ToUpper(prefix) + number, number, nil
+}
+
+func annotateDiscoverTracks(sourceID string, tracks []model.Track, resolveMediaURL func(model.Track) string) []model.Track {
+	out := make([]model.Track, len(tracks))
+	for index, track := range tracks {
+		out[index] = annotateDiscoverTrack(sourceID, track, strconv.Itoa(index), resolveMediaURL)
+	}
+	return out
+}
+
+func annotateDiscoverTrack(sourceID string, track model.Track, trackID string, resolveMediaURL func(model.Track) string) model.Track {
+	track.ID = trackID
+	streamURL := resolveMediaURL(track)
+	if len(track.Children) > 0 {
+		children := make([]model.Track, len(track.Children))
+		for index, child := range track.Children {
+			children[index] = annotateDiscoverTrack(sourceID, child, fmt.Sprintf("%s.%d", trackID, index), resolveMediaURL)
+		}
+		track.Children = children
+	}
+	if !isDiscoverTrackFolder(track) && isDiscoverPlayableAudioTrack(track) && streamURL != "" {
+		track.PlayURL = fmt.Sprintf(
+			"/api/discover/works/%s/tracks/%s/stream",
+			url.PathEscape(sourceID),
+			url.PathEscape(trackID),
+		)
+	}
+	track.MediaStreamURL = ""
+	track.MediaDownloadURL = ""
+	return track
+}
+
+func (s *DiscoverService) discoverTrackMediaURL(track model.Track) string {
+	if streamURL := strings.TrimSpace(track.MediaStreamURL); streamURL != "" {
+		return streamURL
+	}
+	if downloadURL := strings.TrimSpace(track.MediaDownloadURL); downloadURL != "" {
+		return downloadURL
+	}
+	if hash := strings.TrimSpace(track.Hash); hash != "" && s.engine != nil {
+		return s.engine.BuildTrackMediaURL(hash)
+	}
+	return ""
+}
+
+func findDiscoverTrackByID(tracks []model.Track, trackID string) (model.Track, bool) {
+	indexes, ok := parseDiscoverTrackID(trackID)
+	if !ok {
+		return model.Track{}, false
+	}
+
+	current := tracks
+	for depth, index := range indexes {
+		if index >= len(current) {
+			return model.Track{}, false
+		}
+		track := current[index]
+		if depth == len(indexes)-1 {
+			return track, true
+		}
+		current = track.Children
+	}
+	return model.Track{}, false
+}
+
+func parseDiscoverTrackID(trackID string) ([]int, bool) {
+	if trackID == "" {
+		return nil, false
+	}
+	parts := strings.Split(trackID, ".")
+	indexes := make([]int, 0, len(parts))
+	for _, part := range parts {
+		if part == "" {
+			return nil, false
+		}
+		index, err := strconv.Atoi(part)
+		if err != nil || index < 0 {
+			return nil, false
+		}
+		indexes = append(indexes, index)
+	}
+	return indexes, true
+}
+
+func isDiscoverTrackFolder(track model.Track) bool {
+	return strings.Contains(strings.ToLower(track.Type), "folder") || len(track.Children) > 0
+}
+
+func isDiscoverPlayableAudioTrack(track model.Track) bool {
+	trackType := strings.ToLower(strings.TrimSpace(track.Type))
+	if strings.Contains(trackType, "audio") {
+		return true
+	}
+	title := strings.ToLower(strings.TrimSpace(track.Title))
+	for _, suffix := range []string{".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg", ".opus"} {
+		if strings.HasSuffix(title, suffix) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *DiscoverService) searchFromMetadata(ctx context.Context, req DiscoverSearchRequest) (DiscoverSearchResponse, error) {
