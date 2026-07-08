@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { ArrowClockwise, Database, DownloadSimple } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
 import { toast } from "sonner";
@@ -11,6 +12,7 @@ import { Select } from "@/components/ui/select";
 import {
   PageHeader,
   ProgressTrack,
+  RouteFeedback,
   StatCard,
   fadeUpItem,
   staggerContainer,
@@ -41,7 +43,7 @@ export function Sync() {
     },
     onSuccess: (res, mode) => {
       const label =
-        mode === "metadata" ? "元数据同步" : mode === "download" ? "同步下载" : "失败重试";
+        mode === "metadata" ? "刷新作品清单" : mode === "download" ? "批量下载" : "重试失败下载";
       toast.success(`已创建${label}任务 #${res.task_id}`);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
@@ -87,21 +89,36 @@ export function Sync() {
   const downloads = reportQuery.data?.downloads;
   const pipePercent = Math.round((progress?.overall ?? 0) * 100);
 
+  if (reportQuery.isError) {
+    return (
+      <RouteFeedback
+        tone="halt"
+        title="同步报告加载失败"
+        description={`没有拿到作品清单和下载进度。请确认本地后端正在运行，或稍后重试。${reportQuery.error ? `错误信息：${formatErrorMessage(reportQuery.error)}` : ""}`}
+        action={
+          <Button variant="secondary" onClick={() => void reportQuery.refetch()}>
+            重新加载同步报告
+          </Button>
+        }
+      />
+    );
+  }
+
   return (
     <motion.section
-      className="space-y-6"
+      className="space-y-4"
       variants={staggerContainer}
       initial="hidden"
       animate="show"
     >
       <motion.div variants={fadeUpItem}>
         <PageHeader
-          kicker="Sync"
-          title="同步舱与批量任务"
-          description="把元数据同步、批量下载和失败重试收进磁带复制工作站。来源机、目标机和传输管道会一起显示当前库存推进。"
+          kicker="同步"
+          title="同步与批量下载"
+          description="刷新作品清单，批量下载未入库作品，或重试失败记录。"
           meta={
             <div className="deck-screen min-w-[13rem] p-4">
-              <Badge variant={running ? "live" : "warn"}>同步中心</Badge>
+              <Badge variant={running ? "live" : "warn"}>整体进度</Badge>
               <div className="console-readout mt-3 text-2xl">{pipePercent}%</div>
             </div>
           }
@@ -110,9 +127,10 @@ export function Sync() {
 
       <motion.div variants={fadeUpItem} className="grid gap-4 lg:grid-cols-3">
         <ActionCard
-          title="元数据同步"
-          description="从远端刷新作品索引。适合先让资料库跟上最新状态。"
+          title="刷新作品清单"
+          description="更新作品标题、标签、声优、字幕标记等元数据，写入本地数据库；不会下载音频文件。"
           icon={ArrowClockwise}
+          actionLabel="刷新清单"
           busy={queueMutation.isPending}
           onClick={() => queueMutation.mutate("metadata")}
           panelSlot={
@@ -122,43 +140,88 @@ export function Sync() {
                 setSyncScope(event.target.value as "all" | "subtitle")
               }
             >
-              <option value="all">全部元数据</option>
-              <option value="subtitle">仅字幕作品</option>
+              <option value="all">全部作品清单</option>
+              <option value="subtitle">仅带字幕作品</option>
             </Select>
           }
         />
         <ActionCard
-          title="同步下载"
-          description="批量抓取同步清单里尚未下载的作品。"
+          title="批量下载未入库作品"
+          description="根据本地作品清单下载尚未入库的作品，文件会保存到设置里的同步目录。"
           icon={Database}
+          actionLabel="开始批量下载"
           busy={queueMutation.isPending}
           onClick={() => queueMutation.mutate("download")}
         />
         <ActionCard
-          title="失败重试"
-          description="把失败任务重新拉回轨道，避免库存断层。"
+          title="重试失败下载"
+          description="只重新处理之前失败的下载记录，不会影响已经完成的作品。"
           icon={ArrowClockwise}
+          actionLabel="重试失败下载"
           busy={queueMutation.isPending}
           onClick={() => queueMutation.mutate("retry")}
         />
       </motion.div>
 
+      <motion.div variants={fadeUpItem}>
+        <Card>
+          <CardHeader>
+            <CardTitle>数据存放位置</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-3">
+            <StorageNote
+              label="作品清单"
+              value=".asmroner-data/asmroner.db"
+              description="对应数据库表 metadata_works，用来记录可批量下载的作品元数据。"
+            />
+            <StorageNote
+              label="下载记录"
+              value=".asmroner-data/asmroner.db"
+              description="对应数据库表 work_sync_infos，用来判断哪些作品已完成、失败或待处理。"
+            />
+            <div className="deck-screen p-4">
+              <div className="deck-decal">实际文件</div>
+              <div className="console-mono mt-3 break-all text-sm font-bold text-[color:var(--text-display)]">
+                设置里的同步目录
+              </div>
+              <p className="mt-3 text-sm leading-6 text-[color:var(--text-body)]">
+                下载后的音频、字幕和封面保存在这里，可在设置页查看或修改。
+              </p>
+              <Link
+                to="/settings"
+                className="deck-button-secondary mt-4 inline-flex h-[34px] items-center justify-center border px-3 text-xs font-bold"
+              >
+                查看同步目录
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
       <motion.div variants={fadeUpItem} className="grid gap-4 xl:grid-cols-[1.15fr_0.95fr]">
         <Card foil={running}>
           <CardHeader>
-            <CardTitle>磁带传输管道</CardTitle>
+            <CardTitle>同步进度</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
-            <MachineDeck label="REMOTE INDEX" value={totals?.metadata ?? 0} icon={<Database className="h-8 w-8" weight="duotone" />} />
+              <MachineDeck
+                label="本地作品清单"
+                value={totals?.metadata ?? 0}
+                icon={<Database className="h-8 w-8" weight="duotone" />}
+              />
               <TransferPipe running={running} percent={pipePercent} />
-              <MachineDeck label="LOCAL ARCHIVE" value={downloads?.completed ?? 0} icon={<DownloadSimple className="h-8 w-8" weight="duotone" />} />
+              <MachineDeck
+                label="本地已下载"
+                value={downloads?.completed ?? 0}
+                icon={<DownloadSimple className="h-8 w-8" weight="duotone" />}
+              />
             </div>
             <ProgressTrack
               label="总体进度"
               value={progress?.overall ?? 0}
               running={running}
-              hint="整体元数据与下载落地推进情况"
+              hint="作品清单与下载落地推进情况"
             />
             <ProgressTrack
               label="字幕作品进度"
@@ -177,7 +240,7 @@ export function Sync() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <StatCard
-            label="元数据作品数"
+            label="作品清单总数"
             value={totals?.metadata ?? 0}
             icon={<ArrowClockwise className="h-5 w-5" weight="duotone" />}
           />
@@ -192,7 +255,7 @@ export function Sync() {
             icon={<Database className="h-5 w-5" weight="duotone" />}
           />
           <StatCard
-            label="待下载"
+            label="待批量下载"
             value={downloads?.pending ?? 0}
             icon={<ArrowClockwise className="h-5 w-5" weight="duotone" />}
           />
@@ -203,7 +266,7 @@ export function Sync() {
             className="sm:col-span-2"
           />
           <StatCard
-            label="失败下载"
+            label="失败记录"
             value={downloads?.failed ?? 0}
             icon={<Database className="h-5 w-5" weight="duotone" />}
             className="sm:col-span-2"
@@ -214,7 +277,7 @@ export function Sync() {
       <motion.div variants={fadeUpItem}>
         <Card>
           <CardHeader>
-            <CardTitle>同步导出</CardTitle>
+            <CardTitle>导出同步记录</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
@@ -252,7 +315,7 @@ export function Sync() {
                 disabled={exportMutation.isPending}
               >
                 <DownloadSimple className="h-4 w-4" weight="duotone" />
-                导出当前选择
+                导出记录
               </Button>
             </div>
 
@@ -289,11 +352,16 @@ export function Sync() {
   );
 }
 
+function formatErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 function ActionCard({
   title,
   description,
   icon: Icon,
   onClick,
+  actionLabel,
   panelSlot,
   busy,
 }: {
@@ -301,6 +369,7 @@ function ActionCard({
   description: string;
   icon: Icon;
   onClick: () => void;
+  actionLabel: string;
   panelSlot?: ReactNode;
   busy?: boolean;
 }) {
@@ -318,10 +387,32 @@ function ActionCard({
         </div>
         {panelSlot}
         <Button className="mt-auto w-full" busy={busy} onClick={onClick} disabled={busy}>
-          执行操作
+          {actionLabel}
         </Button>
       </CardContent>
     </Card>
+  );
+}
+
+function StorageNote({
+  label,
+  value,
+  description,
+}: {
+  label: string;
+  value: string;
+  description: string;
+}) {
+  return (
+    <div className="deck-screen p-4">
+      <div className="deck-decal">{label}</div>
+      <div className="console-mono mt-3 break-all text-sm font-bold text-[color:var(--text-display)]">
+        {value}
+      </div>
+      <p className="mt-3 text-sm leading-6 text-[color:var(--text-body)]">
+        {description}
+      </p>
+    </div>
   );
 }
 
@@ -356,7 +447,7 @@ function TransferPipe({ running, percent }: { running: boolean; percent: number 
         <div className="tape-reel" data-running={running ? "true" : undefined} />
       </div>
       <div className="console-mono mt-2 text-center text-[10px] uppercase tracking-[0.16em] text-[color:var(--text-mute)]">
-        TAPE BUS
+        同步通道
       </div>
     </div>
   );

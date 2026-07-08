@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowClockwise, Clock, DownloadSimple, Pulse, Trash, XCircle } from "@phosphor-icons/react";
@@ -12,6 +13,7 @@ import {
   EmptyState,
   PageHeader,
   ProgressTrack,
+  RouteFeedback,
   fadeUpItem,
   staggerContainer,
 } from "@/components/ui/sweet";
@@ -116,6 +118,10 @@ export function Queue() {
   }, [tasksQuery.data]);
 
   const selectedTask = taskDetailQuery.data;
+  const selectedTaskInsight = useMemo(
+    () => (selectedTask ? buildTaskInsight(selectedTask) : null),
+    [selectedTask],
+  );
   const totalPages = Math.max(1, Math.ceil((tasksQuery.data?.total ?? 0) / filters.pageSize));
   const canRetry = Boolean(
     selectedTask &&
@@ -140,25 +146,42 @@ export function Queue() {
   );
 
   if (tasksQuery.isLoading) {
-    return <div className="text-[color:var(--text-body)]">正在加载任务列表...</div>;
+    return (
+      <RouteFeedback
+        title="正在读取任务列表"
+        description="正在连接本地后端并拉取下载、同步和重试任务。"
+      />
+    );
   }
 
   if (tasksQuery.isError) {
-    return <div className="text-[color:var(--accent-red)]">任务列表加载失败。</div>;
+    return (
+      <RouteFeedback
+        tone="halt"
+        title="任务列表加载失败"
+        description={`没有拿到任务数据。请确认本地后端正在运行，或稍后重试。${tasksQuery.error ? `错误信息：${formatErrorMessage(tasksQuery.error)}` : ""}`}
+        action={
+          <Button variant="secondary" onClick={() => void tasksQuery.refetch()}>
+            <ArrowClockwise className="h-4 w-4" weight="duotone" />
+            重新加载
+          </Button>
+        }
+      />
+    );
   }
 
   return (
     <motion.section
-      className="space-y-6"
+      className="space-y-4"
       variants={staggerContainer}
       initial="hidden"
       animate="show"
     >
       <motion.div variants={fadeUpItem}>
         <PageHeader
-          kicker="Queue"
-          title="任务调度台"
-          description="集中查看下载与同步状态流。失败、排队、进行中和可再次处理的任务会以统一状态色和进度读数展示。"
+          kicker="任务"
+          title="下载任务"
+          description="查看下载和同步任务进度，处理取消、重试、删除和文件清理。"
           meta={
             <div className="deck-screen space-y-3 p-4">
               <Badge variant="signal">自动刷新</Badge>
@@ -170,28 +193,30 @@ export function Queue() {
         />
       </motion.div>
 
-      <motion.div variants={fadeUpItem} className="grid gap-4 md:grid-cols-3">
-        <VuMeter
-          label="运行中"
-          value={summary.running}
-          hint="当前正在推进的任务数量"
-          icon={<Clock className="h-5 w-5" weight="duotone" />}
-          tone="live"
-        />
-        <VuMeter
-          label="失败"
-          value={summary.failed}
-          hint="建议优先检查日志并重试"
-          icon={<Pulse className="h-5 w-5" weight="duotone" />}
-          tone="halt"
-        />
-        <VuMeter
-          label="命中任务数"
-          value={summary.total}
-          hint="筛选条件下可见的全部任务"
-          icon={<DownloadSimple className="h-5 w-5" weight="duotone" />}
-          tone="warn"
-        />
+      <motion.div variants={fadeUpItem}>
+        <div className="deck-chassis grid gap-2 p-2.5 md:grid-cols-3">
+          <QueueStat
+            label="运行中"
+            value={summary.running}
+            hint="正在推进"
+            icon={<Clock className="h-4 w-4" weight="duotone" />}
+            tone="live"
+          />
+          <QueueStat
+            label="失败"
+            value={summary.failed}
+            hint="待处理"
+            icon={<Pulse className="h-4 w-4" weight="duotone" />}
+            tone="halt"
+          />
+          <QueueStat
+            label="命中任务数"
+            value={summary.total}
+            hint="当前筛选"
+            icon={<DownloadSimple className="h-4 w-4" weight="duotone" />}
+            tone="warn"
+          />
+        </div>
       </motion.div>
 
       <motion.div variants={fadeUpItem}>
@@ -223,8 +248,8 @@ export function Queue() {
             >
               <option value="">全部类型</option>
               <option value="download">下载</option>
-              <option value="sync">元数据同步</option>
-              <option value="sync-download">同步下载</option>
+              <option value="sync">刷新作品清单</option>
+              <option value="sync-download">批量下载</option>
               <option value="sync-retry">同步重试</option>
             </Select>
             <Select
@@ -314,10 +339,10 @@ export function Queue() {
 
             {(tasksQuery.data?.items.length ?? 0) === 0 && (
               <EmptyState
-                symbol="EMPTY"
+                symbol="无任务"
                 title="当前筛选下没有任务"
                 description="试着放宽搜索条件，或者回到发现页、同步页创建新的下载和同步任务。"
-                className="min-h-[24rem]"
+                className="min-h-[14rem]"
               />
             )}
 
@@ -358,10 +383,10 @@ export function Queue() {
           <CardContent className="space-y-4">
             {!selectedTaskId && (
               <EmptyState
-                symbol="SELECT"
+                symbol="请选择"
                 title="先选一个任务"
                 description="选中左侧任意任务后，可以查看请求参数、执行结果、日志，并进行取消、重试或删除。"
-                className="min-h-[28rem]"
+                className="min-h-[16rem]"
               />
             )}
             {taskDetailQuery.isLoading && (
@@ -369,6 +394,33 @@ export function Queue() {
             )}
             {selectedTask && (
               <>
+                {selectedTaskInsight ? (
+                  <div className="deck-screen space-y-3 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="deck-decal">推荐下一步</div>
+                        <div className="console-title mt-3 text-xl font-black text-[color:var(--text-display)]">
+                          {selectedTaskInsight.guidanceTitle}
+                        </div>
+                      </div>
+                      <Badge variant={statusBadgeVariant(selectedTask.status)}>
+                        {translateTaskStatus(selectedTask.status)}
+                      </Badge>
+                    </div>
+                    <p className="text-sm leading-6 text-[color:var(--text-body)]">
+                      {selectedTaskInsight.guidance}
+                    </p>
+                    {selectedTaskInsight.canOpenLibrary ? (
+                      <Link
+                        to="/library"
+                        className="deck-button-secondary inline-flex h-[38px] items-center justify-center border px-4 py-2 text-center text-xs font-bold transition hover:brightness-110"
+                      >
+                        去本地媒体库查看
+                      </Link>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 <div className="flex flex-wrap gap-3">
                   <Button
                     variant="secondary"
@@ -386,7 +438,7 @@ export function Queue() {
                     disabled={!canRetry || retryMutation.isPending}
                   >
                     <ArrowClockwise className="h-4 w-4" weight="duotone" />
-                    重试任务
+                    重新创建任务
                   </Button>
                   <Button
                     variant="danger"
@@ -395,7 +447,7 @@ export function Queue() {
                     disabled={!canDelete || deleteMutation.isPending}
                   >
                     <Trash className="h-4 w-4" weight="duotone" />
-                    删除任务
+                    删除记录
                   </Button>
                   <Button
                     variant="danger"
@@ -424,8 +476,45 @@ export function Queue() {
                   <Summary label="完成时间" value={selectedTask.completed_at || "-"} />
                 </div>
 
-                <CodeBlock title="请求参数" value={selectedTask.payload || "{}"} />
-                <CodeBlock title="执行结果" value={selectedTask.result || "{}"} />
+                {selectedTaskInsight ? (
+                  <>
+                    <TaskSummaryPanel
+                      title="任务参数摘要"
+                      rows={selectedTaskInsight.payloadRows}
+                    />
+                    {selectedTaskInsight.relatedIDs.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="text-sm font-semibold text-[color:var(--text-body)]">
+                          相关作品
+                        </div>
+                        <div className="deck-screen flex flex-wrap gap-2 p-3">
+                          {selectedTaskInsight.relatedIDs.map((id) => (
+                            <Badge key={id} variant="warn">
+                              {id}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    {selectedTaskInsight.resultRows.length > 0 ? (
+                      <TaskSummaryPanel
+                        title="执行结果摘要"
+                        rows={selectedTaskInsight.resultRows}
+                      />
+                    ) : null}
+                    {selectedTask.status === "FAILED" ? (
+                      <div className="deck-screen p-4">
+                        <div className="deck-decal">失败原因</div>
+                        <p className="mt-3 text-sm leading-6 text-[color:var(--text-display)]">
+                          {selectedTask.log_excerpt || selectedTask.message || "任务失败，但没有返回详细原因。"}
+                        </p>
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
+
+                <CodeBlock title="原始请求 JSON" value={formatJSON(selectedTask.payload)} />
+                <CodeBlock title="原始结果 JSON" value={formatJSON(selectedTask.result)} />
 
                 <div className="space-y-2">
                   <div className="text-sm font-semibold text-[color:var(--text-body)]">日志</div>
@@ -470,7 +559,209 @@ function Summary({ label, value }: { label: string; value: string }) {
   );
 }
 
-function VuMeter({
+type TaskSummaryRow = {
+  label: string;
+  value: string;
+};
+
+type TaskInsight = {
+  guidanceTitle: string;
+  guidance: string;
+  canOpenLibrary: boolean;
+  relatedIDs: string[];
+  payloadRows: TaskSummaryRow[];
+  resultRows: TaskSummaryRow[];
+};
+
+function TaskSummaryPanel({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: TaskSummaryRow[];
+}) {
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="text-sm font-semibold text-[color:var(--text-body)]">{title}</div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {rows.map((row) => (
+          <Summary key={`${title}-${row.label}`} label={row.label} value={row.value} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function buildTaskInsight(task: Task): TaskInsight {
+  const payload = parseJSONRecord(task.payload);
+  const result = parseJSONRecord(task.result);
+  const ids = readStringArray(payload.ids);
+  const outputDir = readString(payload.output_dir) || readString(result.output_dir);
+  const folder = readString(payload.folder) || readString(result.folder);
+  const mode = readString(payload.mode);
+  const scope = readString(payload.scope);
+
+  const payloadRows: TaskSummaryRow[] = [];
+  const resultRows: TaskSummaryRow[] = [];
+
+  switch (task.type) {
+    case "download":
+      payloadRows.push({ label: "下载模式", value: translateDownloadMode(mode) });
+      if (ids.length > 0) {
+        payloadRows.push({ label: "作品数量", value: String(ids.length) });
+      }
+      if (typeof payload.count === "number" && Number.isFinite(payload.count)) {
+        payloadRows.push({ label: "数量", value: String(payload.count) });
+      }
+      payloadRows.push({
+        label: "目标目录",
+        value: outputDir || "使用设置中的同步目录",
+      });
+      if (outputDir) {
+        resultRows.push({ label: "下载目录", value: outputDir });
+      }
+      break;
+    case "sync":
+      payloadRows.push({ label: "同步范围", value: scope === "subtitle" ? "仅字幕作品" : "全部作品" });
+      payloadRows.push({ label: "会下载文件", value: "不会，只刷新作品清单" });
+      if (readString(result.scope)) {
+        resultRows.push({ label: "完成范围", value: readString(result.scope) });
+      }
+      break;
+    case "sync-download":
+      payloadRows.push({ label: "操作内容", value: "批量下载未入库作品" });
+      payloadRows.push({ label: "目标目录", value: folder || "使用设置中的同步目录" });
+      if (folder) {
+        resultRows.push({ label: "下载目录", value: folder });
+      }
+      break;
+    case "sync-retry":
+      payloadRows.push({ label: "操作内容", value: "重试失败下载记录" });
+      payloadRows.push({ label: "影响范围", value: "只处理失败记录" });
+      break;
+    default:
+      payloadRows.push({ label: "任务类型", value: translateTaskType(task.type) });
+  }
+
+  const errorMessage = readString(result.error) || task.log_excerpt || task.message;
+  if (task.status === "FAILED" && errorMessage) {
+    resultRows.push({ label: "失败原因", value: errorMessage });
+  }
+
+  return {
+    guidanceTitle: taskGuidanceTitle(task),
+    guidance: taskGuidance(task),
+    canOpenLibrary:
+      task.status === "SUCCESS" &&
+      (task.type === "download" || task.type === "sync-download"),
+    relatedIDs: ids,
+    payloadRows,
+    resultRows,
+  };
+}
+
+function taskGuidanceTitle(task: Task) {
+  switch (task.status) {
+    case "RUNNING":
+      return "任务正在执行";
+    case "QUEUED":
+      return "任务正在排队";
+    case "FAILED":
+      return "任务失败，建议先看原因";
+    case "SUCCESS":
+      return "任务已完成";
+    case "CANCELED":
+      return "任务已取消";
+    case "TERMINATED":
+      return "任务被中断";
+    default:
+      return "查看任务详情";
+  }
+}
+
+function taskGuidance(task: Task) {
+  switch (task.status) {
+    case "RUNNING":
+      return "如果当前任务占用时间过长或目标不对，可以取消任务；取消后会保留当前记录和日志。";
+    case "QUEUED":
+      return "任务已经创建，正在等待执行。确认参数无误即可等待，也可以在执行前取消。";
+    case "FAILED":
+      return "先查看失败原因和日志。网络、鉴权或远端限流问题通常可以重新创建任务；目录或参数错误建议先修改设置。";
+    case "SUCCESS":
+      if (task.type === "download" || task.type === "sync-download") {
+        return "文件已经处理完成。可以进入本地媒体库搜索对应 RJ 编号或标题继续播放和整理。";
+      }
+      return "任务已经完成。可以查看摘要确认本次操作影响范围。";
+    case "CANCELED":
+      return "任务已被取消。需要继续时可以重新创建任务，或删除这条记录保持列表清爽。";
+    case "TERMINATED":
+      return "服务重启或进程中断导致任务终止。建议重新创建任务，并检查上一次是否留下了部分文件。";
+    default:
+      return "查看任务参数、执行结果和日志，确认下一步操作。";
+  }
+}
+
+function parseJSONRecord(raw: string | undefined) {
+  if (!raw) {
+    return {} as Record<string, unknown>;
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    return {} as Record<string, unknown>;
+  }
+  return {} as Record<string, unknown>;
+}
+
+function readString(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function readStringArray(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return Array.from(
+    new Set(
+      value
+        .map((item) => (typeof item === "string" ? item.trim() : ""))
+        .filter(Boolean),
+    ),
+  );
+}
+
+function formatJSON(raw: string | undefined) {
+  if (!raw) {
+    return "{}";
+  }
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  } catch {
+    return raw;
+  }
+}
+
+function translateDownloadMode(mode: string) {
+  switch (mode) {
+    case "single":
+      return "单个作品";
+    case "batch":
+      return "批量作品";
+    case "hot100":
+      return "Hot100";
+    default:
+      return mode || "批量作品";
+  }
+}
+
+function QueueStat({
   label,
   value,
   hint,
@@ -483,26 +774,43 @@ function VuMeter({
   icon: ReactNode;
   tone: BadgeTone;
 }) {
-  const angle = Math.max(-42, Math.min(42, -36 + value * 12));
   return (
-    <Card>
-      <CardContent className="space-y-4 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <Badge variant={tone}>{label}</Badge>
-          <span className="deck-plate flex h-10 w-10 items-center justify-center text-[color:var(--telltale-amber)]">
-            {icon}
+    <div className="deck-plate flex min-h-[4rem] items-center gap-3 px-3 py-2.5">
+      <span className="deck-screen flex h-9 w-9 shrink-0 items-center justify-center text-[color:var(--phosphor-primary)]">
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={tone} className="shrink-0">
+            {label}
+          </Badge>
+          <span className="truncate text-xs text-[color:var(--text-mute)]">
+            {hint}
           </span>
         </div>
-        <div className="deck-screen relative h-28 overflow-hidden">
-          <div className="absolute inset-x-4 bottom-3 h-20 rounded-t-full border border-b-0 border-[color:var(--phosphor-mid)]" />
-          <div className="absolute bottom-3 left-1/2 h-[72px] w-px origin-bottom bg-[color:var(--telltale-amber)] shadow-[var(--glow-amber)]" style={{ transform: `rotate(${angle}deg)` }} />
-          <div className="absolute bottom-1 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[color:var(--telltale-amber)] shadow-[var(--glow-amber)]" />
-          <div className="console-readout absolute left-4 top-4 text-3xl">{value}</div>
+        <div className="mt-1.5 h-1.5 overflow-hidden border border-[color:var(--chassis-edge)] bg-[color:var(--screen-void)]">
+          <div
+            className="h-full bg-[color:var(--phosphor-primary)] shadow-[var(--glow-phosphor)]"
+            style={{ width: `${statBarWidth(value)}%` }}
+          />
         </div>
-        <p className="text-xs leading-5 text-[color:var(--text-body)]">{hint}</p>
-      </CardContent>
-    </Card>
+      </div>
+      <div className="console-readout shrink-0 text-2xl font-bold leading-none md:text-3xl">
+        {formatStatValue(value)}
+      </div>
+    </div>
   );
+}
+
+function statBarWidth(value: number) {
+  if (value <= 0) {
+    return 4;
+  }
+  return Math.max(12, Math.min(100, Math.log10(value + 1) * 42));
+}
+
+function formatStatValue(value: number) {
+  return Number.isFinite(value) ? value.toLocaleString() : "0";
 }
 
 function CodeBlock({ title, value }: { title: string; value: string }) {
@@ -540,11 +848,11 @@ function translateTaskType(type: string) {
     case "download":
       return "下载";
     case "sync":
-      return "元数据同步";
+      return "刷新作品清单";
     case "sync-download":
-      return "同步下载";
+      return "批量下载";
     case "sync-retry":
-      return "同步重试";
+      return "重试失败下载";
     default:
       return type;
   }
@@ -584,4 +892,8 @@ function supportsDeleteWithFiles(task: Task) {
   } catch {
     return false;
   }
+}
+
+function formatErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }

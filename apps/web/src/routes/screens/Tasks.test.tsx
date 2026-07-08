@@ -20,7 +20,7 @@ describe("Tasks screen", () => {
         <Queue />
       </QueryClientProvider>,
     );
-    expect(screen.getByText(/正在加载任务列表/i)).toBeInTheDocument();
+    expect(screen.getByText(/正在读取任务列表/i)).toBeInTheDocument();
     view.unmount();
     queryClient.clear();
   });
@@ -66,8 +66,8 @@ describe("Tasks screen", () => {
     fireEvent.click(await screen.findByText("Failed sync"));
 
     await waitFor(() => {
-      expect(screen.getByText(/重试任务/i)).toBeInTheDocument();
-      expect(screen.getByText(/删除任务/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /重新创建任务/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /删除记录/i })).toBeInTheDocument();
     });
 
     queryClient.clear();

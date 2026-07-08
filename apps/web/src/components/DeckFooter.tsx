@@ -1,18 +1,35 @@
 import { useEffect, useMemo, useState } from "react";
 
-export function DeckFooter({ packetCount }: { packetCount: number }) {
+type ServiceState = "online" | "checking" | "offline";
+
+export function DeckFooter({
+  packetCount,
+  serviceState,
+}: {
+  packetCount: number;
+  serviceState: ServiceState;
+}) {
   const uptime = useUptime();
   const ioRate = useMemo(() => {
     const wave = 8 + ((packetCount * 17) % 96) / 10;
     return `${wave.toFixed(1)}kB/s`;
   }, [packetCount]);
   const load = useMemo(() => 28 + ((packetCount * 9) % 62), [packetCount]);
+  const apiLabel =
+    serviceState === "online"
+      ? "API: OK"
+      : serviceState === "checking"
+        ? "API: CHECK"
+        : "API: OFFLINE";
 
   return (
-    <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-[color:var(--chassis-edge)] bg-[color:var(--screen-void)] px-3 py-1 text-[color:var(--phosphor-mid)] shadow-[0_-8px_22px_rgba(0,0,0,0.35)]">
-      <div className="console-mono mx-auto flex max-w-[1680px] flex-wrap items-center gap-x-5 gap-y-1 text-[9px] uppercase tracking-[0.14em]">
+    <footer className="fixed inset-x-0 bottom-0 z-30 hidden border-t border-[color:var(--chassis-edge)] bg-[color:var(--screen-void)] px-3 py-1 text-[color:var(--phosphor-mid)] shadow-[0_-8px_22px_rgba(0,0,0,0.35)] md:block">
+      <div className="console-mono mx-auto flex max-w-[1680px] flex-wrap items-center gap-x-5 gap-y-1 text-[10px] uppercase tracking-[0.08em]">
         <span>MODEL: ASMR-DECK-II</span>
         <span>FW: 0.1.0</span>
+        <span className={serviceState === "offline" ? "text-[color:var(--telltale-red)]" : undefined}>
+          {apiLabel}
+        </span>
         <span>IO: {ioRate} ▲</span>
         <span>░ {load}%</span>
         <span className="ml-auto">UPTIME: {uptime}</span>

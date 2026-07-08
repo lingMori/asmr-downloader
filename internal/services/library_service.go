@@ -154,6 +154,32 @@ func (s *LibraryService) GetWorkDetail(_ context.Context, id string) (LibraryWor
 	return LibraryWorkDetail{}, os.ErrNotExist
 }
 
+func (s *LibraryService) FindWorksByMediaIDs(_ context.Context, mediaIDs []string) (map[string]LibraryWorkSummary, error) {
+	result := make(map[string]LibraryWorkSummary)
+	wanted := make(map[string]struct{}, len(mediaIDs))
+	for _, id := range mediaIDs {
+		id = strings.ToUpper(strings.TrimSpace(id))
+		if id != "" {
+			wanted[id] = struct{}{}
+		}
+	}
+	if len(wanted) == 0 {
+		return result, nil
+	}
+
+	entries, err := s.loadEntries("")
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range entries {
+		mediaID := strings.ToUpper(strings.TrimSpace(item.MediaID))
+		if _, ok := wanted[mediaID]; ok {
+			result[mediaID] = item
+		}
+	}
+	return result, nil
+}
+
 func (s *LibraryService) loadEntries(search string) ([]LibraryWorkSummary, error) {
 	if _, err := os.Stat(s.baseDir); os.IsNotExist(err) {
 		return []LibraryWorkSummary{}, nil

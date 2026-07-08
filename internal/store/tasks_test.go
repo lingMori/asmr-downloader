@@ -100,3 +100,51 @@ func TestTaskStoreTerminateInterruptedMarksActiveTasks(t *testing.T) {
 		t.Fatalf("expected failed task to stay failed, got %s", failed.Status)
 	}
 }
+
+func TestTaskStoreListDownloadTasksBySourceIDs(t *testing.T) {
+	db, err := database.NewInMemoryDb()
+	if err != nil {
+		t.Fatalf("NewInMemoryDb() error = %v", err)
+	}
+	if err := db.AutoMigrate(&model.Task{}, &model.TaskLog{}); err != nil {
+		t.Fatalf("AutoMigrate() error = %v", err)
+	}
+
+	store := NewTaskStore(db)
+	tasks := []*model.Task{
+		{
+			Type:    model.TaskTypeDownload,
+			Status:  model.TaskStatusQueued,
+			Name:    "download target",
+			Payload: `{"mode":"single","ids":["RJ123456"]}`,
+		},
+		{
+			Type:    model.TaskTypeDownload,
+			Status:  model.TaskStatusQueued,
+			Name:    "download other",
+			Payload: `{"mode":"single","ids":["RJ999999"]}`,
+		},
+		{
+			Type:    model.TaskTypeSync,
+			Status:  model.TaskStatusQueued,
+			Name:    "sync mention",
+			Payload: `{"ids":["RJ123456"]}`,
+		},
+	}
+	for _, task := range tasks {
+		if err := store.Create(context.Background(), task); err != nil {
+			t.Fatalf("Create() error = %v", err)
+		}
+	}
+
+	got, err := store.ListDownloadTasksBySourceIDs(context.Background(), []string{"rj123456"})
+	if err != nil {
+		t.Fatalf("ListDownloadTasksBySourceIDs() error = %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("expected 1 matching download task, got %d", len(got))
+	}
+	if got[0].ID != tasks[0].ID {
+		t.Fatalf("expected task %d, got %d", tasks[0].ID, got[0].ID)
+	}
+}

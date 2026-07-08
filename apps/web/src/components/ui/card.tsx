@@ -25,8 +25,8 @@ export function Card({
             }
           : undefined
       }
-      transition={{ duration: 0.16, ease: [0.6, 0, 0.4, 1] }}
-      data-live={foil ? "true" : undefined}
+      transition={{ duration: 0.12, ease: [0.6, 0, 0.4, 1] }}
+      data-live={foil ? "soft" : undefined}
       className={cn(
         "group relative overflow-hidden",
         Surface,
@@ -50,14 +50,14 @@ export function CardContent({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("relative z-10 p-4", className)} {...props} />;
+  return <div className={cn("relative z-10 p-3.5", className)} {...props} />;
 }
 
 export function CardHeader({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("relative z-10 p-4 pb-0", className)} {...props} />;
+  return <div className={cn("relative z-10 p-3.5 pb-0", className)} {...props} />;
 }
 
 export function CardTitle({
@@ -67,7 +67,7 @@ export function CardTitle({
   return (
     <h3
       className={cn(
-        "console-title text-sm font-bold uppercase tracking-[0.18em] text-[color:var(--text-body)]",
+        "console-title text-sm font-bold uppercase text-[color:var(--text-display)]",
         className,
       )}
       {...props}

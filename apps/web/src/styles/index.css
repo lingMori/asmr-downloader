@@ -1,24 +1,12 @@
 @import url("https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@600;700;800;900&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap");
 @import "tailwindcss";
 
-@font-face {
-  font-family: "Departure Mono";
-  src: url("/fonts/DepartureMono-Regular.woff2") format("woff2");
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "DSEG14";
-  src: url("/fonts/DSEG14Classic-Regular.woff2") format("woff2");
-  font-display: swap;
-}
-
 :root {
   color-scheme: light;
   --font-display: "Big Shoulders Stencil Display", "Noto Sans SC", system-ui, sans-serif;
   --font-body: "IBM Plex Sans Condensed", "Noto Sans SC", system-ui, sans-serif;
-  --font-mono: "Departure Mono", "IBM Plex Mono", ui-monospace, monospace;
-  --font-segment: "DSEG14", "Departure Mono", monospace;
+  --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace;
+  --font-segment: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace;
 
   --chassis-base: #d6d2c2;
   --chassis-raise: #ebe6d2;
@@ -107,7 +95,7 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     inset 0 -1px 0 rgba(0, 0, 0, 0.4),
     0 1px 0 rgba(0, 0, 0, 0.6),
-    0 14px 24px rgba(0, 0, 0, 0.5);
+    0 8px 16px rgba(0, 0, 0, 0.38);
   --shadow-screen:
     inset 0 0 0 1px rgba(0, 0, 0, 0.6),
     inset 0 0 24px rgba(0, 0, 0, 0.7),
@@ -133,8 +121,7 @@ body {
   font-family: var(--font-body);
   background:
     linear-gradient(90deg, transparent 0 49.8%, rgba(255, 255, 255, 0.025) 50%, transparent 50.2%),
-    repeating-linear-gradient(90deg, transparent 0, transparent 3px, rgba(255, 255, 255, 0.014) 4px),
-    radial-gradient(circle at 12% 14%, var(--phosphor-trail), transparent 26rem),
+    repeating-linear-gradient(90deg, transparent 0, transparent 6px, rgba(255, 255, 255, 0.01) 7px),
     linear-gradient(135deg, var(--chassis-base), color-mix(in srgb, var(--chassis-base) 70%, var(--screen-void) 30%));
   color: var(--text-display);
 }
@@ -222,14 +209,15 @@ button {
   z-index: -1;
   pointer-events: none;
   background:
-    linear-gradient(115deg, rgba(255, 255, 255, 0.04), transparent 32%),
-    radial-gradient(circle at 80% 12%, color-mix(in srgb, var(--tape-pink) 16%, transparent), transparent 22rem);
+    repeating-linear-gradient(90deg, transparent 0 44px, var(--tape-pink-trail) 44px 45px, transparent 45px 88px),
+    linear-gradient(115deg, rgba(255, 255, 255, 0.025), transparent 32%);
+  opacity: 0.72;
 }
 
 .console-title,
 .deck-title {
   font-family: var(--font-display);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
@@ -284,6 +272,16 @@ button {
   box-shadow: var(--shadow-chassis), 0 0 18px var(--tape-pink-trail);
 }
 
+.deck-chassis[data-live="soft"] {
+  border-color: color-mix(in srgb, var(--tape-pink) 42%, var(--chassis-edge));
+  box-shadow: var(--shadow-chassis), 0 0 10px var(--tape-pink-trail);
+}
+
+.deck-screen[data-live="soft"] {
+  border-color: color-mix(in srgb, var(--tape-pink) 46%, rgba(0, 0, 0, 0.72));
+  box-shadow: var(--shadow-screen), 0 0 10px var(--tape-pink-trail);
+}
+
 .deck-bezel {
   position: relative;
   padding: var(--bezel-pad);
@@ -299,6 +297,12 @@ button {
 .deck-screen {
   position: relative;
   overflow: hidden;
+  --text-display: #d9ffe4;
+  --text-body: #b7dfc2;
+  --text-mute: #8ca994;
+  --phosphor-primary: #8fffc0;
+  --phosphor-mid: #62d99b;
+  --phosphor-trail: rgba(143, 255, 192, 0.16);
   border: 1px solid rgba(0, 0, 0, 0.72);
   border-radius: var(--radius-screen);
   background:
@@ -319,9 +323,10 @@ button {
   z-index: 2;
   pointer-events: none;
   background:
-    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0, rgba(0, 0, 0, 0.18) 1px, transparent 2px, transparent 3px),
-    radial-gradient(ellipse at center, transparent 48%, rgba(0, 0, 0, 0.46) 100%);
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.14) 0, rgba(0, 0, 0, 0.14) 1px, transparent 2px, transparent 3px),
+    radial-gradient(ellipse at center, transparent 52%, rgba(0, 0, 0, 0.34) 100%);
   mix-blend-mode: multiply;
+  opacity: 0.42;
 }
 
 .deck-screen::after {
@@ -334,11 +339,12 @@ button {
     linear-gradient(90deg, rgba(255, 0, 80, 0.04) 0, transparent 0.55%, transparent 99.45%, rgba(0, 200, 255, 0.04) 100%),
     linear-gradient(180deg, transparent 0, rgba(255, 255, 255, 0.08) 48%, transparent 51%);
   mix-blend-mode: screen;
+  opacity: 0.34;
 }
 
 .deck-screen > * {
   position: relative;
-  z-index: 1;
+  z-index: 4;
 }
 
 .deck-screen > .deck-screen-fill {
@@ -349,7 +355,7 @@ button {
 
 .deck-screen > .deck-screen-content {
   position: relative;
-  z-index: 1;
+  z-index: 4;
 }
 
 .deck-plate {
@@ -502,9 +508,9 @@ button {
   background: var(--tape-pink-trail);
   color: var(--tape-pink);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -535,8 +541,8 @@ button {
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   mask-composite: exclude;
-  opacity: 0.75;
-  animation: border-beam 7s linear infinite;
+  opacity: 0.34;
+  animation: border-beam 8s linear infinite;
   pointer-events: none;
 }
 
@@ -546,7 +552,8 @@ button {
 .deck-button-danger {
   border-radius: var(--radius-button);
   font-family: var(--font-display);
-  letter-spacing: 0.14em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
@@ -651,8 +658,8 @@ button {
   min-height: 18px;
   border-radius: 0;
   font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.18em;
+  font-size: 11px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 

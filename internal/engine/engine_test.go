@@ -26,6 +26,57 @@ func TestEngineManager_AuthLogin(t *testing.T) {
 	}
 }
 
+func TestCheckAuthStatusUsesCurrentToken(t *testing.T) {
+	var gotAuth string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"works":[]}`))
+	}))
+	defer server.Close()
+
+	manager := &EngineManager{
+		Client:   resty.New(),
+		JWTToken: "Bearer test-token",
+		ApiUrl:   server.URL,
+		headers:  map[string]string{"accept": "application/json"},
+	}
+
+	if err := manager.CheckAuthStatus(context.Background()); err != nil {
+		t.Fatalf("CheckAuthStatus() error = %v", err)
+	}
+	if gotAuth != "Bearer test-token" {
+		t.Fatalf("expected Authorization header to be forwarded, got %q", gotAuth)
+	}
+	if manager.AuthState != "success" {
+		t.Fatalf("expected auth state success, got %q", manager.AuthState)
+	}
+}
+
+func TestCheckAuthStatusMarksExpiredToken(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer server.Close()
+
+	manager := &EngineManager{
+		Client:   resty.New(),
+		JWTToken: "Bearer expired-token",
+		ApiUrl:   server.URL,
+		headers:  map[string]string{},
+	}
+
+	if err := manager.CheckAuthStatus(context.Background()); err == nil {
+		t.Fatal("expected CheckAuthStatus() to report expired token")
+	}
+	if manager.AuthState != "error" {
+		t.Fatalf("expected auth state error, got %q", manager.AuthState)
+	}
+	if !strings.Contains(manager.AuthMessage, "已失效") {
+		t.Fatalf("expected expired message, got %q", manager.AuthMessage)
+	}
+}
+
 func TestSelectHotWorksClampsToAvailableResults(t *testing.T) {
 	works := []model.MetadataWork{
 		{SourceID: "RJ1"},

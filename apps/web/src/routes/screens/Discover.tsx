@@ -26,6 +26,7 @@ import { Select } from "@/components/ui/select";
 import {
   EmptyState,
   PageHeader,
+  RouteFeedback,
   fadeUpItem,
   staggerContainer,
 } from "@/components/ui/sweet";
@@ -38,6 +39,7 @@ import {
   type DiscoverWorkDetail,
   type DiscoverWorkSummary,
   type SearchWorkSummary,
+  type WorkStatus,
 } from "@/lib/api";
 import {
   findSubtitleForAudio,
@@ -178,6 +180,7 @@ export function Discover() {
     onSuccess: (res) => {
       toast.success(`已加入下载队列，任务 #${res.task_id}`);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["work-status"] });
     },
     onError: (error) => {
       toast.error(String(error));
@@ -204,6 +207,7 @@ export function Discover() {
     onSuccess: (res) => {
       toast.success(`已加入搜索结果下载任务 #${res.task_id}`);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["work-status"] });
     },
     onError: (error) => {
       toast.error(String(error));
@@ -231,6 +235,7 @@ export function Discover() {
     onSuccess: (res, mode) => {
       toast.success(`已创建${mode === "hot100" ? " Hot100" : "批量"}下载任务 #${res.task_id}`);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["work-status"] });
     },
     onError: (error) => {
       toast.error(String(error));
@@ -262,6 +267,23 @@ export function Discover() {
   });
 
   const works = searchQuery.data?.items ?? [];
+  const statusSourceIds = useMemo(
+    () => works.map((work) => work.source_id).filter(Boolean),
+    [works],
+  );
+  const workStatusQuery = useQuery({
+    queryKey: ["work-status", statusSourceIds.join(",")],
+    queryFn: () => apiClient.getWorkStatuses(statusSourceIds),
+    enabled: statusSourceIds.length > 0,
+    staleTime: 5000,
+  });
+  const statusBySourceId = useMemo(() => {
+    const map = new Map<string, WorkStatus>();
+    for (const item of workStatusQuery.data?.items ?? []) {
+      map.set(item.source_id, item);
+    }
+    return map;
+  }, [workStatusQuery.data]);
   const facets = searchQuery.data?.facets ?? emptyFacets;
   const totalPages = Math.max(1, Math.ceil((searchQuery.data?.total ?? 0) / filters.count));
   const canQueueSearch =
@@ -335,18 +357,18 @@ export function Discover() {
 
   return (
     <motion.section
-      className="space-y-6"
+      className="space-y-4"
       variants={staggerContainer}
       initial="hidden"
       animate="show"
     >
       <motion.div variants={fadeUpItem}>
         <PageHeader
-          kicker="Discover"
-          title="发现雷达与检索终端"
-          description="检索远端作品索引，支持结构化筛选、高级语法、导出和批量投递。URL 查询状态保持可回放，适合连续筛选和任务调度。"
+          kicker="搜索"
+          title="搜索远端作品"
+          description="按关键词、标签、声优或社团筛选作品，确认后加入下载。"
           meta={
-            <div className="deck-screen space-y-3 p-4">
+            <div className="deck-screen space-y-2 p-3">
               <div className="flex flex-wrap gap-2">
                 <Badge variant={draftIsLegacyQuery ? "warn" : "live"} active={!draftIsLegacyQuery}>
                   条件搜索
@@ -355,7 +377,7 @@ export function Discover() {
                   高级语法
                 </Badge>
               </div>
-              <div className="text-sm leading-6 text-[color:var(--text-body)]">
+              <div className="text-sm leading-5 text-[color:var(--text-body)]">
                 当前共命中 <span className="font-semibold">{searchQuery.data?.total ?? 0}</span> 个作品
               </div>
             </div>
@@ -365,7 +387,7 @@ export function Discover() {
 
       <motion.div variants={fadeUpItem}>
         <Card foil className="overflow-hidden">
-          <CardContent className="space-y-5 p-6">
+          <CardContent className="space-y-4 p-4">
             <form
               className="space-y-4"
               onSubmit={(event) => {
@@ -373,7 +395,7 @@ export function Discover() {
                 submitSearch();
               }}
             >
-              <div className="deck-plate p-4">
+              <div className="deck-plate p-3">
                 <div className="flex flex-col gap-3 xl:flex-row">
                   <div className="min-w-0 flex-1">
                     <Input
@@ -382,18 +404,18 @@ export function Discover() {
                         setDraft((prev) => ({ ...prev, q: event.target.value }))
                       }
                       placeholder="输入关键词、RJ 编号，或直接贴高级查询表达式"
-                      className="h-14 text-base"
+                      className="h-12 text-base"
                     />
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    <Button type="submit" className="h-14 px-6">
+                    <Button type="submit" className="h-12 px-5">
                       <MagnifyingGlass className="h-4 w-4" />
                       搜索
                     </Button>
                     <Button
                       type="button"
                       variant="secondary"
-                      className="h-14 px-5"
+                      className="h-12 px-4"
                       onClick={() => setShowFilters((value) => !value)}
                     >
                       <SlidersHorizontal className="h-4 w-4" />
@@ -407,7 +429,7 @@ export function Discover() {
                     <Button
                       type="button"
                       variant="secondary"
-                      className="h-14 px-5"
+                      className="h-12 px-4"
                       onClick={() => setShowTools((value) => !value)}
                     >
                       <Wrench className="h-4 w-4" />
@@ -421,7 +443,7 @@ export function Discover() {
                     <Button
                       type="button"
                       variant="secondary"
-                      className="h-14 px-5"
+                      className="h-12 px-4"
                       onClick={resetSearchPanel}
                     >
                       <ArrowClockwise className="h-4 w-4" />
@@ -431,7 +453,7 @@ export function Discover() {
                 </div>
               </div>
 
-              <div className="deck-plate flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+              <div className="deck-plate flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
                 <div className="flex flex-wrap gap-2">
                   {activeFilters.length === 0 && (
                     <Badge variant="mute">还没有激活筛选条件</Badge>
@@ -456,11 +478,11 @@ export function Discover() {
                     transition={{ duration: 0.24 }}
                     className="overflow-hidden"
                   >
-                    <div className="deck-plate p-5">
-                      <div className="grid gap-5 xl:grid-cols-[1.2fr_0.95fr]">
+                    <div className="deck-plate p-4">
+                      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.95fr]">
                         <div className="space-y-4">
                           <PanelLabel
-                            title="筛选矩阵"
+                            title="筛选条件"
                             description="标签支持多个值，使用逗号或换行分隔。"
                           />
                           <div className="space-y-2">
@@ -478,7 +500,8 @@ export function Discover() {
                                   <button
                                     key={tagValue}
                                     type="button"
-                                    className="deck-decal transition hover:border-[color:var(--telltale-amber)]"
+                                    title={`移除标签: ${tagValue}`}
+                                    className="deck-decal max-w-full min-w-0 transition hover:border-[color:var(--telltale-amber)]"
                                     onClick={() =>
                                       setDraft((prev) => ({
                                         ...prev,
@@ -488,7 +511,10 @@ export function Discover() {
                                       }))
                                     }
                                   >
-                                    #{tagValue} ×
+                                    <span className="min-w-0 max-w-[min(14rem,72vw)] truncate">
+                                      #{tagValue}
+                                    </span>
+                                    <span className="shrink-0">×</span>
                                   </button>
                                 ))}
                               </div>
@@ -536,8 +562,8 @@ export function Discover() {
 
                         <div className="space-y-4">
                           <PanelLabel
-                            title="排序与密度"
-                            description="决定雷达墙的刷新节奏和结果密度。"
+                            title="排序与数量"
+                            description="设置排序方式和每页展示数量。"
                           />
                           <div className="grid gap-4 md:grid-cols-3">
                             <div className="space-y-2 md:col-span-2">
@@ -599,11 +625,11 @@ export function Discover() {
                     transition={{ duration: 0.24 }}
                     className="overflow-hidden"
                   >
-                    <div className="deck-plate p-5">
+                    <div className="deck-plate p-4">
                       <div className="grid gap-5 xl:grid-cols-[1fr_0.95fr]">
                         <div className="space-y-4">
                           <PanelLabel
-                            title="结果工具"
+                            title="结果操作"
                             description="导出当前结果，或将本页命中项投递到下载队列。"
                           />
                           <div className="grid gap-3 md:grid-cols-[1.15fr_auto_auto_auto]">
@@ -722,7 +748,26 @@ export function Discover() {
                 </Card>
               ))}
 
+            {searchQuery.isError && (
+              <Card className="md:col-span-2 2xl:col-span-3">
+                <CardContent>
+                  <RouteFeedback
+                    tone="halt"
+                    title="搜索结果加载失败"
+                    description={`没有拿到远端作品结果。请确认本地后端可用，或调整关键词后重试。${searchQuery.error ? `错误信息：${formatErrorMessage(searchQuery.error)}` : ""}`}
+                    action={
+                      <Button variant="secondary" onClick={() => void searchQuery.refetch()}>
+                        <ArrowClockwise className="h-4 w-4" />
+                        重新搜索
+                      </Button>
+                    }
+                  />
+                </CardContent>
+              </Card>
+            )}
+
             {!searchQuery.isLoading &&
+              !searchQuery.isError &&
               works.map((work, index) => (
                 <motion.div
                   key={work.source_id}
@@ -731,6 +776,7 @@ export function Discover() {
                 >
                   <WorkCard
                     work={work}
+                    status={statusBySourceId.get(work.source_id)}
                     detailSearch={routeSearch}
                     onSelect={() => setSelectedSourceId(work.source_id)}
                     onQueue={() => singleDownloadMutation.mutate(work.source_id)}
@@ -738,13 +784,13 @@ export function Discover() {
                 </motion.div>
               ))}
 
-            {!searchQuery.isLoading && works.length === 0 && (
+            {!searchQuery.isLoading && !searchQuery.isError && works.length === 0 && (
               <Card className="md:col-span-2 2xl:col-span-3">
                 <CardContent>
                   <EmptyState
-                    symbol="NO MATCH"
-                    title="没有匹配信号"
-                    description="当前筛选条件下没有匹配结果。可以减少限制，或切回高级语法重新扫描索引。"
+                    symbol="无结果"
+                    title="没有匹配作品"
+                    description="当前筛选条件下没有匹配结果。可以减少限制，或改用高级语法搜索。"
                   />
                 </CardContent>
               </Card>
@@ -853,15 +899,20 @@ function FieldLabel({ children }: { children: string }) {
 
 function WorkCard({
   work,
+  status,
   detailSearch,
   onSelect,
   onQueue,
 }: {
   work: SearchWorkSummary;
+  status?: WorkStatus;
   detailSearch: DiscoverRouteSearch;
   onSelect: () => void;
   onQueue: () => void;
 }) {
+  const visibleTags = work.tags.slice(0, 3);
+  const hiddenTagCount = Math.max(0, work.tags.length - visibleTags.length);
+
   return (
     <Card interactive foil className="h-full overflow-hidden" onClick={onSelect}>
       <CardContent className="flex h-full flex-col gap-5 p-5">
@@ -878,15 +929,40 @@ function WorkCard({
             </div>
           )}
           <div className="absolute bottom-3 right-3">
-            <Badge variant="decal">{work.circle || "未知社团"}</Badge>
+            {work.circle ? (
+              <Link
+                to="/discover"
+                search={buildFacetRouteSearch(detailSearch, { circle: work.circle })}
+                title={`搜索社团: ${work.circle}`}
+                className="block max-w-[min(14rem,70vw)] transition hover:brightness-110"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <Badge variant="decal" active className="max-w-full min-w-0">
+                  <span className="min-w-0 truncate">{work.circle}</span>
+                </Badge>
+              </Link>
+            ) : (
+              <Badge variant="decal">未知社团</Badge>
+            )}
           </div>
         </div>
 
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <Badge variant="warn" className="shrink-0">
-              {work.source_id}
-            </Badge>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="warn" className="shrink-0">
+                {work.source_id}
+              </Badge>
+              {status && status.state !== "none" ? (
+                <Badge
+                  variant={workStatusBadgeVariant(status.state)}
+                  title={status.message || status.label}
+                  className="shrink-0"
+                >
+                  {status.label}
+                </Badge>
+              ) : null}
+            </div>
             <span className="console-mono text-xs text-[color:var(--text-mute)]">{work.release}</span>
           </div>
           <h3 className="console-title line-clamp-2 text-xl font-black leading-7 text-[color:var(--text-display)]">
@@ -904,12 +980,32 @@ function WorkCard({
           />
         </div>
 
-        <div className="flex flex-wrap gap-2.5">
-          {work.tags.slice(0, 4).map((tag) => (
-            <Badge key={tag} variant={tagVariant(tag)}>
-              #{tag}
-            </Badge>
+        <div className="flex min-h-[1.75rem] flex-wrap gap-2.5 overflow-hidden">
+          {visibleTags.map((tag) => (
+            <Link
+              key={tag}
+              to="/discover"
+              search={buildFacetRouteSearch(detailSearch, { tag })}
+              title={`搜索标签: ${tag}`}
+              className="max-w-full min-w-0 transition hover:brightness-110"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Badge variant={tagVariant(tag)} active className="max-w-full min-w-0">
+                <span className="min-w-0 max-w-[min(11rem,68vw)] truncate">
+                  #{tag}
+                </span>
+              </Badge>
+            </Link>
           ))}
+          {hiddenTagCount > 0 ? (
+            <Badge
+              variant="mute"
+              title={work.tags.slice(visibleTags.length).join(", ")}
+              className="shrink-0"
+            >
+              +{hiddenTagCount}
+            </Badge>
+          ) : null}
         </div>
 
         <div className="mt-auto grid gap-3 pt-1">
@@ -986,17 +1082,36 @@ function FacetCard({
         {items.map((item) => (
           <button
             key={`${title}-${item.value}`}
-            className="transition hover:brightness-110"
+            title={`${item.value} (${item.count})`}
+            className="max-w-full min-w-0 transition hover:brightness-110"
             onClick={() => onPick(item.value)}
           >
-            <Badge variant={variant} active>
-              {item.value} ({item.count})
+            <Badge variant={variant} active className="max-w-full min-w-0 gap-1">
+              <span className="min-w-0 max-w-[min(15rem,72vw)] truncate">
+                {item.value}
+              </span>
+              <span className="shrink-0">({item.count})</span>
             </Badge>
           </button>
         ))}
       </CardContent>
     </Card>
   );
+}
+
+function buildFacetRouteSearch(
+  base: DiscoverRouteSearch,
+  patch: Partial<Pick<DiscoverRouteSearch, "tag" | "circle" | "va">>,
+): DiscoverRouteSearch {
+  return {
+    ...base,
+    q: "",
+    tag: "",
+    circle: "",
+    va: "",
+    ...patch,
+    page: 1,
+  };
 }
 
 function WorkDetailCard({
@@ -1065,15 +1180,15 @@ function WorkDetailCard({
   return (
     <Card foil className="overflow-hidden">
       <CardHeader>
-        <CardTitle className="text-base">快速详情</CardTitle>
+        <CardTitle className="text-base">作品详情</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {!detail && !loading && (
           <EmptyState
-            symbol="SELECT"
-            title="选择扫描目标"
-            description="选择一个作品后，这里会显示快速详情、音轨预览和独立档案入口。"
-            className="min-h-[20rem]"
+            symbol="请选择"
+            title="选择一个作品"
+            description="选择左侧作品后，这里会显示详情、音轨预览和详情页入口。"
+            className="min-h-[14rem]"
           />
         )}
         {loading && (
@@ -1192,6 +1307,25 @@ function tagVariant(tag: string) {
     return "live" as const;
   }
   return "signal" as const;
+}
+
+function workStatusBadgeVariant(state: WorkStatus["state"]) {
+  switch (state) {
+    case "in_library":
+    case "downloaded":
+      return "signal" as const;
+    case "downloading":
+      return "live" as const;
+    case "queued":
+      return "warn" as const;
+    case "failed":
+    case "terminated":
+      return "halt" as const;
+    case "canceled":
+      return "mute" as const;
+    default:
+      return "mute" as const;
+  }
 }
 
 function buildLegacyQuery(filters: DiscoverFilters) {
@@ -1359,4 +1493,8 @@ function toRouteSearch(
     sort: filters.sort,
     page,
   };
+}
+
+function formatErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }

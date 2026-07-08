@@ -30,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader, fadeUpItem, staggerContainer } from "@/components/ui/sweet";
 import type { DiscoverRouteSearch } from "@/routes/discoverSearch";
-import { apiClient, type TrackNode } from "@/lib/api";
+import { apiClient, type TrackNode, type WorkStatus } from "@/lib/api";
 import {
   findSubtitleForAudio,
   flattenPlayableTracks,
@@ -54,7 +54,14 @@ export function DiscoverDetail() {
     queryKey: ["discover", "detail-page", sourceId],
     queryFn: () => apiClient.getDiscoverWork(sourceId),
   });
+  const workStatusQuery = useQuery({
+    queryKey: ["work-status", sourceId],
+    queryFn: () => apiClient.getWorkStatuses([sourceId]),
+    enabled: sourceId.length > 0,
+    staleTime: 5000,
+  });
   const detail = detailQuery.data;
+  const workStatus = workStatusQuery.data?.items[0];
   const remoteAudioFiles = useMemo(
     () => flattenPlayableTracks(detail?.tracks ?? []),
     [detail?.tracks],
@@ -115,6 +122,7 @@ export function DiscoverDetail() {
     onSuccess: (res) => {
       toast.success(`已加入下载队列，任务 #${res.task_id}`);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["work-status"] });
     },
     onError: (error) => {
       toast.error(String(error));
@@ -133,7 +141,7 @@ export function DiscoverDetail() {
 
   return (
     <motion.section
-      className="space-y-6 pb-36"
+      className="space-y-4 pb-28"
       variants={staggerContainer}
       initial="hidden"
       animate="show"
@@ -157,14 +165,26 @@ export function DiscoverDetail() {
 
       <motion.div variants={fadeUpItem}>
         <PageHeader
-          kicker="Discover Detail"
+          kicker="作品详情"
           title={detail.summary.title}
-          description="作品档案页集中显示封面、核心指标、标签、声优、补充信息与音轨树，便于快速判断是否投递下载。"
+          description="查看封面、指标、标签、声优和音轨，确认后加入下载。"
           meta={
-            <div className="deck-screen grid gap-2 p-4">
+            <div className="deck-screen grid gap-2 p-3">
               <Badge variant="warn">{detail.summary.source_id}</Badge>
-              <Badge variant="decal">{detail.summary.circle || "未知社团"}</Badge>
+              {detail.summary.circle ? (
+                <DetailSearchChip
+                  kind="社团"
+                  label={detail.summary.circle}
+                  variant="decal"
+                  search={buildDetailFacetSearch(discoverSearch, {
+                    circle: detail.summary.circle,
+                  })}
+                />
+              ) : (
+                <Badge variant="decal">未知社团</Badge>
+              )}
               {detail.age_category ? <Badge variant="live">{detail.age_category}</Badge> : null}
+              <WorkStatusBadge status={workStatus} />
             </div>
           }
         />
@@ -178,7 +198,7 @@ export function DiscoverDetail() {
           <Card foil className="overflow-hidden">
             <CardContent className="space-y-4 p-4">
               <div className="deck-bezel">
-                <div className="deck-screen min-h-[24rem] p-3 sm:min-h-[30rem]">
+                <div className="deck-screen min-h-[16rem] p-3 sm:min-h-[22rem]">
                   {coverUrl ? (
                     <>
                       <img
@@ -188,7 +208,7 @@ export function DiscoverDetail() {
                         className="deck-screen-fill h-full w-full scale-110 object-cover opacity-20 blur-3xl"
                       />
                       <div className="deck-screen-fill bg-[linear-gradient(180deg,rgba(5,12,9,0.04),rgba(5,12,9,0.62))]" />
-                      <div className="deck-screen-content flex min-h-[22rem] items-center justify-center sm:min-h-[28rem]">
+                      <div className="deck-screen-content flex min-h-[14rem] items-center justify-center sm:min-h-[20rem]">
                         <img
                           src={coverUrl}
                           alt={detail.summary.title}
@@ -197,7 +217,7 @@ export function DiscoverDetail() {
                       </div>
                     </>
                   ) : (
-                    <div className="flex min-h-[22rem] items-center justify-center text-sm text-[color:var(--text-mute)] sm:min-h-[28rem]">
+                    <div className="flex min-h-[14rem] items-center justify-center text-sm text-[color:var(--text-mute)] sm:min-h-[20rem]">
                       暂无封面
                     </div>
                   )}
@@ -206,8 +226,20 @@ export function DiscoverDetail() {
 
               <div className="flex flex-wrap gap-2">
                 <Badge variant="warn">{detail.summary.source_id}</Badge>
-                <Badge variant="decal">{detail.summary.circle || "未知社团"}</Badge>
+                {detail.summary.circle ? (
+                  <DetailSearchChip
+                    kind="社团"
+                    label={detail.summary.circle}
+                    variant="decal"
+                    search={buildDetailFacetSearch(discoverSearch, {
+                      circle: detail.summary.circle,
+                    })}
+                  />
+                ) : (
+                  <Badge variant="decal">未知社团</Badge>
+                )}
                 {detail.age_category ? <Badge variant="live">{detail.age_category}</Badge> : null}
+                <WorkStatusBadge status={workStatus} />
                 <Badge variant={detail.summary.has_subtitle ? "signal" : "mute"}>
                   {detail.summary.has_subtitle ? "有字幕" : "无字幕"}
                 </Badge>
@@ -294,9 +326,14 @@ export function DiscoverDetail() {
                   <div className="flex flex-wrap gap-2">
                     {detail.summary.tags.length > 0 ? (
                       detail.summary.tags.map((tag) => (
-                        <Badge key={tag} variant="decal">
-                          #{tag}
-                        </Badge>
+                        <DetailSearchChip
+                          key={tag}
+                          kind="标签"
+                          label={tag}
+                          prefix="#"
+                          variant="decal"
+                          search={buildDetailFacetSearch(discoverSearch, { tag })}
+                        />
                       ))
                     ) : (
                       <Badge variant="mute">暂无标签</Badge>
@@ -308,9 +345,13 @@ export function DiscoverDetail() {
                   <div className="flex flex-wrap gap-2">
                     {detail.summary.vas.length > 0 ? (
                       detail.summary.vas.map((va) => (
-                        <Badge key={va} variant="live">
-                          {va}
-                        </Badge>
+                        <DetailSearchChip
+                          key={va}
+                          kind="声优"
+                          label={va}
+                          variant="live"
+                          search={buildDetailFacetSearch(discoverSearch, { va })}
+                        />
                       ))
                     ) : (
                       <Badge variant="mute">暂无声优信息</Badge>
@@ -381,6 +422,7 @@ export function DiscoverDetail() {
             </CardHeader>
             <CardContent className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
               <SummaryTile label="RJ 编号" value={detail.summary.source_id} />
+              <SummaryTile label="下载状态" value={workStatus?.label || "未下载"} />
               <SummaryTile label="社团名" value={detail.summary.circle || "-"} />
               <SummaryTile label="标签数量" value={String(detail.summary.tags.length)} />
               <SummaryTile label="声优数量" value={String(detail.summary.vas.length)} />
@@ -413,6 +455,85 @@ export function DiscoverDetail() {
       ) : null}
     </motion.section>
   );
+}
+
+function buildDetailFacetSearch(
+  base: DiscoverRouteSearch,
+  patch: Partial<Pick<DiscoverRouteSearch, "tag" | "circle" | "va">>,
+): DiscoverRouteSearch {
+  return {
+    ...base,
+    q: "",
+    tag: "",
+    circle: "",
+    va: "",
+    ...patch,
+    page: 1,
+  };
+}
+
+function DetailSearchChip({
+  kind,
+  label,
+  prefix = "",
+  variant,
+  search,
+}: {
+  kind: "标签" | "声优" | "社团";
+  label: string;
+  prefix?: string;
+  variant: "decal" | "live" | "signal";
+  search: DiscoverRouteSearch;
+}) {
+  return (
+    <Link
+      to="/discover"
+      search={search}
+      title={`搜索${kind}: ${label}`}
+      className="max-w-full min-w-0 transition hover:brightness-110"
+    >
+      <Badge variant={variant} active className="max-w-full min-w-0 gap-1">
+        <span className="min-w-0 max-w-[min(18rem,72vw)] truncate">
+          {prefix}
+          {label}
+        </span>
+      </Badge>
+    </Link>
+  );
+}
+
+function WorkStatusBadge({ status }: { status?: WorkStatus }) {
+  if (!status || status.state === "none") {
+    return null;
+  }
+
+  return (
+    <Badge
+      variant={workStatusBadgeVariant(status.state)}
+      title={status.message || status.label}
+      className="shrink-0"
+    >
+      {status.label}
+    </Badge>
+  );
+}
+
+function workStatusBadgeVariant(state: WorkStatus["state"]) {
+  switch (state) {
+    case "in_library":
+    case "downloaded":
+      return "signal" as const;
+    case "downloading":
+      return "live" as const;
+    case "queued":
+      return "warn" as const;
+    case "failed":
+    case "terminated":
+      return "halt" as const;
+    case "canceled":
+    default:
+      return "mute" as const;
+  }
 }
 
 function InfoStat({

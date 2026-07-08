@@ -50,6 +50,11 @@ export type TaskListQuery = {
   status?: string;
 };
 
+export type AuthStatus = {
+  state: string;
+  message: string;
+};
+
 export type SyncReport = {
   totals: {
     metadata: number;
@@ -99,10 +104,7 @@ export type ConfigResponse = {
     download_jitter_min?: number;
     download_jitter_max?: number;
   };
-  auth?: {
-    state: string;
-    message: string;
-  };
+  auth?: AuthStatus;
 };
 
 export type DiscoverFacet = {
@@ -217,6 +219,33 @@ export type LibraryListResponse = {
   page_size: number;
 };
 
+export type WorkStatus = {
+  source_id: string;
+  state:
+    | "none"
+    | "queued"
+    | "downloading"
+    | "downloaded"
+    | "in_library"
+    | "failed"
+    | "canceled"
+    | "terminated";
+  label: string;
+  message?: string;
+  task_id?: number;
+  library_id?: string;
+};
+
+export type WorkStatusResponse = {
+  items: WorkStatus[];
+};
+
+export type HealthResponse = {
+  status: string;
+  version: string;
+  time: string;
+};
+
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
 const SERVER_BASE = API_BASE.replace(/\/api$/, "");
@@ -232,7 +261,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers,
   });
   if (!res.ok) {
-    throw new Error(await res.text());
+    throw new Error(await readErrorMessage(res));
   }
   return res.json() as Promise<T>;
 }
@@ -251,7 +280,7 @@ async function requestBlob(
     headers,
   });
   if (!res.ok) {
-    throw new Error(await res.text());
+    throw new Error(await readErrorMessage(res));
   }
 
   const disposition = res.headers.get("Content-Disposition") || "";
@@ -260,6 +289,25 @@ async function requestBlob(
     blob: await res.blob(),
     filename: match?.[1],
   };
+}
+
+async function readErrorMessage(res: Response): Promise<string> {
+  const text = await res.text();
+  if (!text) {
+    return `${res.status} ${res.statusText}`.trim();
+  }
+  try {
+    const payload = JSON.parse(text) as { message?: unknown; code?: unknown };
+    if (typeof payload.message === "string" && payload.message.trim() !== "") {
+      return payload.message;
+    }
+    if (typeof payload.code === "string" && payload.code.trim() !== "") {
+      return payload.code;
+    }
+  } catch {
+    return text;
+  }
+  return text;
 }
 
 async function requestData<T>(path: string, options?: RequestInit): Promise<T> {
@@ -376,6 +424,10 @@ function buildQueryString(
 }
 
 export const apiClient = {
+  getHealth(): Promise<HealthResponse> {
+    return requestData<HealthResponse>("/healthz");
+  },
+
   async getTasks(params?: TaskListQuery): Promise<TaskListResponse> {
     return requestData<TaskListResponse>(
       `/tasks${buildQueryString({
@@ -391,6 +443,36 @@ export const apiClient = {
 
   async getTask(id: number): Promise<Task> {
     return requestData<Task>(`/tasks/${id}`);
+  },
+
+  getAuthStatus(): Promise<AuthStatus> {
+    return requestData<AuthStatus>("/auth/status");
+  },
+
+  checkAuth(): Promise<AuthStatus> {
+    return requestData<AuthStatus>("/auth/check", {
+      method: "POST",
+    });
+  },
+
+  loginAuth(): Promise<AuthStatus> {
+    return requestData<AuthStatus>("/auth/login", {
+      method: "POST",
+    });
+  },
+
+  async getWorkStatuses(sourceIds: string[]): Promise<WorkStatusResponse> {
+    const ids = Array.from(
+      new Set(sourceIds.map((id) => id.trim()).filter(Boolean)),
+    );
+    if (ids.length === 0) {
+      return { items: [] };
+    }
+    return requestData<WorkStatusResponse>(
+      `/works/status${buildQueryString({
+        source_ids: ids.join(","),
+      })}`,
+    );
   },
 
   retryTask(id: number) {

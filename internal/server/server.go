@@ -38,6 +38,7 @@ type Server struct {
 	syncSvc       *services.SyncService
 	discoverSvc   *services.DiscoverService
 	librarySvc    *services.LibraryService
+	workStatusSvc *services.WorkStatusService
 	systemHandler *handlers.SystemHandler
 	enManager     *engine.EngineManager
 	eventHub      *events.Hub
@@ -87,6 +88,7 @@ func New() (*Server, error) {
 	syncSvc := services.NewSyncService(db, taskStore, engManager, hub, cfgProvider)
 	discoverSvc := services.NewDiscoverService(db, engManager)
 	librarySvc := services.NewLibraryService(cfgProvider)
+	workStatusSvc := services.NewWorkStatusService(db, taskStore, librarySvc)
 
 	srv := &Server{
 		engine:        router,
@@ -100,6 +102,7 @@ func New() (*Server, error) {
 		syncSvc:       syncSvc,
 		discoverSvc:   discoverSvc,
 		librarySvc:    librarySvc,
+		workStatusSvc: workStatusSvc,
 		systemHandler: handlers.NewSystemHandler(cfg),
 		enManager:     engManager,
 		eventHub:      hub,
@@ -149,6 +152,7 @@ func (s *Server) registerRoutes() {
 	s.registerDownloadRoutes(api)
 	s.registerSyncRoutes(api)
 	s.registerTaskRoutes(api)
+	s.registerWorkStatusRoutes(api)
 	s.registerEventRoutes(api)
 }
 

@@ -30,6 +30,9 @@ func (s *Server) registerSystemRoutes(group *gin.RouterGroup) {
 	if s.systemHandler != nil {
 		group.GET("/config", s.systemHandler.Config)
 		group.PUT("/config", s.handleConfigUpdate)
+		group.GET("/auth/status", s.handleAuthStatus)
+		group.POST("/auth/check", s.handleAuthCheck)
+		group.POST("/auth/login", s.handleAuthLogin)
 	}
 }
 
@@ -132,6 +135,30 @@ func (s *Server) handleConfigUpdate(ctx *gin.Context) {
 		Config: safeCfg,
 		Auth:   currentAuthStatus(s.enManager),
 	})
+}
+
+func (s *Server) handleAuthStatus(ctx *gin.Context) {
+	respondOK(ctx, currentAuthStatus(s.enManager))
+}
+
+func (s *Server) handleAuthCheck(ctx *gin.Context) {
+	if s.enManager == nil {
+		respondError(ctx, http.StatusInternalServerError, "AUTH_NOT_READY", errors.New("auth manager not ready"))
+		return
+	}
+	_ = s.enManager.CheckAuthStatus(ctx.Request.Context())
+	s.updateAuthStatus(s.enManager)
+	respondOK(ctx, currentAuthStatus(s.enManager))
+}
+
+func (s *Server) handleAuthLogin(ctx *gin.Context) {
+	if s.enManager == nil {
+		respondError(ctx, http.StatusInternalServerError, "AUTH_NOT_READY", errors.New("auth manager not ready"))
+		return
+	}
+	_ = s.enManager.AuthLogin()
+	s.updateAuthStatus(s.enManager)
+	respondOK(ctx, currentAuthStatus(s.enManager))
 }
 
 func validateConfig(cfg model.Config) error {

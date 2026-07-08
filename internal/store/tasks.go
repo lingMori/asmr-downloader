@@ -251,3 +251,35 @@ func (s *TaskStore) List(ctx context.Context, filter TaskFilter) ([]model.Task, 
 
 	return tasks, total, nil
 }
+
+// ListDownloadTasksBySourceIDs returns download tasks whose payload references any source ID.
+func (s *TaskStore) ListDownloadTasksBySourceIDs(ctx context.Context, sourceIDs []string) ([]model.Task, error) {
+	normalized := make([]string, 0, len(sourceIDs))
+	for _, id := range sourceIDs {
+		id = strings.ToUpper(strings.TrimSpace(id))
+		if id != "" {
+			normalized = append(normalized, id)
+		}
+	}
+	if len(normalized) == 0 {
+		return nil, nil
+	}
+
+	query := s.db.WithContext(ctx).
+		Model(&model.Task{}).
+		Where("type = ?", model.TaskTypeDownload)
+
+	conditions := make([]string, 0, len(normalized))
+	args := make([]interface{}, 0, len(normalized))
+	for _, id := range normalized {
+		conditions = append(conditions, "upper(payload) LIKE ?")
+		args = append(args, "%"+id+"%")
+	}
+	query = query.Where(strings.Join(conditions, " OR "), args...)
+
+	var tasks []model.Task
+	if err := query.Order("created_at DESC").Find(&tasks).Error; err != nil {
+		return nil, err
+	}
+	return tasks, nil
+}

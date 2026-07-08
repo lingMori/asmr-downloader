@@ -298,6 +298,46 @@ func (m *EngineManager) AuthLogin() error {
 	return nil
 }
 
+// CheckAuthStatus performs a lightweight authenticated request with the current token.
+func (m *EngineManager) CheckAuthStatus(ctx context.Context) error {
+	if strings.TrimSpace(m.JWTToken) == "" {
+		m.AuthState = "error"
+		m.AuthMessage = "登录状态未确认，请重新登录"
+		return errors.New(m.AuthMessage)
+	}
+
+	headers := m.cloneHeaders()
+	response, err := m.Client.R().
+		SetContext(ctx).
+		SetHeader("Authorization", m.JWTToken).
+		SetHeaders(headers).
+		Get(m.ApiUrl + consts.AsmrApiPath.SyncMetaPath)
+	if err != nil {
+		m.AuthState = "error"
+		m.AuthMessage = "登录状态检查失败: " + err.Error()
+		return errors.New(m.AuthMessage)
+	}
+	if response == nil {
+		m.AuthState = "error"
+		m.AuthMessage = "登录状态检查失败: empty response"
+		return errors.New(m.AuthMessage)
+	}
+	if response.StatusCode() == http.StatusUnauthorized || response.StatusCode() == http.StatusForbidden {
+		m.AuthState = "error"
+		m.AuthMessage = "登录状态已失效，请重新登录"
+		return errors.New(m.AuthMessage)
+	}
+	if !response.IsSuccess() {
+		m.AuthState = "error"
+		m.AuthMessage = "登录状态检查失败: " + response.Status()
+		return errors.New(m.AuthMessage)
+	}
+
+	m.AuthState = "success"
+	m.AuthMessage = "登录状态有效"
+	return nil
+}
+
 // SimpleDownload 简单下载 可传入RJId 或者RJID列表
 func (m *EngineManager) SimpleDownload(ids []string, storeBaseDir string) error {
 	return m.SimpleDownloadWithContext(context.Background(), ids, storeBaseDir, nil)

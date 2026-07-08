@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import {
   EmptyState,
   PageHeader,
+  RouteFeedback,
   fadeUpItem,
   staggerContainer,
 } from "@/components/ui/sweet";
@@ -61,18 +62,33 @@ export function Library() {
     detailQuery.data?.summary.thumbnail_url || imageFiles[0]?.url || undefined;
   const totalPages = Math.max(1, Math.ceil((libraryQuery.data?.total ?? 0) / 24));
 
+  if (libraryQuery.isError) {
+    return (
+      <RouteFeedback
+        tone="halt"
+        title="本地媒体库加载失败"
+        description={`没有拿到本地作品列表。请确认后端服务正在运行，或检查媒体库目录。${libraryQuery.error ? `错误信息：${formatErrorMessage(libraryQuery.error)}` : ""}`}
+        action={
+          <Button variant="secondary" onClick={() => void libraryQuery.refetch()}>
+            重新加载媒体库
+          </Button>
+        }
+      />
+    );
+  }
+
   return (
     <motion.section
-      className="space-y-6"
+      className="space-y-4"
       variants={staggerContainer}
       initial="hidden"
       animate="show"
     >
       <motion.div variants={fadeUpItem}>
         <PageHeader
-          kicker="Library"
-          title="媒体档案库与监听台"
-          description="雷达墙负责浏览和筛选，右侧监听台负责播放、字幕匹配和文件访问。播放器已经接管原生控件，变成一块真正的录音控制面板。"
+          kicker="媒体库"
+          title="本地媒体库"
+          description="浏览已下载作品，播放音频，查看字幕和文件。"
           meta={
             <div className="deck-screen min-w-[12rem] p-4">
               <Badge variant="signal">本地作品 {libraryQuery.data?.total ?? 0}</Badge>
@@ -170,9 +186,9 @@ export function Library() {
               <Card className="md:col-span-2 xl:col-span-3">
                 <CardContent>
                   <EmptyState
-                    symbol="NO DATA"
-                    title="这里还没有收藏落地"
-                    description="当前搜索条件下没有匹配的本地作品。去发现页把喜欢的作品拉进来，这里就会慢慢变满。"
+                    symbol="无数据"
+                    title="没有匹配作品"
+                    description="当前搜索条件下没有匹配的本地作品。去搜索作品页把喜欢的作品下载进来，这里就会慢慢变满。"
                   />
                 </CardContent>
               </Card>
@@ -211,10 +227,10 @@ export function Library() {
           <CardContent className="space-y-5">
             {!selectedId && (
               <EmptyState
-                symbol="MONITOR"
-                title="选择媒体档案"
+                symbol="请选择"
+                title="选择本地作品"
                 description="选中左侧任意作品后，这里会显示封面、播放列表、字幕轨和全部文件。"
-                className="min-h-[28rem]"
+                className="min-h-[16rem]"
               />
             )}
 
@@ -304,6 +320,10 @@ export function Library() {
       </motion.div>
     </motion.section>
   );
+}
+
+function formatErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function MiniStat({
