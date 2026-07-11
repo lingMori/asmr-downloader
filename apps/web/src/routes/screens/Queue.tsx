@@ -2,11 +2,12 @@ import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowClockwise, Clock, DownloadSimple, Pulse, Trash, XCircle } from "@phosphor-icons/react";
+import { ArrowClockwise, Clock, DownloadSimple, Fire, Plus, Pulse, Trash, XCircle } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ActionReviewDialog, DeckDialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
@@ -30,6 +31,14 @@ const retryableTaskTypes = new Set([
 
 export function Queue() {
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+  const [downloadComposerOpen, setDownloadComposerOpen] = useState(false);
+  const [createReview, setCreateReview] = useState<"batch" | "hot100" | null>(null);
+  const [deleteIntent, setDeleteIntent] = useState<"record" | "files" | null>(null);
+  const [downloadDraft, setDownloadDraft] = useState({
+    ids: "",
+    hotCount: "10",
+    outputDir: "",
+  });
   const [filters, setFilters] = useState({
     search: "",
     status: "",
@@ -43,6 +52,15 @@ export function Queue() {
     queryKey: ["tasks", filters],
     queryFn: () => apiClient.getTasks(filters),
     refetchInterval: 15000,
+  });
+  const taskSummaryQuery = useQuery({
+    queryKey: ["task-summary", "queue", filters.search, filters.type, filters.status],
+    queryFn: () =>
+      apiClient.getTaskSummary({
+        search: filters.search,
+        type: filters.type || undefined,
+        status: filters.status || undefined,
+      }),
   });
   const taskDetailQuery = useQuery({
     queryKey: ["task", selectedTaskId],
@@ -65,10 +83,12 @@ export function Queue() {
     mutationFn: (id: number) => apiClient.deleteTask(id),
     onSuccess: () => {
       toast.success("任务已删除");
+      setDeleteIntent(null);
       if (selectedTaskId !== null) {
         setSelectedTaskId(null);
       }
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["task-summary"] });
     },
     onError: (error) => {
       toast.error(String(error));
@@ -84,10 +104,14 @@ export function Queue() {
           ? `已清理 ${removed} 个下载目录并移除记录`
           : "已移除记录，未找到可清理的下载目录",
       );
+      setDeleteIntent(null);
       if (selectedTaskId !== null) {
         setSelectedTaskId(null);
       }
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["task-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["library"] });
+      queryClient.invalidateQueries({ queryKey: ["work-status"] });
     },
     onError: (error) => {
       toast.error(String(error));
@@ -108,14 +132,38 @@ export function Queue() {
     },
   });
 
-  const summary = useMemo(() => {
-    const items = tasksQuery.data?.items ?? [];
-    return {
-      running: items.filter((item) => item.status === "RUNNING").length,
-      failed: items.filter((item) => item.status === "FAILED").length,
-      total: tasksQuery.data?.total ?? 0,
-    };
-  }, [tasksQuery.data]);
+  const createDownloadMutation = useMutation({
+    mutationFn: (mode: "batch" | "hot100") =>
+      mode === "hot100"
+        ? apiClient.createDownload({
+            mode: "hot100",
+            count: Math.min(100, Math.max(1, Number(downloadDraft.hotCount) || 10)),
+            output_dir: downloadDraft.outputDir.trim() || undefined,
+            name: `Hot100 x${Math.min(100, Math.max(1, Number(downloadDraft.hotCount) || 10))}`,
+          })
+        : apiClient.createDownload({
+            mode: "batch",
+            ids: parseDirectIDs(downloadDraft.ids),
+            output_dir: downloadDraft.outputDir.trim() || undefined,
+            name: "RJ 批量下载",
+          }),
+    onSuccess: (res, mode) => {
+      toast.success(`已创建${mode === "hot100" ? " Hot100" : " RJ 批量"}任务 #${res.task_id}`);
+      setCreateReview(null);
+      setDownloadComposerOpen(false);
+      setDownloadDraft((current) => ({ ...current, ids: "" }));
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["task-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["work-status"] });
+    },
+    onError: (error) => toast.error(String(error)),
+  });
+
+  const summary = taskSummaryQuery.data ?? {
+    running: 0,
+    failed: 0,
+    total: tasksQuery.data?.total ?? 0,
+  };
 
   const selectedTask = taskDetailQuery.data;
   const selectedTaskInsight = useMemo(
@@ -184,10 +232,16 @@ export function Queue() {
           description="查看下载和同步任务进度，处理取消、重试、删除和文件清理。"
           meta={
             <div className="deck-screen space-y-3 p-4">
-              <Badge variant="signal">自动刷新</Badge>
-              <div className="text-sm leading-6 text-[color:var(--text-body)]">
-                当前命中 {tasksQuery.data?.total ?? 0} 条任务
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Badge variant="signal">自动刷新</Badge>
+                <span className="text-sm text-[color:var(--text-body)]">
+                  {tasksQuery.data?.total ?? 0} 条任务
+                </span>
               </div>
+              <Button size="sm" className="w-full" onClick={() => setDownloadComposerOpen(true)}>
+                <Plus className="h-4 w-4" weight="bold" />
+                新建下载任务
+              </Button>
             </div>
           }
         />
@@ -413,6 +467,7 @@ export function Queue() {
                     {selectedTaskInsight.canOpenLibrary ? (
                       <Link
                         to="/library"
+                        search={{ q: "", id: "", page: 1 }}
                         className="deck-button-secondary inline-flex h-[38px] items-center justify-center border px-4 py-2 text-center text-xs font-bold transition hover:brightness-110"
                       >
                         去本地媒体库查看
@@ -443,7 +498,7 @@ export function Queue() {
                   <Button
                     variant="danger"
                     busy={deleteMutation.isPending}
-                    onClick={() => deleteMutation.mutate(selectedTask.id)}
+                    onClick={() => setDeleteIntent("record")}
                     disabled={!canDelete || deleteMutation.isPending}
                   >
                     <Trash className="h-4 w-4" weight="duotone" />
@@ -452,7 +507,7 @@ export function Queue() {
                   <Button
                     variant="danger"
                     busy={deleteWithFilesMutation.isPending}
-                    onClick={() => deleteWithFilesMutation.mutate(selectedTask.id)}
+                    onClick={() => setDeleteIntent("files")}
                     disabled={!canDeleteWithFiles || deleteWithFilesMutation.isPending}
                   >
                     <Trash className="h-4 w-4" weight="duotone" />
@@ -544,7 +599,122 @@ export function Queue() {
           </CardContent>
         </Card>
       </motion.div>
+
+      <DeckDialog
+        open={downloadComposerOpen}
+        onOpenChange={setDownloadComposerOpen}
+        kicker="New Download"
+        title="新建下载任务"
+        description="直接输入作品编号，或从 Hot100 创建下载任务。搜索结果下载仍在搜索页完成。"
+        tone="signal"
+        footer={
+          <Button variant="secondary" onClick={() => setDownloadComposerOpen(false)}>
+            关闭
+          </Button>
+        }
+      >
+        <div className="space-y-5">
+          <div className="space-y-3">
+            <div>
+              <div className="font-semibold text-[color:var(--text-display)]">RJ 编号批量下载</div>
+              <p className="mt-1 text-sm text-[color:var(--text-body)]">支持逗号、空格或换行分隔，并会自动去重。</p>
+            </div>
+            <Input
+              value={downloadDraft.ids}
+              onChange={(event) => setDownloadDraft((current) => ({ ...current, ids: event.target.value }))}
+              placeholder="例如 RJ123456, RJ234567"
+            />
+            <Button
+              className="w-full"
+              disabled={parseDirectIDs(downloadDraft.ids).length === 0}
+              onClick={() => setCreateReview("batch")}
+            >
+              <DownloadSimple className="h-4 w-4" weight="duotone" />
+              复核 RJ 批量任务
+            </Button>
+          </div>
+
+          <div className="border-t border-[color:var(--chassis-edge)] pt-5">
+            <div className="font-semibold text-[color:var(--text-display)]">Hot100 下载</div>
+            <p className="mt-1 text-sm text-[color:var(--text-body)]">按远端热门榜单顺序下载，最多 100 部作品。</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-[9rem_1fr]">
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                value={downloadDraft.hotCount}
+                onChange={(event) => setDownloadDraft((current) => ({ ...current, hotCount: event.target.value }))}
+              />
+              <Button variant="secondary" onClick={() => setCreateReview("hot100")}>
+                <Fire className="h-4 w-4" weight="duotone" />
+                复核 Hot100 任务
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2 border-t border-[color:var(--chassis-edge)] pt-5">
+            <div className="text-sm font-semibold text-[color:var(--text-display)]">输出目录（可选）</div>
+            <Input
+              value={downloadDraft.outputDir}
+              onChange={(event) => setDownloadDraft((current) => ({ ...current, outputDir: event.target.value }))}
+              placeholder="留空则使用设置中的同步目录"
+            />
+          </div>
+        </div>
+      </DeckDialog>
+
+      <ActionReviewDialog
+        open={createReview !== null}
+        onOpenChange={(open) => !open && !createDownloadMutation.isPending && setCreateReview(null)}
+        title={createReview === "hot100" ? "确认创建 Hot100 下载" : "确认创建 RJ 批量下载"}
+        description="任务创建后会立即进入后台执行，可在任务中心查看进度或取消。"
+        rows={[
+          {
+            label: "下载范围",
+            value:
+              createReview === "hot100"
+                ? `Hot100 前 ${Math.min(100, Math.max(1, Number(downloadDraft.hotCount) || 10))} 部`
+                : `${parseDirectIDs(downloadDraft.ids).length} 个作品编号`,
+          },
+          { label: "输出目录", value: downloadDraft.outputDir.trim() || "设置中的同步目录" },
+        ]}
+        warning={createReview === "hot100" ? "Hot100 可能产生较大的网络流量和磁盘占用，请确认数量与目录。" : undefined}
+        confirmLabel="创建下载任务"
+        busy={createDownloadMutation.isPending}
+        onConfirm={() => createReview && createDownloadMutation.mutate(createReview)}
+      />
+
+      <ActionReviewDialog
+        open={deleteIntent !== null && Boolean(selectedTask)}
+        onOpenChange={(open) => !open && !deleteMutation.isPending && !deleteWithFilesMutation.isPending && setDeleteIntent(null)}
+        title={deleteIntent === "files" ? "确认清理文件并删除任务" : "确认删除任务记录"}
+        description={deleteIntent === "files" ? "此操作会删除匹配到的本地作品目录和任务记录。" : "此操作只删除任务记录及日志，不删除已下载文件。"}
+        rows={selectedTask ? [
+          { label: "任务", value: `#${selectedTask.id} ${selectedTask.name}` },
+          { label: "状态", value: translateTaskStatus(selectedTask.status) },
+        ] : []}
+        warning={deleteIntent === "files" ? "文件删除后无法通过任务中心恢复。Hot100 和同步任务不支持自动文件清理。" : undefined}
+        confirmLabel={deleteIntent === "files" ? "清理文件并删除" : "删除任务记录"}
+        confirmVariant="danger"
+        busy={deleteMutation.isPending || deleteWithFilesMutation.isPending}
+        onConfirm={() => {
+          if (!selectedTask) return;
+          if (deleteIntent === "files") deleteWithFilesMutation.mutate(selectedTask.id);
+          else deleteMutation.mutate(selectedTask.id);
+        }}
+      />
     </motion.section>
+  );
+}
+
+function parseDirectIDs(raw: string) {
+  return Array.from(
+    new Set(
+      raw
+        .split(/[\s,，;；]+/)
+        .map((value) => value.trim().toUpperCase())
+        .filter((value) => /^(RJ|VJ|BJ|AJ|CJ|DL|NP|AL|KN)\d+$/.test(value)),
+    ),
   );
 }
 

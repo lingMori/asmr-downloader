@@ -74,7 +74,7 @@ func (s *DownloadService) syncDataFolder() string {
 // EnqueueDownload enqueues a download job and returns its task ID.
 func (s *DownloadService) EnqueueDownload(ctx context.Context, req DownloadRequest) (uint, error) {
 	req.IDs = uniqueStrings(req.IDs)
-	if err := validateDownloadRequest(req); err != nil {
+	if err := validateDownloadRequest(&req); err != nil {
 		return 0, err
 	}
 
@@ -123,7 +123,10 @@ func (s *DownloadService) Cancel(taskID uint) error {
 	return nil
 }
 
-func validateDownloadRequest(req DownloadRequest) error {
+func validateDownloadRequest(req *DownloadRequest) error {
+	if req == nil {
+		return fmt.Errorf("%w: request is required", ErrInvalidDownloadRequest)
+	}
 	mode := strings.ToLower(req.Mode)
 	if mode == "" {
 		mode = "batch"
@@ -335,6 +338,7 @@ func uniqueStrings(values []string) []string {
 	result := make([]string, 0, len(values))
 	for _, value := range values {
 		value = strings.TrimSpace(value)
+		value = strings.ToUpper(value)
 		if value == "" {
 			continue
 		}

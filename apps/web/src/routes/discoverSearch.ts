@@ -39,7 +39,7 @@ export function validateDiscoverSearch(
     circle: getString(raw.circle),
     va: getString(raw.va),
     subtitle: getBoolean(raw.subtitle),
-    count: getPositiveInt(raw.count, defaultDiscoverRouteSearch.count, 1, 200),
+    count: getPositiveInt(raw.count, defaultDiscoverRouteSearch.count, 1, 48),
     order: getOrder(raw.order),
     sort: getSort(raw.sort),
     page: getPositiveInt(raw.page, defaultDiscoverRouteSearch.page, 1, 9999),

@@ -66,3 +66,20 @@ func TestLibraryServiceListWorksSkipsUnrelatedFolders(t *testing.T) {
 		t.Fatalf("expected RJ123456, got %q", result.Items[0].MediaID)
 	}
 }
+
+func TestLibraryServiceResolveMediaPathRejectsEscapingSymlink(t *testing.T) {
+	baseDir := t.TempDir()
+	outsideDir := t.TempDir()
+	outsideFile := filepath.Join(outsideDir, "secret.txt")
+	if err := os.WriteFile(outsideFile, []byte("secret"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outsideFile, filepath.Join(baseDir, "escape.txt")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	service := &LibraryService{baseDir: baseDir}
+	if _, err := service.ResolveMediaPath("escape.txt"); err == nil {
+		t.Fatal("expected escaping symlink to be rejected")
+	}
+}

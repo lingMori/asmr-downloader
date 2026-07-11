@@ -34,9 +34,9 @@
 - `apps/web/src/routes/screens/Dashboard.tsx`
   - 总览页
 - `apps/web/src/routes/screens/Discover.tsx`
-  - 搜索、搜索导出、搜索下载、RJ 批量下载、hot100
+  - 搜索、搜索导出、选中或本页下载
 - `apps/web/src/routes/screens/Queue.tsx`
-  - 任务列表与任务详情
+  - 新建 RJ / Hot100 下载、任务列表与任务详情
 - `apps/web/src/routes/screens/Library.tsx`
   - 本地媒体浏览、播放、字幕匹配、文件访问
 - `apps/web/src/routes/screens/Sync.tsx`
@@ -59,7 +59,7 @@
 - `download`
   - 由 `POST /api/downloads` + `Discover` 替代
 - `download hot100`
-  - 由 `Discover` 中的 Hot100 操作替代
+  - 由 `Queue` 中的新建下载操作替代
 - `sync`
   - 由 `Sync` 页 + `/api/sync*` 路由替代
 - `sync export`
@@ -80,7 +80,7 @@
 后端：
 
 ```bash
-go run . --addr :8080
+go run .
 go test ./...
 ```
 

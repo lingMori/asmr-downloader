@@ -73,12 +73,23 @@ func (r *SyncDownloadRunner) Run(ctx context.Context, dir string, progress func(
 	if err != nil {
 		return err
 	}
+	if totalPending == 0 {
+		log.Println("✅ 没有需要同步下载的新作品")
+		return nil
+	}
 	done := 0
 	batchSize := 1
 	batchCount := 1
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
+		}
+		remaining, err := r.pendingSyncCount()
+		if err != nil {
+			return err
+		}
+		if remaining == 0 {
+			break
 		}
 		needSync, hasDownSize, err := r.checkNeedSync(downloadLimitSize)
 		if err != nil {
@@ -371,13 +382,30 @@ func (r *SyncDownloadRunner) retryOne(ctx context.Context, info model.WorkSyncIn
 		err = r.Engine.DownloadOne(info.SourceId, filepath.Dir(info.FilePath))
 	}
 	if err != nil {
+		info.Status = "FAILED"
+		info.FailReason = err.Error()
+		info.RetryCount++
+		info.FailedAt = time.Now()
+		info.UpdatedAt = time.Now()
+		_ = r.DB.Table("work_sync_infos").Where("id = ?", info.ID).Updates(info).Error
 		return err
 	}
 	info.Status = "COMPLETED"
 	info.FailReason = ""
 	info.RetryCount++
-	info.FailedAt = time.Now()
-	return r.DB.Table("work_sync_infos").Where("id = ?", info.ID).Updates(info).Error
+	info.FailedAt = time.Time{}
+	info.UpdatedAt = time.Now()
+	if size, sizeErr := utils.GetDirSize(info.FilePath); sizeErr == nil {
+		info.DirSize = size
+	}
+	return r.DB.Table("work_sync_infos").Where("id = ?", info.ID).Updates(map[string]interface{}{
+		"status":      info.Status,
+		"fail_reason": info.FailReason,
+		"retry_count": info.RetryCount,
+		"failed_at":   info.FailedAt,
+		"updated_at":  info.UpdatedAt,
+		"dir_size":    info.DirSize,
+	}).Error
 }
 
 func (r *SyncDownloadRunner) pendingSyncCount() (int, error) {

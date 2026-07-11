@@ -34,6 +34,12 @@ type TaskFilter struct {
 	PageSize int
 }
 
+// TaskStatusCount contains an aggregate count for one lifecycle state.
+type TaskStatusCount struct {
+	Status model.TaskStatus
+	Count  int64
+}
+
 const defaultTaskPageSize = 20
 
 // TerminateInterrupted marks tasks left active by a previous process as terminated.
@@ -219,21 +225,7 @@ func (s *TaskStore) List(ctx context.Context, filter TaskFilter) ([]model.Task, 
 		filter.PageSize = defaultTaskPageSize
 	}
 
-	query := s.db.WithContext(ctx).Model(&model.Task{})
-
-	if len(filter.Types) > 0 {
-		query = query.Where("type IN ?", filter.Types)
-	}
-	if len(filter.Statuses) > 0 {
-		query = query.Where("status IN ?", filter.Statuses)
-	}
-	if filter.Source != "" {
-		query = query.Where("source = ?", filter.Source)
-	}
-	if filter.Search != "" {
-		like := "%" + strings.ToLower(filter.Search) + "%"
-		query = query.Where("lower(name) LIKE ? OR lower(message) LIKE ?", like, like)
-	}
+	query := applyTaskFilter(s.db.WithContext(ctx).Model(&model.Task{}), filter)
 
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
@@ -250,6 +242,42 @@ func (s *TaskStore) List(ctx context.Context, filter TaskFilter) ([]model.Task, 
 	}
 
 	return tasks, total, nil
+}
+
+// Summary returns total and per-status counts for tasks matching the filter.
+func (s *TaskStore) Summary(ctx context.Context, filter TaskFilter) (int64, []TaskStatusCount, error) {
+	query := applyTaskFilter(s.db.WithContext(ctx).Model(&model.Task{}), filter)
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return 0, nil, err
+	}
+
+	var rows []TaskStatusCount
+	if err := query.
+		Select("status, COUNT(*) AS count").
+		Group("status").
+		Scan(&rows).Error; err != nil {
+		return 0, nil, err
+	}
+	return total, rows, nil
+}
+
+func applyTaskFilter(query *gorm.DB, filter TaskFilter) *gorm.DB {
+	if len(filter.Types) > 0 {
+		query = query.Where("type IN ?", filter.Types)
+	}
+	if len(filter.Statuses) > 0 {
+		query = query.Where("status IN ?", filter.Statuses)
+	}
+	if filter.Source != "" {
+		query = query.Where("source = ?", filter.Source)
+	}
+	if filter.Search != "" {
+		like := "%" + strings.ToLower(filter.Search) + "%"
+		query = query.Where("lower(name) LIKE ? OR lower(message) LIKE ?", like, like)
+	}
+	return query
 }
 
 // ListDownloadTasksBySourceIDs returns download tasks whose payload references any source ID.

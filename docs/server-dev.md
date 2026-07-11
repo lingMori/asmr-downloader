@@ -4,7 +4,7 @@
 
 ```bash
 cd $(git rev-parse --show-toplevel)
-go run . --addr :8080
+go run .
 ```
 
 如果 `.asmroner-data/config.toml` 不存在，服务会自动生成默认配置。
@@ -12,6 +12,7 @@ go run . --addr :8080
 环境变量：
 
 - `ASMRO_HTTP_ADDR`
+- `ASMRO_WEB_DIR`
 - `GIN_MODE`
 
 ## Current routes
@@ -34,5 +35,6 @@ go run . --addr :8080
 - `GET /api/sync/report`
 - `GET /api/sync/export`
 - `GET /api/tasks`
+- `GET /api/tasks/summary`
 - `GET /api/tasks/:id`
 - `GET /api/events`

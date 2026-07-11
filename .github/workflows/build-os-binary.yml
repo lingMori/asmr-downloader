@@ -38,16 +38,28 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.24.0'
+          go-version: '1.25.0'
           cache: true
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
       - name: Download dependencies
-        run: go mod tidy
+        run: go mod download
+
+      - name: Build web console
+        run: |
+          npm ci --prefix apps/web
+          npm run build:web
 
       - name: Build binary
         run: |
@@ -59,6 +71,8 @@ jobs:
         run: |
           mkdir -p release
           cp asmroner-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }} release/
+          cp -R apps/web/dist release/web
+          cp README.md release/
           
           cd release
           if [ "${{ matrix.os }}" = "windows" ]; then

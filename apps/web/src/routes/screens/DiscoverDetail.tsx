@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Link, getRouteApi } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -24,7 +24,7 @@ import {
   FolderOpen,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
-import { AudioDeck, type AudioDeckHandle } from "@/components/AudioDeck";
+import { useGlobalPlayer } from "@/components/GlobalPlayer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,11 +32,9 @@ import { PageHeader, fadeUpItem, staggerContainer } from "@/components/ui/sweet"
 import type { DiscoverRouteSearch } from "@/routes/discoverSearch";
 import { apiClient, type TrackNode, type WorkStatus } from "@/lib/api";
 import {
-  findSubtitleForAudio,
   flattenPlayableTracks,
   flattenSubtitleTracks,
   isTrackFolder,
-  playNextTrack,
 } from "@/lib/playback";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +44,7 @@ const pillActionClass =
   "deck-button-secondary inline-flex h-[38px] items-center justify-center gap-2 border px-4 py-2 text-xs font-bold transition hover:brightness-110";
 
 export function DiscoverDetail() {
+  const player = useGlobalPlayer();
   const { sourceId } = routeApi.useParams();
   const discoverSearch = routeApi.useSearch() as DiscoverRouteSearch;
   const queryClient = useQueryClient();
@@ -71,7 +70,6 @@ export function DiscoverDetail() {
     [detail?.tracks],
   );
   const [selectedTrackPath, setSelectedTrackPath] = useState("");
-  const audioDeckRef = useRef<AudioDeckHandle | null>(null);
 
   useEffect(() => {
     setSelectedTrackPath((current) => {
@@ -95,22 +93,23 @@ export function DiscoverDetail() {
     });
   }, [detail, remoteAudioFiles]);
 
-  const selectedAudioFile = remoteAudioFiles.find((file) => file.path === selectedTrackPath);
-  const selectedSubtitleFile = findSubtitleForAudio(remoteSubtitleFiles, selectedAudioFile);
-
   function selectAndPlayTrack(path: string) {
     console.info(PLAYER_LOG_PREFIX, "detail tree track clicked", {
       path,
-      hasDeck: Boolean(audioDeckRef.current),
       audioFilesCount: remoteAudioFiles.length,
       track: remoteAudioFiles.find((file) => file.path === path),
       sourceId: detail?.summary.source_id,
     });
-    if (audioDeckRef.current) {
-      void audioDeckRef.current.playTrack(path);
-      return;
-    }
     setSelectedTrackPath(path);
+    if (detail) {
+      player.play({
+        tracks: remoteAudioFiles,
+        subtitles: remoteSubtitleFiles,
+        title: detail.summary.title,
+        mediaId: detail.summary.source_id,
+        coverUrl: detail.summary.main_cover_url || detail.summary.thumbnail_url,
+      }, path);
+    }
   }
 
   const downloadMutation = useMutation({
@@ -436,23 +435,6 @@ export function DiscoverDetail() {
         </div>
       </motion.div>
 
-      {remoteAudioFiles.length > 0 ? (
-        <AudioDeck
-          ref={audioDeckRef}
-          variant="dock"
-          tracks={remoteAudioFiles}
-          selectedPath={selectedTrackPath}
-          onSelect={setSelectedTrackPath}
-          subtitle={selectedSubtitleFile}
-          subtitles={remoteSubtitleFiles}
-          title={detail.summary.title}
-          mediaId={detail.summary.source_id}
-          coverUrl={coverUrl}
-          onEnded={() =>
-            playNextTrack(remoteAudioFiles, selectedTrackPath, selectAndPlayTrack)
-          }
-        />
-      ) : null}
     </motion.section>
   );
 }

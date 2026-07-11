@@ -19,6 +19,7 @@ func (s *Server) registerTaskRoutes(group *gin.RouterGroup) {
 	}
 
 	group.GET("/tasks", s.handleTaskList)
+	group.GET("/tasks/summary", s.handleTaskSummary)
 	group.GET("/tasks/:id", s.handleTaskGet)
 	group.POST("/tasks/:id/cancel", s.handleTaskCancel)
 	group.POST("/tasks/:id/retry", s.handleTaskRetry)
@@ -26,10 +27,7 @@ func (s *Server) registerTaskRoutes(group *gin.RouterGroup) {
 }
 
 func (s *Server) handleTaskList(ctx *gin.Context) {
-	filter := store.TaskFilter{
-		Source: ctx.Query("source"),
-		Search: ctx.Query("search"),
-	}
+	filter := taskFilterFromContext(ctx)
 
 	if page, err := strconv.Atoi(ctx.DefaultQuery("page", "1")); err == nil {
 		filter.Page = page
@@ -38,23 +36,35 @@ func (s *Server) handleTaskList(ctx *gin.Context) {
 		filter.PageSize = size
 	}
 
-	if types := ctx.QueryArray("type"); len(types) > 0 {
-		for _, t := range types {
-			filter.Types = append(filter.Types, model.TaskType(t))
-		}
-	}
-	if statuses := ctx.QueryArray("status"); len(statuses) > 0 {
-		for _, st := range statuses {
-			filter.Statuses = append(filter.Statuses, model.TaskStatus(st))
-		}
-	}
-
 	result, err := s.taskSvc.List(ctx.Request.Context(), filter)
 	if err != nil {
 		respondError(ctx, http.StatusInternalServerError, "TASK_LIST_FAILED", err)
 		return
 	}
 	respondOK(ctx, result)
+}
+
+func (s *Server) handleTaskSummary(ctx *gin.Context) {
+	result, err := s.taskSvc.Summary(ctx.Request.Context(), taskFilterFromContext(ctx))
+	if err != nil {
+		respondError(ctx, http.StatusInternalServerError, "TASK_SUMMARY_FAILED", err)
+		return
+	}
+	respondOK(ctx, result)
+}
+
+func taskFilterFromContext(ctx *gin.Context) store.TaskFilter {
+	filter := store.TaskFilter{
+		Source: ctx.Query("source"),
+		Search: ctx.Query("search"),
+	}
+	for _, value := range ctx.QueryArray("type") {
+		filter.Types = append(filter.Types, model.TaskType(value))
+	}
+	for _, value := range ctx.QueryArray("status") {
+		filter.Statuses = append(filter.Statuses, model.TaskStatus(value))
+	}
+	return filter
 }
 
 func (s *Server) handleTaskGet(ctx *gin.Context) {

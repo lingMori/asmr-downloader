@@ -58,7 +58,7 @@ authorization: null
 cache-control: no-cache
 content-type: application/json
 origin: https://asmr.one
-authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2FzbXIub25lIiwic3ViIjoiZ3Vlc3QiLCJhdWQiOiJodHRwczovL2FzbXIub25lL2FwaSIsIm5hbWUiOiJndWVzdCIsImdyb3VwIjoidXNlciIsImlhdCI6MTc2NTAxOTM4OSwiZXhwIjoxNzk2NTU1Mzg5fQ.5pDuOcc1LG24QOXnHxiqRw__DCmVTx3nqOptNFQs28A
+authorization: Bearer {{ASMR_ONE_TOKEN}}
 pragma: no-cache
 priority: u=1, i
 referer: https://asmr.one/
@@ -84,7 +84,7 @@ authorization: null
 cache-control: no-cache
 content-type: application/json
 origin: https://asmr.one
-authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2FzbXIub25lIiwic3ViIjoiZ3Vlc3QiLCJhdWQiOiJodHRwczovL2FzbXIub25lL2FwaSIsIm5hbWUiOiJndWVzdCIsImdyb3VwIjoidXNlciIsImlhdCI6MTc2NTA5NDI4NSwiZXhwIjoxNzk2NjMwMjg1fQ.r9fyam2U2AOess4fVLgu38h4mWx9WQcNAnHt2n-KHl0
+authorization: Bearer {{ASMR_ONE_TOKEN}}
 pragma: no-cache
 priority: u=1, i
 referer: https://asmr.one/
@@ -109,7 +109,7 @@ authorization: null
 cache-control: no-cache
 content-type: application/json
 origin: https://asmr.one
-authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2FzbXIub25lIiwic3ViIjoiZ3Vlc3QiLCJhdWQiOiJodHRwczovL2FzbXIub25lL2FwaSIsIm5hbWUiOiJndWVzdCIsImdyb3VwIjoidXNlciIsImlhdCI6MTc2NTA5NDI4NSwiZXhwIjoxNzk2NjMwMjg1fQ.r9fyam2U2AOess4fVLgu38h4mWx9WQcNAnHt2n-KHl0
+authorization: Bearer {{ASMR_ONE_TOKEN}}
 pragma: no-cache
 priority: u=1, i
 referer: https://asmr.one/
@@ -133,7 +133,7 @@ authorization: null
 cache-control: no-cache
 content-type: application/json
 origin: https://asmr.one
-authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2FzbXIub25lIiwic3ViIjoiZ3Vlc3QiLCJhdWQiOiJodHRwczovL2FzbXIub25lL2FwaSIsIm5hbWUiOiJndWVzdCIsImdyb3VwIjoidXNlciIsImlhdCI6MTc2NTA5NDI4NSwiZXhwIjoxNzk2NjMwMjg1fQ.r9fyam2U2AOess4fVLgu38h4mWx9WQcNAnHt2n-KHl0
+authorization: Bearer {{ASMR_ONE_TOKEN}}
 pragma: no-cache
 priority: u=1, i
 referer: https://asmr.one/

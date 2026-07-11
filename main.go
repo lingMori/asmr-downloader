@@ -28,5 +28,5 @@ func defaultAddr() string {
 	if v := os.Getenv("ASMRO_HTTP_ADDR"); v != "" {
 		return v
 	}
-	return ":8080"
+	return "127.0.0.1:8080"
 }

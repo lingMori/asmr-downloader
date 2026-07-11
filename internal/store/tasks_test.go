@@ -148,3 +148,43 @@ func TestTaskStoreListDownloadTasksBySourceIDs(t *testing.T) {
 		t.Fatalf("expected task %d, got %d", tasks[0].ID, got[0].ID)
 	}
 }
+
+func TestTaskStoreSummaryUsesListFilters(t *testing.T) {
+	db, err := database.NewInMemoryDb()
+	if err != nil {
+		t.Fatalf("NewInMemoryDb() error = %v", err)
+	}
+	if err := db.AutoMigrate(&model.Task{}, &model.TaskLog{}); err != nil {
+		t.Fatalf("AutoMigrate() error = %v", err)
+	}
+
+	taskStore := NewTaskStore(db)
+	for _, task := range []*model.Task{
+		{Type: model.TaskTypeDownload, Status: model.TaskStatusRunning, Name: "download alpha"},
+		{Type: model.TaskTypeDownload, Status: model.TaskStatusFailed, Name: "download beta"},
+		{Type: model.TaskTypeSync, Status: model.TaskStatusRunning, Name: "sync alpha"},
+	} {
+		if err := taskStore.Create(context.Background(), task); err != nil {
+			t.Fatalf("Create() error = %v", err)
+		}
+	}
+
+	total, rows, err := taskStore.Summary(context.Background(), TaskFilter{
+		Types:  []model.TaskType{model.TaskTypeDownload},
+		Search: "download",
+	})
+	if err != nil {
+		t.Fatalf("Summary() error = %v", err)
+	}
+	if total != 2 {
+		t.Fatalf("expected total 2, got %d", total)
+	}
+
+	counts := map[model.TaskStatus]int64{}
+	for _, row := range rows {
+		counts[row.Status] = row.Count
+	}
+	if counts[model.TaskStatusRunning] != 1 || counts[model.TaskStatusFailed] != 1 {
+		t.Fatalf("unexpected counts: %#v", counts)
+	}
+}

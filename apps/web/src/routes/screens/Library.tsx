@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { FolderOpen, MusicNotes, Subtitles } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
-import { AudioDeck } from "@/components/AudioDeck";
+import { useGlobalPlayer } from "@/components/GlobalPlayer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,13 +16,18 @@ import {
   fadeUpItem,
   staggerContainer,
 } from "@/components/ui/sweet";
-import { apiClient, type LibraryFile } from "@/lib/api";
+import { apiClient } from "@/lib/api";
+
+const routeApi = getRouteApi("/library");
 
 export function Library() {
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [selectedId, setSelectedId] = useState("");
-  const [selectedAudioPath, setSelectedAudioPath] = useState("");
+  const routeSearch = routeApi.useSearch();
+  const navigate = useNavigate({ from: "/library" });
+  const player = useGlobalPlayer();
+  const [searchInput, setSearchInput] = useState(routeSearch.q);
+  const search = routeSearch.q;
+  const page = routeSearch.page;
+  const selectedId = routeSearch.id;
 
   const libraryQuery = useQuery({
     queryKey: ["library", search, page],
@@ -44,20 +50,21 @@ export function Library() {
   );
 
   useEffect(() => {
-    if (!detailQuery.data) {
-      setSelectedAudioPath("");
-      return;
-    }
+    const timer = window.setTimeout(() => {
+      const nextQuery = searchInput.trim();
+      if (nextQuery !== routeSearch.q) {
+        void navigate({ search: { ...routeSearch, q: nextQuery, page: 1 } });
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [navigate, routeSearch, searchInput]);
 
-    if (!selectedAudioPath || !audioFiles.some((file) => file.path === selectedAudioPath)) {
-      setSelectedAudioPath(audioFiles[0]?.path ?? "");
-    }
-  }, [audioFiles, detailQuery.data, selectedAudioPath]);
+  useEffect(() => setSearchInput(routeSearch.q), [routeSearch.q]);
 
-  const selectedAudio = audioFiles.find((file) => file.path === selectedAudioPath);
-  const selectedSubtitle = selectedAudio
-    ? findSubtitleForAudio(detailQuery.data?.files ?? [], selectedAudio)
-    : undefined;
+  const subtitleFiles = useMemo(
+    () => detailQuery.data?.files.filter((file) => file.kind === "subtitle") ?? [],
+    [detailQuery.data],
+  );
   const coverUrl =
     detailQuery.data?.summary.thumbnail_url || imageFiles[0]?.url || undefined;
   const totalPages = Math.max(1, Math.ceil((libraryQuery.data?.total ?? 0) / 24));
@@ -102,11 +109,8 @@ export function Library() {
         <Card foil>
           <CardContent className="flex flex-col gap-3 p-5 md:flex-row md:items-center">
             <Input
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-              }}
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
               placeholder="按标题或 RJ 编号搜索本地媒体库..."
               className="flex-1"
             />
@@ -129,7 +133,7 @@ export function Library() {
                   interactive
                   foil={selectedId === work.id}
                   className={selectedId === work.id ? "border-[color:var(--tape-pink)]" : undefined}
-                  onClick={() => setSelectedId(work.id)}
+                  onClick={() => void navigate({ search: { ...routeSearch, id: work.id } })}
                 >
                   <CardContent className="flex h-full flex-col gap-4 p-4">
                     <div className="deck-screen aspect-[4/3]">
@@ -204,7 +208,7 @@ export function Library() {
                 variant="secondary"
                 size="sm"
                 disabled={page <= 1}
-                onClick={() => setPage((current) => current - 1)}
+                onClick={() => void navigate({ search: { ...routeSearch, page: page - 1 } })}
               >
                 上一页
               </Button>
@@ -212,7 +216,7 @@ export function Library() {
                 variant="secondary"
                 size="sm"
                 disabled={page >= totalPages}
-                onClick={() => setPage((current) => current + 1)}
+                onClick={() => void navigate({ search: { ...routeSearch, page: page + 1 } })}
               >
                 下一页
               </Button>
@@ -236,21 +240,6 @@ export function Library() {
 
             {detailQuery.data && (
               <>
-                <AudioDeck
-                  tracks={audioFiles}
-                  selectedPath={selectedAudioPath}
-                  onSelect={setSelectedAudioPath}
-                  subtitle={selectedSubtitle}
-                  title={detailQuery.data.summary.title}
-                  mediaId={detailQuery.data.summary.media_id}
-                  coverUrl={coverUrl}
-                  onEnded={() =>
-                    selectedAudio
-                      ? playNextAudio(audioFiles, selectedAudio.path, setSelectedAudioPath)
-                      : undefined
-                  }
-                />
-
                 <div className="grid grid-cols-3 gap-2">
                   <MiniStat
                     icon={FolderOpen}
@@ -276,13 +265,19 @@ export function Library() {
                       <button
                         key={file.path}
                         className={`deck-plate flex w-full items-center gap-3 px-3 py-3 text-left text-sm transition ${
-                          selectedAudioPath === file.path
+                          player.activeMediaId === detailQuery.data.summary.media_id && player.selectedPath === file.path
                             ? "border-[color:var(--tape-pink)] text-[color:var(--text-display)] shadow-[var(--glow-tape)]"
                             : "text-[color:var(--text-body)] hover:border-[color:var(--telltale-amber)]"
                         }`}
-                        onClick={() => setSelectedAudioPath(file.path)}
+                        onClick={() => player.play({
+                          tracks: audioFiles,
+                          subtitles: subtitleFiles,
+                          title: detailQuery.data.summary.title,
+                          mediaId: detailQuery.data.summary.media_id,
+                          coverUrl,
+                        }, file.path)}
                       >
-                        <Badge variant={selectedAudioPath === file.path ? "live" : "mute"}>
+                        <Badge variant={player.activeMediaId === detailQuery.data.summary.media_id && player.selectedPath === file.path ? "live" : "mute"}>
                           {String(index + 1).padStart(2, "0")}
                         </Badge>
                         <span className="truncate">{file.name}</span>
@@ -344,24 +339,4 @@ function MiniStat({
       <div className="console-readout mt-2 text-sm">{value}</div>
     </div>
   );
-}
-
-function findSubtitleForAudio(files: LibraryFile[], audioFile: LibraryFile) {
-  const baseName = audioFile.name.replace(/\.[^.]+$/, "");
-  return files.find(
-    (file) =>
-      file.kind === "subtitle" &&
-      (file.name.startsWith(baseName) || file.path.replace(/\.[^.]+$/, "") === audioFile.path.replace(/\.[^.]+$/, "")),
-  );
-}
-
-function playNextAudio(
-  audioFiles: LibraryFile[],
-  currentPath: string,
-  onSelect: (path: string) => void,
-) {
-  const currentIndex = audioFiles.findIndex((file) => file.path === currentPath);
-  if (currentIndex >= 0 && currentIndex < audioFiles.length - 1) {
-    onSelect(audioFiles[currentIndex + 1].path);
-  }
 }

@@ -47,7 +47,7 @@ export function PageHeader({
           {description}
         </p>
       </div>
-      {meta ? <div className="hidden shrink-0 md:block">{meta}</div> : null}
+      {meta ? <div className="w-full shrink-0 md:w-auto">{meta}</div> : null}
     </div>
   );
 }
@@ -102,21 +102,10 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn("deck-screen flex flex-col justify-center gap-3 p-4", className)}>
-      <div className="mx-auto w-full max-w-xl border border-[color:var(--phosphor-mid)] bg-[rgba(0,0,0,0.24)] p-4 text-center">
-        <div className="deck-decal mx-auto">
-          {symbol}
-        </div>
-        <div className="standby-text console-title mt-3 text-3xl font-black leading-none text-[color:var(--phosphor-primary)]">
-          STAND BY
-        </div>
-        <div className="mt-2 text-base font-semibold text-[color:var(--text-display)]">
-          {title}
-        </div>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-5 text-[color:var(--text-body)]">
-          {description}
-        </p>
-      </div>
+    <div className={cn("deck-screen flex flex-col items-center justify-center gap-2 p-5 text-center", className)}>
+      <div className="deck-decal">{symbol}</div>
+      <div className="mt-1 text-base font-semibold text-[color:var(--text-display)]">{title}</div>
+      <p className="max-w-md text-sm leading-5 text-[color:var(--text-body)]">{description}</p>
     </div>
   );
 }

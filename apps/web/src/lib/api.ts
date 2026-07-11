@@ -46,8 +46,18 @@ export type TaskListQuery = {
   pageSize?: number;
   search?: string;
   source?: string;
-  type?: string;
-  status?: string;
+  type?: string | string[];
+  status?: string | string[];
+};
+
+export type TaskSummary = {
+  total: number;
+  queued: number;
+  running: number;
+  success: number;
+  failed: number;
+  canceled: number;
+  terminated: number;
 };
 
 export type AuthStatus = {
@@ -246,8 +256,8 @@ export type HealthResponse = {
   time: string;
 };
 
-const API_BASE =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? "http://127.0.0.1:8080/api" : "/api");
 const SERVER_BASE = API_BASE.replace(/\/api$/, "");
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -410,11 +420,15 @@ function isSubtitleTrack(track: TrackNode) {
 }
 
 function buildQueryString(
-  params: Record<string, string | number | boolean | undefined>,
+  params: Record<string, string | number | boolean | string[] | undefined>,
 ) {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined || value === "" || value === false) {
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.filter(Boolean).forEach((item) => query.append(key, item));
       return;
     }
     query.set(key, String(value));
@@ -433,6 +447,17 @@ export const apiClient = {
       `/tasks${buildQueryString({
         page: params?.page,
         page_size: params?.pageSize,
+        search: params?.search,
+        source: params?.source,
+        type: params?.type,
+        status: params?.status,
+      })}`,
+    );
+  },
+
+  getTaskSummary(params?: Omit<TaskListQuery, "page" | "pageSize">): Promise<TaskSummary> {
+    return requestData<TaskSummary>(
+      `/tasks/summary${buildQueryString({
         search: params?.search,
         source: params?.source,
         type: params?.type,

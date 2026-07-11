@@ -4,23 +4,25 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowClockwise,
+  CheckSquare,
   CaretDown,
   CaretUp,
   DownloadSimple,
   FileArrowDown,
-  Fire,
   MagnifyingGlass,
   MusicNotes,
   SlidersHorizontal,
   Sparkle,
+  Square,
   Tag,
   Wrench,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
-import { AudioDeck, type AudioDeckHandle } from "@/components/AudioDeck";
+import { useGlobalPlayer } from "@/components/GlobalPlayer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ActionReviewDialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
@@ -42,10 +44,8 @@ import {
   type WorkStatus,
 } from "@/lib/api";
 import {
-  findSubtitleForAudio,
   flattenPlayableTracks,
   flattenSubtitleTracks,
-  playNextTrack,
 } from "@/lib/playback";
 
 const routeApi = getRouteApi("/discover");
@@ -96,12 +96,13 @@ export function Discover() {
   const [draft, setDraft] = useState<DiscoverFilters>(initialFilters);
   const [filters, setFilters] = useState<DiscoverFilters>(initialFilters);
   const [selectedSourceId, setSelectedSourceId] = useState<string>("");
-  const [directIds, setDirectIds] = useState("");
-  const [hotCount, setHotCount] = useState("10");
   const [outputDir, setOutputDir] = useState("");
   const [page, setPage] = useState(routeSearch.page);
   const [showFilters, setShowFilters] = useState(false);
   const [showTools, setShowTools] = useState(false);
+  const [selectedIDs, setSelectedIDs] = useState<Set<string>>(() => new Set());
+  const [downloadScope, setDownloadScope] = useState<"page" | "selected">("page");
+  const [downloadReviewOpen, setDownloadReviewOpen] = useState(false);
   const resultsTopRef = useRef<HTMLDivElement | null>(null);
   const queryClient = useQueryClient();
 
@@ -196,7 +197,9 @@ export function Discover() {
           output_dir: outputDir || undefined,
         });
       }
-      const ids = (searchQuery.data?.items ?? []).map((item) => item.source_id);
+      const ids = downloadScope === "selected"
+        ? Array.from(selectedIDs)
+        : (searchQuery.data?.items ?? []).map((item) => item.source_id);
       return apiClient.createDownload({
         mode: "batch",
         ids,
@@ -206,34 +209,7 @@ export function Discover() {
     },
     onSuccess: (res) => {
       toast.success(`已加入搜索结果下载任务 #${res.task_id}`);
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["work-status"] });
-    },
-    onError: (error) => {
-      toast.error(String(error));
-    },
-  });
-
-  const directDownloadMutation = useMutation({
-    mutationFn: (mode: "batch" | "hot100") => {
-      if (mode === "hot100") {
-        return apiClient.createDownload({
-          mode,
-          count: Number(hotCount) || 10,
-          output_dir: outputDir || undefined,
-          name: `Hot100 x${Number(hotCount) || 10}`,
-        });
-      }
-
-      return apiClient.createDownload({
-        mode: "batch",
-        ids: parseIds(directIds),
-        output_dir: outputDir || undefined,
-        name: "Direct batch download",
-      });
-    },
-    onSuccess: (res, mode) => {
-      toast.success(`已创建${mode === "hot100" ? " Hot100" : "批量"}下载任务 #${res.task_id}`);
+      setDownloadReviewOpen(false);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["work-status"] });
     },
@@ -267,6 +243,9 @@ export function Discover() {
   });
 
   const works = searchQuery.data?.items ?? [];
+  const scopedDownloadCount = usingLegacyQuery
+    ? filters.count
+    : downloadScope === "selected" ? selectedIDs.size : works.length;
   const statusSourceIds = useMemo(
     () => works.map((work) => work.source_id).filter(Boolean),
     [works],
@@ -288,7 +267,7 @@ export function Discover() {
   const totalPages = Math.max(1, Math.ceil((searchQuery.data?.total ?? 0) / filters.count));
   const canQueueSearch =
     (usingLegacyQuery && legacyQuery.length > 0) ||
-    (!usingLegacyQuery && works.length > 0);
+    (!usingLegacyQuery && scopedDownloadCount > 0);
 
   const activeFilters = useMemo(
     () =>
@@ -320,6 +299,7 @@ export function Discover() {
       va: nextDraft.va.trim(),
     };
     setSelectedSourceId("");
+    setSelectedIDs(new Set());
     void navigate({
       to: "/discover",
       search: toRouteSearch(normalizedDraft, 1),
@@ -328,6 +308,7 @@ export function Discover() {
 
   function resetSearchPanel() {
     setSelectedSourceId("");
+    setSelectedIDs(new Set());
     setShowFilters(false);
     setShowTools(false);
     void navigate({
@@ -346,6 +327,7 @@ export function Discover() {
   }
 
   function changePage(nextPage: number) {
+    setSelectedIDs(new Set());
     void navigate({
       to: "/discover",
       search: {
@@ -598,7 +580,7 @@ export function Discover() {
                               <Input
                                 type="number"
                                 min={1}
-                                max={200}
+                                max={48}
                                 value={String(draft.count)}
                                 onChange={(event) =>
                                   setDraft((prev) => ({
@@ -626,27 +608,35 @@ export function Discover() {
                     className="overflow-hidden"
                   >
                     <div className="deck-plate p-4">
-                      <div className="grid gap-5 xl:grid-cols-[1fr_0.95fr]">
+                      <div className="grid gap-5">
                         <div className="space-y-4">
                           <PanelLabel
                             title="结果操作"
                             description="导出当前结果，或将本页命中项投递到下载队列。"
                           />
-                          <div className="grid gap-3 md:grid-cols-[1.15fr_auto_auto_auto]">
+                          <div className="grid gap-3 md:grid-cols-[1.15fr_12rem_auto_auto_auto]">
                             <Input
                               value={outputDir}
                               onChange={(event) => setOutputDir(event.target.value)}
                               placeholder="可选输出目录"
                             />
+                            {!usingLegacyQuery ? (
+                              <Select value={downloadScope} onChange={(event) => setDownloadScope(event.target.value as "page" | "selected")}>
+                                <option value="page">本页 {works.length} 项</option>
+                                <option value="selected">已选 {selectedIDs.size} 项</option>
+                              </Select>
+                            ) : (
+                              <div className="deck-screen flex items-center px-3 text-sm text-[color:var(--text-body)]">前 {filters.count} 条结果</div>
+                            )}
                             <Button
                               type="button"
                               variant="secondary"
                               busy={searchDownloadMutation.isPending}
-                              onClick={() => searchDownloadMutation.mutate()}
+                              onClick={() => setDownloadReviewOpen(true)}
                               disabled={!canQueueSearch || searchDownloadMutation.isPending}
                             >
                               <DownloadSimple className="h-4 w-4" />
-                              下载结果
+                              复核下载范围
                             </Button>
                             <Button
                               type="button"
@@ -671,50 +661,6 @@ export function Discover() {
                           </div>
                         </div>
 
-                        <div className="space-y-4">
-                          <PanelLabel
-                            title="快捷下载"
-                            description="适合直接贴 RJ 编号，或者按数量拉一批 Hot100。"
-                          />
-                          <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-                            <Input
-                              value={directIds}
-                              onChange={(event) => setDirectIds(event.target.value)}
-                              placeholder="输入 RJ 编号，支持逗号或换行分隔"
-                            />
-                            <Button
-                              type="button"
-                              busy={directDownloadMutation.isPending}
-                              onClick={() => directDownloadMutation.mutate("batch")}
-                              disabled={
-                                parseIds(directIds).length === 0 ||
-                                directDownloadMutation.isPending
-                              }
-                            >
-                              <DownloadSimple className="h-4 w-4" />
-                              批量下载
-                            </Button>
-                          </div>
-                          <div className="grid gap-3 md:grid-cols-[120px_auto]">
-                            <Input
-                              type="number"
-                              min={1}
-                              max={100}
-                              value={hotCount}
-                              onChange={(event) => setHotCount(event.target.value)}
-                            />
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              busy={directDownloadMutation.isPending}
-                              onClick={() => directDownloadMutation.mutate("hot100")}
-                              disabled={directDownloadMutation.isPending}
-                            >
-                              <Fire className="h-4 w-4" />
-                              下载 Hot100
-                            </Button>
-                          </div>
-                        </div>
                       </div>
                     </div>
                   </motion.div>
@@ -780,6 +726,13 @@ export function Discover() {
                     detailSearch={routeSearch}
                     onSelect={() => setSelectedSourceId(work.source_id)}
                     onQueue={() => singleDownloadMutation.mutate(work.source_id)}
+                    selected={selectedIDs.has(work.source_id)}
+                    onToggleSelected={() => setSelectedIDs((current) => {
+                      const next = new Set(current);
+                      if (next.has(work.source_id)) next.delete(work.source_id);
+                      else next.add(work.source_id);
+                      return next;
+                    })}
                   />
                 </motion.div>
               ))}
@@ -824,7 +777,7 @@ export function Discover() {
 
         <div className="space-y-4 xl:sticky xl:top-24 xl:self-start">
           <FacetCard
-            title="热门标签"
+            title="本页标签"
             items={facets.tags}
             variant="decal"
             onPick={(value) => {
@@ -836,7 +789,7 @@ export function Discover() {
             }}
           />
           <FacetCard
-            title="热门社团"
+            title="本页社团"
             items={facets.circles}
             variant="signal"
             onPick={(value) => {
@@ -848,7 +801,7 @@ export function Discover() {
             }}
           />
           <FacetCard
-            title="热门声优"
+            title="本页声优"
             items={facets.vas}
             variant="live"
             onPick={(value) => {
@@ -867,6 +820,21 @@ export function Discover() {
           />
         </div>
       </motion.div>
+
+      <ActionReviewDialog
+        open={downloadReviewOpen}
+        onOpenChange={(open) => !open && !searchDownloadMutation.isPending && setDownloadReviewOpen(false)}
+        title="确认创建搜索结果下载"
+        description="只会下载下方明确列出的范围，任务创建后可在任务中心取消。"
+        rows={[
+          { label: "下载范围", value: usingLegacyQuery ? `高级语法前 ${filters.count} 条` : downloadScope === "selected" ? `已选 ${selectedIDs.size} 项` : `当前第 ${page} 页，共 ${works.length} 项` },
+          { label: "输出目录", value: outputDir.trim() || "设置中的同步目录" },
+        ]}
+        warning={scopedDownloadCount >= 24 ? "该操作可能产生较大的网络流量与磁盘占用。" : undefined}
+        confirmLabel="创建下载任务"
+        busy={searchDownloadMutation.isPending}
+        onConfirm={() => searchDownloadMutation.mutate()}
+      />
     </motion.section>
   );
 }
@@ -903,12 +871,16 @@ function WorkCard({
   detailSearch,
   onSelect,
   onQueue,
+  selected,
+  onToggleSelected,
 }: {
   work: SearchWorkSummary;
   status?: WorkStatus;
   detailSearch: DiscoverRouteSearch;
   onSelect: () => void;
   onQueue: () => void;
+  selected: boolean;
+  onToggleSelected: () => void;
 }) {
   const visibleTags = work.tags.slice(0, 3);
   const hiddenTagCount = Math.max(0, work.tags.length - visibleTags.length);
@@ -917,6 +889,18 @@ function WorkCard({
     <Card interactive foil className="h-full overflow-hidden" onClick={onSelect}>
       <CardContent className="flex h-full flex-col gap-5 p-5">
         <div className="deck-screen aspect-[16/10]">
+          <button
+            type="button"
+            aria-label={selected ? `取消选择 ${work.source_id}` : `选择 ${work.source_id}`}
+            title={selected ? "取消选择" : "加入批量选择"}
+            className="deck-plate absolute left-3 top-3 z-10 flex h-11 w-11 items-center justify-center text-[color:var(--text-display)]"
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleSelected();
+            }}
+          >
+            {selected ? <CheckSquare className="h-5 w-5" weight="fill" /> : <Square className="h-5 w-5" />}
+          </button>
           {work.main_cover_url || work.thumbnail_url ? (
             <img
               src={work.main_cover_url || work.thumbnail_url}
@@ -1125,6 +1109,7 @@ function WorkDetailCard({
   loading: boolean;
   onQueue: (sourceId: string) => void;
 }) {
+  const player = useGlobalPlayer();
   const audioFiles = useMemo(
     () => flattenPlayableTracks(detail?.tracks ?? []),
     [detail?.tracks],
@@ -1134,7 +1119,6 @@ function WorkDetailCard({
     [detail?.tracks],
   );
   const [selectedTrackPath, setSelectedTrackPath] = useState("");
-  const audioDeckRef = useRef<AudioDeckHandle | null>(null);
 
   useEffect(() => {
     setSelectedTrackPath((current) => {
@@ -1161,21 +1145,23 @@ function WorkDetailCard({
   function selectAndPlayTrack(path: string) {
     console.info(PLAYER_LOG_PREFIX, "quick detail track clicked", {
       path,
-      hasDeck: Boolean(audioDeckRef.current),
       audioFilesCount: audioFiles.length,
       track: audioFiles.find((file) => file.path === path),
       sourceId: detail?.summary.source_id,
     });
-    if (audioDeckRef.current) {
-      void audioDeckRef.current.playTrack(path);
-      return;
-    }
     setSelectedTrackPath(path);
+    if (detail) {
+      player.play({
+        tracks: audioFiles,
+        subtitles: subtitleFiles,
+        title: detail.summary.title,
+        mediaId: detail.summary.source_id,
+        coverUrl: detail.summary.main_cover_url || detail.summary.thumbnail_url,
+      }, path);
+    }
   }
 
   const coverUrl = detail?.summary.main_cover_url || detail?.summary.thumbnail_url;
-  const selectedAudioFile = audioFiles.find((file) => file.path === selectedTrackPath);
-  const selectedSubtitleFile = findSubtitleForAudio(subtitleFiles, selectedAudioFile);
 
   return (
     <Card foil className="overflow-hidden">
@@ -1227,24 +1213,11 @@ function WorkDetailCard({
               <MiniMetric label="音轨数" value={String(detail.tracks.length)} variant="live" />
             </div>
 
-            {audioFiles.length > 0 ? (
-              <AudioDeck
-                ref={audioDeckRef}
-	                tracks={audioFiles}
-	                selectedPath={selectedTrackPath}
-	                onSelect={setSelectedTrackPath}
-	                subtitle={selectedSubtitleFile}
-	                subtitles={subtitleFiles}
-	                title={detail.summary.title}
-                mediaId={detail.summary.source_id}
-                coverUrl={coverUrl}
-                onEnded={() => playNextTrack(audioFiles, selectedTrackPath, selectAndPlayTrack)}
-              />
-            ) : (
+            {audioFiles.length === 0 ? (
               <div className="deck-screen p-4 text-sm text-[color:var(--text-mute)]">
                 当前作品暂无可在线播放音轨。
               </div>
-            )}
+            ) : null}
 
             <div className="space-y-2">
               <div className="text-sm font-semibold text-[color:var(--text-body)]">音轨预览</div>
@@ -1254,13 +1227,13 @@ function WorkDetailCard({
                     type="button"
                     key={track.path}
                     className={`deck-screen flex w-full items-center gap-3 p-3 text-left text-sm transition hover:border-[color:var(--telltale-amber)] ${
-                      selectedTrackPath === track.path
+                      player.activeMediaId === detail.summary.source_id && player.selectedPath === track.path
                         ? "border-[color:var(--tape-pink)] shadow-[var(--glow-tape)]"
                         : ""
                     }`}
                     onClick={() => selectAndPlayTrack(track.path)}
                   >
-                    <Badge variant={selectedTrackPath === track.path ? "live" : "mute"}>
+                    <Badge variant={player.activeMediaId === detail.summary.source_id && player.selectedPath === track.path ? "live" : "mute"}>
                       {String(index + 1).padStart(2, "0")}
                     </Badge>
                     <MusicNotes className="h-4 w-4 shrink-0 text-[color:var(--telltale-amber)]" weight="duotone" />
@@ -1377,13 +1350,6 @@ function buildFacetList(values: string[], limit: number): FacetItem[] {
         : right.count - left.count,
     )
     .slice(0, limit);
-}
-
-function parseIds(raw: string) {
-  return raw
-    .split(/[\s,]+/)
-    .map((value) => value.trim())
-    .filter(Boolean);
 }
 
 function splitFilterValues(raw: string) {

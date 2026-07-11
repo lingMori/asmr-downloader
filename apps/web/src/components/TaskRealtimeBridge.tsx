@@ -38,6 +38,7 @@ export function TaskRealtimeBridge() {
     );
 
     queryClient.invalidateQueries({ queryKey: ["task", payload.task_id] });
+    queryClient.invalidateQueries({ queryKey: ["task-summary"] });
 
     if (terminalStatuses.has(payload.status)) {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
@@ -46,6 +47,7 @@ export function TaskRealtimeBridge() {
       queryClient.invalidateQueries({ queryKey: ["dashboard", "report"] });
       queryClient.invalidateQueries({ queryKey: ["library"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard", "library"] });
+      queryClient.invalidateQueries({ queryKey: ["work-status"] });
     }
   });
 

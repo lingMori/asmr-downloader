@@ -1,11 +1,24 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Queue } from "./Queue";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 
 afterEach(() => {
+  cleanup();
   vi.restoreAllMocks();
+});
+
+beforeEach(() => {
+  vi.spyOn(apiClient, "getTaskSummary").mockResolvedValue({
+    total: 0,
+    queued: 0,
+    running: 0,
+    success: 0,
+    failed: 0,
+    canceled: 0,
+    terminated: 0,
+  });
 });
 
 describe("Tasks screen", () => {
@@ -114,9 +127,28 @@ describe("Tasks screen", () => {
     fireEvent.click(await screen.findByText("Running download"));
 
     await waitFor(() => {
-      expect(screen.getByText(/取消任务/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /取消任务/i })).toBeInTheDocument();
     });
 
+    queryClient.clear();
+  });
+
+  it("reviews direct ids before creating a download task", async () => {
+    vi.spyOn(apiClient, "getTasks").mockResolvedValue({ items: [], total: 0, page: 1, size: 20 });
+    const createDownload = vi.spyOn(apiClient, "createDownload").mockResolvedValue({ code: "ACCEPTED", task_id: 12 });
+    const queryClient = new QueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Queue />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /新建下载任务/i }));
+    fireEvent.change(await screen.findByPlaceholderText(/RJ123456/), { target: { value: "rj123456, RJ123456, invalid" } });
+    fireEvent.click(screen.getByRole("button", { name: /复核 RJ 批量任务/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /创建下载任务/i }));
+
+    await waitFor(() => expect(createDownload).toHaveBeenCalledWith(expect.objectContaining({ ids: ["RJ123456"] })));
     queryClient.clear();
   });
 });

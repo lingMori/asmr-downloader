@@ -154,6 +154,7 @@ func (s *Server) registerRoutes() {
 	s.registerTaskRoutes(api)
 	s.registerWorkStatusRoutes(api)
 	s.registerEventRoutes(api)
+	s.registerWebRoutes()
 }
 
 func (s *Server) applyConfig(cfg *model.Config) error {

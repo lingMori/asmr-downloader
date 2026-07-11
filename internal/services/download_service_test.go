@@ -56,3 +56,27 @@ func TestDeleteTaskFilesRejectsHot100(t *testing.T) {
 		t.Fatal("expected hot100 cleanup to be rejected")
 	}
 }
+
+func TestValidateDownloadRequestAppliesDefaults(t *testing.T) {
+	req := DownloadRequest{IDs: []string{"rj123456"}}
+	req.IDs = uniqueStrings(req.IDs)
+	if err := validateDownloadRequest(&req); err != nil {
+		t.Fatalf("validateDownloadRequest() error = %v", err)
+	}
+	if req.Mode != "batch" {
+		t.Fatalf("expected batch mode, got %q", req.Mode)
+	}
+	if len(req.IDs) != 1 || req.IDs[0] != "RJ123456" {
+		t.Fatalf("expected normalized id, got %#v", req.IDs)
+	}
+}
+
+func TestValidateDownloadRequestDefaultsHot100Count(t *testing.T) {
+	req := DownloadRequest{Mode: "hot100"}
+	if err := validateDownloadRequest(&req); err != nil {
+		t.Fatalf("validateDownloadRequest() error = %v", err)
+	}
+	if req.Count != 10 {
+		t.Fatalf("expected default count 10, got %d", req.Count)
+	}
+}

@@ -20,16 +20,18 @@ import (
 )
 
 var ErrInvalidSyncExportRequest = errors.New("invalid sync export request")
+var ErrSyncRunnerBusy = errors.New("sync download or retry is already running")
 
 // SyncService manages metadata sync tasks.
 type SyncService struct {
-	taskStore *store.TaskStore
-	engine    SyncEngine
-	runner    *SyncDownloadRunner
-	hub       *events.Hub
-	provider  *model.ConfigProvider
-	mu        sync.Mutex
-	active    map[uint]context.CancelFunc
+	taskStore  *store.TaskStore
+	engine     SyncEngine
+	runner     *SyncDownloadRunner
+	hub        *events.Hub
+	provider   *model.ConfigProvider
+	mu         sync.Mutex
+	active     map[uint]context.CancelFunc
+	runnerBusy bool
 }
 
 type SyncEngine interface {
@@ -166,6 +168,9 @@ func (s *SyncService) publish(taskID uint, status model.TaskStatus, message stri
 }
 
 func (s *SyncService) EnqueueSyncDownload(ctx context.Context, req SyncDownloadRequest) (uint, error) {
+	if !s.acquireRunner() {
+		return 0, ErrSyncRunnerBusy
+	}
 	payload, _ := json.Marshal(req)
 	name := "Sync download"
 	task := &model.Task{
@@ -176,6 +181,7 @@ func (s *SyncService) EnqueueSyncDownload(ctx context.Context, req SyncDownloadR
 		Source:  "api",
 	}
 	if err := s.taskStore.Create(ctx, task); err != nil {
+		s.releaseRunner()
 		return 0, err
 	}
 	runCtx, cancel := context.WithCancel(context.Background())
@@ -185,6 +191,7 @@ func (s *SyncService) EnqueueSyncDownload(ctx context.Context, req SyncDownloadR
 }
 
 func (s *SyncService) runSyncDownload(ctx context.Context, taskID uint, req SyncDownloadRequest) {
+	defer s.releaseRunner()
 	defer s.unregisterTask(taskID)
 	if err := ctx.Err(); err != nil {
 		s.finishCanceled(taskID, "sync download canceled")
@@ -224,6 +231,9 @@ func (s *SyncService) runSyncDownload(ctx context.Context, taskID uint, req Sync
 }
 
 func (s *SyncService) EnqueueSyncRetry(ctx context.Context) (uint, error) {
+	if !s.acquireRunner() {
+		return 0, ErrSyncRunnerBusy
+	}
 	task := &model.Task{
 		Type:   model.TaskTypeSyncRetry,
 		Status: model.TaskStatusQueued,
@@ -231,6 +241,7 @@ func (s *SyncService) EnqueueSyncRetry(ctx context.Context) (uint, error) {
 		Source: "api",
 	}
 	if err := s.taskStore.Create(ctx, task); err != nil {
+		s.releaseRunner()
 		return 0, err
 	}
 	runCtx, cancel := context.WithCancel(context.Background())
@@ -240,6 +251,7 @@ func (s *SyncService) EnqueueSyncRetry(ctx context.Context) (uint, error) {
 }
 
 func (s *SyncService) runSyncRetry(ctx context.Context, taskID uint) {
+	defer s.releaseRunner()
 	defer s.unregisterTask(taskID)
 	if err := ctx.Err(); err != nil {
 		s.finishCanceled(taskID, "sync retry canceled")
@@ -302,6 +314,22 @@ func (s *SyncService) unregisterTask(taskID uint) {
 	delete(s.active, taskID)
 }
 
+func (s *SyncService) acquireRunner() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.runnerBusy {
+		return false
+	}
+	s.runnerBusy = true
+	return true
+}
+
+func (s *SyncService) releaseRunner() {
+	s.mu.Lock()
+	s.runnerBusy = false
+	s.mu.Unlock()
+}
+
 func (s *SyncService) finishCanceled(taskID uint, message string) {
 	_ = s.taskStore.UpdateStatusKeepProgress(context.Background(), taskID, model.TaskStatusCanceled, message)
 	_ = s.taskStore.UpdateResult(context.Background(), taskID, "", message)
@@ -345,7 +373,12 @@ func (s *SyncService) Report(ctx context.Context) (SyncReport, error) {
 	report.Totals.WithoutSubtitle = meta.Total - meta.WithSubtitle
 	report.Downloads.Completed = downloads.Completed
 	report.Downloads.Failed = downloads.Failed
-	report.Downloads.Pending = downloads.Pending
+	tracked := downloads.Completed + downloads.Failed + downloads.Pending
+	untracked := meta.Total - tracked
+	if untracked < 0 {
+		untracked = 0
+	}
+	report.Downloads.Pending = downloads.Pending + untracked
 	if meta.Total > 0 {
 		report.Progress.Overall = float64(downloads.Completed) / float64(meta.Total)
 		if meta.WithSubtitle > 0 {

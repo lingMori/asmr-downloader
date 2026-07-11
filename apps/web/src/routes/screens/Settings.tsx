@@ -1,16 +1,21 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plus, Trash } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ActionReviewDialog, DeckDialog, type ReviewRow } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { PageHeader, RouteFeedback, fadeUpItem, staggerContainer } from "@/components/ui/sweet";
 import { apiClient, type AuthStatus, type ConfigResponse } from "@/lib/api";
 
 type SaveIntent = "settings" | "login";
+type SettingsSection = "connection" | "storage" | "performance" | "advanced";
+type DownloaderConfig = ConfigResponse["downloader"];
+type HTTPConfig = NonNullable<DownloaderConfig["http"]>;
 type ConnectionDraft = {
   account: string;
   password: string;
@@ -36,6 +41,7 @@ export function Settings() {
   const [connectionDraft, setConnectionDraft] = useState<ConnectionDraft | null>(null);
   const [reviewConnectionDraft, setReviewConnectionDraft] = useState<ConnectionDraft | null>(null);
   const [lastAuthCheckedAt, setLastAuthCheckedAt] = useState("");
+  const [activeSection, setActiveSection] = useState<SettingsSection>("connection");
 
   useEffect(() => {
     if (configQuery.data) {
@@ -54,6 +60,21 @@ export function Settings() {
     );
     setLastAuthCheckedAt(formatCheckTime(new Date()));
   }, [authLiveQuery.data, queryClient]);
+
+  const dirty = useMemo(
+    () => Boolean(form && configQuery.data && configFingerprint(form) !== configFingerprint(configQuery.data)),
+    [form, configQuery.data],
+  );
+  const validationErrors = useMemo(() => (form ? validateSettings(form) : []), [form]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const preventUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", preventUnload);
+    return () => window.removeEventListener("beforeunload", preventUnload);
+  }, [dirty]);
 
   const applyAuthStatus = (auth: AuthStatus) => {
     setForm((prev) => (prev ? { ...prev, auth } : prev));
@@ -188,7 +209,29 @@ export function Settings() {
         />
       </motion.div>
 
-      <motion.div variants={fadeUpItem} className="grid gap-4 xl:grid-cols-3">
+      <motion.div variants={fadeUpItem} className="deck-plate flex flex-wrap gap-2 p-2" role="tablist" aria-label="设置分区">
+        {([
+          ["connection", "连接"],
+          ["storage", "存储"],
+          ["performance", "性能"],
+          ["advanced", "高级请求头"],
+        ] as const).map(([section, label]) => (
+          <Button
+            key={section}
+            type="button"
+            variant={activeSection === section ? "primary" : "secondary"}
+            size="sm"
+            role="tab"
+            aria-selected={activeSection === section}
+            onClick={() => setActiveSection(section)}
+          >
+            {label}
+          </Button>
+        ))}
+      </motion.div>
+
+      <motion.div variants={fadeUpItem} className="grid gap-4">
+        {activeSection === "connection" ? (
         <FormSection
           title="账号连接"
           hint="连接 ASMR.one API。后端会自动检查登录是否有效，只有失效时才需要重新登录。"
@@ -231,10 +274,12 @@ export function Settings() {
             </Button>
           </div>
         </FormSection>
+        ) : null}
 
+        {activeSection === "storage" ? (
         <FormSection
-          title="下载器"
-          hint="本地保存位置、并发数量、重试次数和媒体格式偏好。"
+          title="存储与媒体"
+          hint="设置文件落地位置、目标容量与音频格式偏好。"
           badges={
             <>
               <Badge variant="signal">本地目录</Badge>
@@ -261,7 +306,7 @@ export function Settings() {
             />
           </LabeledField>
           <LabeledField label="优先音频格式">
-            <Input
+            <Select
               value={form.downloader.prefer_media}
               onChange={(event) =>
                 setForm((prev) =>
@@ -276,65 +321,26 @@ export function Settings() {
                     : prev,
                 )
               }
-            />
+            >
+              <option value="all">保留全部格式</option>
+              <option value="mp3">仅 MP3</option>
+              <option value="wav">仅 WAV</option>
+              <option value="flac">仅 FLAC</option>
+              <option value="mp3&gt;wav&gt;flac">MP3 优先，其次 WAV / FLAC</option>
+              <option value="flac&gt;wav&gt;mp3">FLAC 优先，其次 WAV / MP3</option>
+            </Select>
           </LabeledField>
-          <NumberField
-            label="最大并发数"
-            value={form.downloader.max_workers ?? 0}
-            onChange={(value) =>
-              setForm((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      downloader: {
-                        ...prev.downloader,
-                        max_workers: value,
-                      },
-                    }
-                  : prev,
-              )
-            }
+          <SizeField
+            value={form.downloader.sync_wanted_size || ""}
+            onChange={(value) => updateDownloader(setForm, "sync_wanted_size", value)}
           />
-          <NumberField
-            label="最大重试次数"
-            value={form.downloader.max_retries ?? 0}
-            onChange={(value) =>
-              setForm((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      downloader: {
-                        ...prev.downloader,
-                        max_retries: value,
-                      },
-                    }
-                  : prev,
-              )
-            }
-          />
-          <LabeledField label="目标容量">
-            <Input
-              value={form.downloader.sync_wanted_size || ""}
-              onChange={(event) =>
-                setForm((prev) =>
-                  prev
-                    ? {
-                        ...prev,
-                        downloader: {
-                          ...prev.downloader,
-                          sync_wanted_size: event.target.value,
-                        },
-                      }
-                    : prev,
-                )
-              }
-            />
-          </LabeledField>
         </FormSection>
+        ) : null}
 
+        {activeSection === "performance" ? (
         <FormSection
-          title="限流参数"
-          hint="QPS 与抖动窗口控制访问节奏。"
+          title="并发与限流"
+          hint="控制后台并发、重试和请求节奏。数值越高并不一定越稳定。"
           badges={
             <>
               <Badge variant="warn">限流</Badge>
@@ -342,6 +348,19 @@ export function Settings() {
             </>
           }
         >
+          <div className="grid gap-4 md:grid-cols-2">
+            <NumberField
+              label="最大并发数"
+              value={form.downloader.max_workers ?? 0}
+              onChange={(value) => updateDownloader(setForm, "max_workers", value)}
+            />
+            <NumberField
+              label="最大重试次数"
+              value={form.downloader.max_retries ?? 0}
+              onChange={(value) => updateDownloader(setForm, "max_retries", value)}
+            />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
           <FloatField
             label="同步 QPS"
             value={form.limit.sync_qps}
@@ -444,14 +463,32 @@ export function Settings() {
               )
             }
           />
+          </div>
         </FormSection>
+        ) : null}
+
+        {activeSection === "advanced" ? (
+          <FormSection title="高级请求头" hint="仅在远端接口要求特定浏览器请求头时修改。空值会使用后端默认值。">
+            <HeaderFields
+              value={form.downloader.http ?? {}}
+              onChange={(http) => updateDownloader(setForm, "http", http)}
+            />
+          </FormSection>
+        ) : null}
       </motion.div>
 
-      <motion.div variants={fadeUpItem} className="flex flex-wrap gap-3">
+      <motion.div variants={fadeUpItem} className="deck-plate z-20 flex flex-wrap items-center justify-between gap-3 p-3 shadow-lg md:sticky md:bottom-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={validationErrors.length > 0 ? "halt" : dirty ? "warn" : "signal"}>
+            {validationErrors.length > 0 ? `${validationErrors.length} 项需要修正` : dirty ? "有未保存修改" : "设置已保存"}
+          </Badge>
+          {validationErrors[0] ? <span className="text-sm text-[color:var(--text-body)]">{validationErrors[0]}</span> : null}
+        </div>
+        <div className="flex flex-wrap gap-2">
         <Button
           busy={saveMutation.isPending}
           onClick={() => saveMutation.mutate({ payload: form, intent: "settings" })}
-          disabled={isAuthActionBusy}
+          disabled={isAuthActionBusy || !dirty || validationErrors.length > 0}
         >
           保存全部设置
         </Button>
@@ -462,10 +499,11 @@ export function Settings() {
               setForm(toEditableConfig(configQuery.data));
             }
           }}
-          disabled={isAuthActionBusy}
+          disabled={isAuthActionBusy || !dirty}
         >
           放弃未保存修改
         </Button>
+        </div>
       </motion.div>
 
       <ConnectionEditorDialog
@@ -775,6 +813,124 @@ function formatCheckTime(date: Date) {
     minute: "2-digit",
     second: "2-digit",
   });
+}
+
+function configFingerprint(config: ConfigResponse) {
+  return JSON.stringify({
+    user: { account: config.user.account },
+    downloader: config.downloader,
+    limit: config.limit,
+  });
+}
+
+function validateSettings(config: ConfigResponse) {
+  const errors: string[] = [];
+  if (!config.downloader.sync_data_folder.trim()) errors.push("同步目录不能为空");
+  if (!/^\d+(MB|GB|TB|PB)$/.test((config.downloader.sync_wanted_size || "").trim())) {
+    errors.push("目标容量需要使用整数加 MB、GB、TB 或 PB");
+  }
+  if ((config.downloader.max_workers ?? 0) <= 0) errors.push("最大并发数必须大于 0");
+  if ((config.downloader.max_retries ?? 0) < 0) errors.push("最大重试次数不能小于 0");
+  if (config.limit.sync_qps <= 0 || config.limit.download_qps <= 0) errors.push("QPS 必须大于 0");
+  if ((config.limit.sync_jitter_min ?? 0) > (config.limit.sync_jitter_max ?? 0)) {
+    errors.push("同步抖动最大值不能小于最小值");
+  }
+  if ((config.limit.download_jitter_min ?? 0) > (config.limit.download_jitter_max ?? 0)) {
+    errors.push("下载抖动最大值不能小于最小值");
+  }
+  return errors;
+}
+
+function updateDownloader<K extends keyof DownloaderConfig>(
+  setForm: Dispatch<SetStateAction<ConfigResponse | null>>,
+  key: K,
+  value: DownloaderConfig[K],
+) {
+  setForm((previous) => previous ? {
+    ...previous,
+    downloader: { ...previous.downloader, [key]: value },
+  } : previous);
+}
+
+function SizeField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const match = value.trim().match(/^(\d+)(MB|GB|TB|PB)$/);
+  const amount = match?.[1] ?? value.replace(/\D/g, "");
+  const unit = match?.[2] ?? "GB";
+
+  return (
+    <LabeledField label="目标容量">
+      <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-2">
+        <Input
+          type="number"
+          min={1}
+          value={amount}
+          onChange={(event) => onChange(`${event.target.value}${unit}`)}
+        />
+        <Select value={unit} onChange={(event) => onChange(`${amount || "0"}${event.target.value}`)}>
+          <option value="MB">MB</option>
+          <option value="GB">GB</option>
+          <option value="TB">TB</option>
+          <option value="PB">PB</option>
+        </Select>
+      </div>
+    </LabeledField>
+  );
+}
+
+function HeaderFields({ value, onChange }: { value: HTTPConfig; onChange: (value: HTTPConfig) => void }) {
+  const standardFields: Array<[keyof Omit<HTTPConfig, "extra">, string]> = [
+    ["user_agent", "User-Agent"],
+    ["origin", "Origin"],
+    ["referer", "Referer"],
+    ["accept_language", "Accept-Language"],
+    ["sec_ch_ua", "Sec-CH-UA"],
+    ["sec_ch_ua_platform", "Sec-CH-UA-Platform"],
+  ];
+  const extras = Object.entries(value.extra ?? {});
+
+  const updateExtra = (index: number, key: string, fieldValue: string) => {
+    const entries = extras.map((entry, entryIndex) => entryIndex === index ? [key, fieldValue] : entry);
+    onChange({ ...value, extra: Object.fromEntries(entries.filter(([name]) => name.trim())) });
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-4 lg:grid-cols-2">
+        {standardFields.map(([field, label]) => (
+          <LabeledField key={field} label={label}>
+            <Input value={value[field] ?? ""} onChange={(event) => onChange({ ...value, [field]: event.target.value })} />
+          </LabeledField>
+        ))}
+      </div>
+      <div className="space-y-3 border-t border-[color:var(--chassis-edge)] pt-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="font-semibold text-[color:var(--text-display)]">附加请求头</div>
+            <p className="mt-1 text-sm text-[color:var(--text-body)]">用于少量服务端要求的自定义键值。</p>
+          </div>
+          <Button type="button" variant="secondary" size="sm" onClick={() => onChange({ ...value, extra: { ...(value.extra ?? {}), "": "" } })}>
+            <Plus className="h-4 w-4" /> 添加
+          </Button>
+        </div>
+        {extras.map(([name, fieldValue], index) => (
+          <div key={`${name}-${index}`} className="grid gap-2 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_44px]">
+            <Input value={name} placeholder="请求头名称" onChange={(event) => updateExtra(index, event.target.value, fieldValue)} />
+            <Input value={fieldValue} placeholder="请求头值" onChange={(event) => updateExtra(index, name, event.target.value)} />
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              className="h-11 w-11 px-0"
+              title="删除请求头"
+              onClick={() => onChange({ ...value, extra: Object.fromEntries(extras.filter((_, entryIndex) => entryIndex !== index)) })}
+            >
+              <Trash className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function FormSection({

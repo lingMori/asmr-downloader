@@ -14,9 +14,9 @@ const buttonVariants = cva(
         danger: "deck-button-danger",
       },
       size: {
-        default: "h-[38px] px-4 py-2",
-        sm: "h-8 px-3 text-[11px]",
-        lg: "h-10 px-5 text-sm",
+        default: "h-11 px-4 py-2",
+        sm: "h-11 px-3 text-[11px] md:h-9",
+        lg: "h-12 px-5 text-sm",
       },
     },
     defaultVariants: {

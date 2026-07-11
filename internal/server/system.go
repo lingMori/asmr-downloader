@@ -85,6 +85,7 @@ func (s *Server) handleConfigUpdate(ctx *gin.Context) {
 	if value := strings.TrimSpace(req.Downloader.PreferMedia); value != "" {
 		next.Downloader.PreferMedia = value
 	}
+	next.Downloader.HTTP = req.Downloader.HTTP
 
 	if req.Limit.SyncQPS > 0 {
 		next.Limit.SyncQPS = req.Limit.SyncQPS

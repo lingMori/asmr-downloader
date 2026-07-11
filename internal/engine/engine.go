@@ -448,16 +448,19 @@ func (m *EngineManager) prepareDownloadPlanWithContext(ctx context.Context, id s
 	log.Println("Download folderName:", folderName)
 	//根据配置需求下载tracks  比如只要mp3格式的
 	storeFileDir := filepath.Join(storeBaseDir, folderName)
-	if hasFiles, err := dirHasFiles(storeFileDir); err == nil && hasFiles {
-		log.Printf("skip existing download: %s", storeFileDir)
-		return downloadPlan{SourceID: id}, nil
-	}
 	needDownloadUrls, err := m.ensureDirExists(tracks, storeFileDir)
 	if err != nil {
 		return downloadPlan{}, err
 	}
 	//过滤掉不需要的格式
 	needDownloadUrls = m.filterTargetAudioFormate(needDownloadUrls)
+	needDownloadUrls, err = missingDownloadFiles(needDownloadUrls)
+	if err != nil {
+		return downloadPlan{}, err
+	}
+	if len(needDownloadUrls) == 0 {
+		log.Printf("skip complete download: %s", storeFileDir)
+	}
 	return downloadPlan{
 		SourceID: id,
 		Files:    needDownloadUrls,
@@ -1065,15 +1068,22 @@ func (m *EngineManager) DownloadMediaByBatchIds(worksId []string, storePathDir s
 	return nil
 }
 
-func dirHasFiles(path string) (bool, error) {
-	entries, err := os.ReadDir(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
+func missingDownloadFiles(files [][]string) ([][]string, error) {
+	missing := make([][]string, 0, len(files))
+	for _, file := range files {
+		if len(file) < 3 {
+			return nil, fmt.Errorf("invalid download file entry")
 		}
-		return false, err
+		info, err := os.Stat(filepath.Join(file[1], file[2]))
+		if err == nil && !info.IsDir() && info.Size() > 0 {
+			continue
+		}
+		if err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+		missing = append(missing, file)
 	}
-	return len(entries) > 0, nil
+	return missing, nil
 }
 
 // 打印同步元数据统计信息

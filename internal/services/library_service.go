@@ -94,10 +94,25 @@ func (s *LibraryService) ResolveMediaPath(relPath string) (string, error) {
 	if absTarget != absBase && !strings.HasPrefix(absTarget, absBase+string(os.PathSeparator)) {
 		return "", errors.New("invalid media path")
 	}
-	if _, err := os.Stat(absTarget); err != nil {
+	realBase, err := filepath.EvalSymlinks(absBase)
+	if err != nil {
 		return "", err
 	}
-	return absTarget, nil
+	realTarget, err := filepath.EvalSymlinks(absTarget)
+	if err != nil {
+		return "", err
+	}
+	if realTarget != realBase && !strings.HasPrefix(realTarget, realBase+string(os.PathSeparator)) {
+		return "", errors.New("invalid media path")
+	}
+	info, err := os.Stat(realTarget)
+	if err != nil {
+		return "", err
+	}
+	if info.IsDir() {
+		return "", os.ErrNotExist
+	}
+	return realTarget, nil
 }
 
 func (s *LibraryService) ListWorks(_ context.Context, page, pageSize int, search string) (LibraryListResponse, error) {

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -146,5 +148,28 @@ func TestOpenTrackStreamForwardsRangeAndUsesIdentityEncoding(t *testing.T) {
 	}
 	if resp.StatusCode != http.StatusPartialContent {
 		t.Fatalf("expected 206 response, got %d", resp.StatusCode)
+	}
+}
+
+func TestMissingDownloadFilesOnlyReturnsAbsentOrEmptyTargets(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "complete.mp3"), []byte("audio"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "empty.mp3"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	files := [][]string{
+		{"https://example/complete", dir, "complete.mp3"},
+		{"https://example/empty", dir, "empty.mp3"},
+		{"https://example/missing", dir, "missing.mp3"},
+	}
+
+	missing, err := missingDownloadFiles(files)
+	if err != nil {
+		t.Fatalf("missingDownloadFiles() error = %v", err)
+	}
+	if len(missing) != 2 || missing[0][2] != "empty.mp3" || missing[1][2] != "missing.mp3" {
+		t.Fatalf("unexpected missing files: %#v", missing)
 	}
 }

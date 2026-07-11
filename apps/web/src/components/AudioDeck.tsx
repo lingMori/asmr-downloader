@@ -61,6 +61,8 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
   const contextRef = useRef<AudioContext | null>(null);
   const rafRef = useRef(0);
   const seekingRef = useRef(false);
+  const seekDraftRef = useRef(0);
+  const resumeAfterSeekRef = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(false);
   const [volume, setVolume] = useState(0.75);
@@ -230,28 +232,68 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
 
   function beginSeek() {
     if (!canSeek) {
-      return;
+      return false;
     }
+    const audio = audioRef.current;
+    const nextTime = clampTime(time, duration);
     seekingRef.current = true;
+    seekDraftRef.current = nextTime;
+    resumeAfterSeekRef.current = Boolean(audio && !audio.paused);
+    if (resumeAfterSeekRef.current) {
+      audio?.pause();
+    }
     setSeeking(true);
-    setSeekDraft(clampTime(time, duration));
+    setSeekDraft(nextTime);
+    return true;
   }
 
   function finishSeek() {
     if (!seekingRef.current) {
       return;
     }
+    const nextTime = seekDraftRef.current;
+    const shouldResume = resumeAfterSeekRef.current;
     seekingRef.current = false;
+    resumeAfterSeekRef.current = false;
     setSeeking(false);
-    setSeekDraft(0);
+    commitSeek(nextTime);
+
+    const audio = audioRef.current;
+    if (shouldResume && audio) {
+      void audio.play()
+        .then(() => {
+          void ensureAnalyser();
+        })
+        .catch((error) => {
+          setPlaying(false);
+          setPlayError("PLAY BLOCKED");
+          console.warn(PLAYER_LOG_PREFIX, "playback resume after seek failed", {
+            error,
+            audio: buildAudioDebugPayload(audio),
+            nextTime,
+          });
+        });
+    }
   }
 
-  function seekTo(value: number) {
+  function previewSeek(value: number) {
     if (!canSeek) {
       return;
     }
     const nextTime = clampTime(value, duration);
+    if (!seekingRef.current) {
+      commitSeek(nextTime);
+      return;
+    }
+    seekDraftRef.current = nextTime;
     setSeekDraft(nextTime);
+  }
+
+  function commitSeek(value: number) {
+    if (!canSeek) {
+      return;
+    }
+    const nextTime = clampTime(value, duration);
     setTime(nextTime);
 
     const audio = audioRef.current;
@@ -318,6 +360,8 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
       setSeekDraft(0);
       setSeeking(false);
       seekingRef.current = false;
+      seekDraftRef.current = 0;
+      resumeAfterSeekRef.current = false;
     }
     setPlayError("");
     void probeTrackURL(target.url);
@@ -435,11 +479,15 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
           value={seekValue}
           disabled={!canSeek}
           aria-label="播放进度"
-          onPointerDown={beginSeek}
+          onPointerDown={(event) => {
+            if (beginSeek()) {
+              event.currentTarget.setPointerCapture?.(event.pointerId);
+            }
+          }}
           onPointerUp={finishSeek}
           onPointerCancel={finishSeek}
           onBlur={finishSeek}
-          onChange={(event) => seekTo(Number(event.currentTarget.value))}
+          onChange={(event) => previewSeek(Number(event.currentTarget.value))}
         />
         {!compact ? (
           <div className="mt-1 flex items-center justify-between gap-3">
@@ -492,7 +540,7 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
                       ? "border-[color:var(--tape-pink)] text-[color:var(--text-display)] shadow-[var(--glow-tape)]"
                       : "text-[color:var(--text-body)] hover:border-[color:var(--telltale-amber)]",
                   )}
-                  onClick={() => seekTo(cue.start)}
+                  onClick={() => commitSeek(cue.start)}
                 >
                   <span className="console-readout shrink-0 text-[10px]">
                     {formatTime(cue.start)}

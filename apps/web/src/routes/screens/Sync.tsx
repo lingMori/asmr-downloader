@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ActionReviewDialog } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/select";
 import {
   PageHeader,
@@ -26,9 +27,20 @@ export function Sync() {
     "failed" | "success" | "pending" | "all"
   >("failed");
   const [exportFormat, setExportFormat] = useState<"csv" | "json">("csv");
+  const [pendingMode, setPendingMode] = useState<"metadata" | "download" | "retry" | null>(null);
   const reportQuery = useQuery({
     queryKey: ["sync", "report"],
     queryFn: () => apiClient.getReport(),
+  });
+  const activeSyncTasksQuery = useQuery({
+    queryKey: ["tasks", "sync-active"],
+    queryFn: () =>
+      apiClient.getTasks({
+        type: ["sync", "sync-download", "sync-retry"],
+        status: ["QUEUED", "RUNNING"],
+        pageSize: 50,
+      }),
+    refetchInterval: 15000,
   });
 
   const queueMutation = useMutation({
@@ -45,7 +57,9 @@ export function Sync() {
       const label =
         mode === "metadata" ? "刷新作品清单" : mode === "download" ? "批量下载" : "重试失败下载";
       toast.success(`已创建${label}任务 #${res.task_id}`);
+      setPendingMode(null);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["task-summary"] });
     },
     onError: (error) => {
       toast.error(String(error));
@@ -83,7 +97,8 @@ export function Sync() {
     },
   });
 
-  const running = queueMutation.isPending;
+  const running =
+    queueMutation.isPending || (activeSyncTasksQuery.data?.items.length ?? 0) > 0;
   const progress = reportQuery.data?.progress;
   const totals = reportQuery.data?.totals;
   const downloads = reportQuery.data?.downloads;
@@ -132,7 +147,7 @@ export function Sync() {
           icon={ArrowClockwise}
           actionLabel="刷新清单"
           busy={queueMutation.isPending}
-          onClick={() => queueMutation.mutate("metadata")}
+          onClick={() => setPendingMode("metadata")}
           panelSlot={
             <Select
               value={syncScope}
@@ -151,7 +166,7 @@ export function Sync() {
           icon={Database}
           actionLabel="开始批量下载"
           busy={queueMutation.isPending}
-          onClick={() => queueMutation.mutate("download")}
+          onClick={() => setPendingMode("download")}
         />
         <ActionCard
           title="重试失败下载"
@@ -159,16 +174,17 @@ export function Sync() {
           icon={ArrowClockwise}
           actionLabel="重试失败下载"
           busy={queueMutation.isPending}
-          onClick={() => queueMutation.mutate("retry")}
+          onClick={() => setPendingMode("retry")}
         />
       </motion.div>
 
-      <motion.div variants={fadeUpItem}>
-        <Card>
-          <CardHeader>
-            <CardTitle>数据存放位置</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-3">
+      <motion.details variants={fadeUpItem} className="deck-plate group">
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 font-semibold text-[color:var(--text-display)]">
+          <span>存储与诊断（可选）</span>
+          <span className="text-xs text-[color:var(--text-mute)] group-open:hidden">展开</span>
+          <span className="hidden text-xs text-[color:var(--text-mute)] group-open:inline">收起</span>
+        </summary>
+        <div className="grid gap-3 border-t border-[color:var(--chassis-edge)] p-4 md:grid-cols-3">
             <StorageNote
               label="作品清单"
               value=".asmroner-data/asmroner.db"
@@ -194,9 +210,8 @@ export function Sync() {
                 查看同步目录
               </Link>
             </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+        </div>
+      </motion.details>
 
       <motion.div variants={fadeUpItem} className="grid gap-4 xl:grid-cols-[1.15fr_0.95fr]">
         <Card foil={running}>
@@ -348,6 +363,38 @@ export function Sync() {
           </CardContent>
         </Card>
       </motion.div>
+
+      <ActionReviewDialog
+        open={pendingMode !== null}
+        onOpenChange={(open) => !open && !queueMutation.isPending && setPendingMode(null)}
+        title={
+          pendingMode === "metadata"
+            ? "确认刷新作品清单"
+            : pendingMode === "download"
+              ? "确认批量下载"
+              : "确认重试失败下载"
+        }
+        description="确认范围后，任务会立即进入后台队列；执行进度可在任务中心查看。"
+        rows={[
+          {
+            label: "操作范围",
+            value:
+              pendingMode === "metadata"
+                ? syncScope === "subtitle" ? "仅带字幕作品" : "全部作品清单"
+                : pendingMode === "download"
+                  ? `${downloads?.pending ?? 0} 条待处理记录`
+                  : `${downloads?.failed ?? 0} 条失败记录`,
+          },
+          {
+            label: "文件影响",
+            value: pendingMode === "metadata" ? "只更新数据库，不下载文件" : "写入设置中的同步目录",
+          },
+        ]}
+        warning={pendingMode === "download" ? "批量下载可能占用较多网络流量与磁盘空间，请先核对待处理数量和同步目录。" : undefined}
+        confirmLabel="创建后台任务"
+        busy={queueMutation.isPending}
+        onConfirm={() => pendingMode && queueMutation.mutate(pendingMode)}
+      />
     </motion.section>
   );
 }

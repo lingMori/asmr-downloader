@@ -11,11 +11,11 @@ import {
   Gauge,
 } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
-import { DeckFooter } from "@/components/DeckFooter";
 import { DeckStatusBar } from "@/components/DeckStatusBar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { DeckDialog } from "@/components/ui/dialog";
 import { apiClient } from "@/lib/api";
-import { useTaskEvents } from "@/lib/useTaskEvents";
 import { cn } from "@/lib/utils";
 
 type NavTo =
@@ -53,7 +53,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => getInitialThemeMode());
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => getInitialSidebarState());
   const [flashKey, setFlashKey] = useState(0);
-  const [packetCount, setPacketCount] = useState(0);
+  const [taskPanelOpen, setTaskPanelOpen] = useState(false);
   const showSidebarDetails = !sidebarCollapsed;
   const healthQuery = useQuery({
     queryKey: ["system", "health"],
@@ -66,10 +66,12 @@ export function Layout({ children }: { children: ReactNode }) {
     : healthQuery.data
       ? "online"
       : "checking";
-
-  useTaskEvents(() => {
-    setPacketCount((value) => (value + 1) % 1000);
+  const activeTasksQuery = useQuery({
+    queryKey: ["tasks", "global-active"],
+    queryFn: () => apiClient.getTasks({ status: ["QUEUED", "RUNNING"], pageSize: 50 }),
+    refetchInterval: 15000,
   });
+  const activeTasks = activeTasksQuery.data?.items ?? [];
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -184,44 +186,31 @@ export function Layout({ children }: { children: ReactNode }) {
               })}
             </nav>
 
-            <div className={cn("hidden grid-cols-3 gap-2 lg:grid", !showSidebarDetails && "lg:hidden")}>
-              <SidebarChip label="API" value={serviceState === "online" ? "OK" : serviceState === "checking" ? "CHK" : "OFF"} tone={serviceState} />
-              <SidebarChip label="EVT" value={String(packetCount).padStart(3, "0")} />
-              <SidebarChip label="MODE" value={themeMode === "dark" ? "CRT" : themeMode === "light" ? "PANEL" : "AUTO"} />
-            </div>
-
-            <div className={cn("mt-auto hidden lg:block", !showSidebarDetails && "lg:hidden")}>
-              <div className="deck-screen p-3">
-                <div className="deck-decal">ACTIVE SLOT</div>
-                <div className="console-title mt-3 text-2xl font-black leading-none text-[color:var(--text-display)]">
-                  {activeNav.code}
-                </div>
-                <p className="mt-2 text-xs leading-5 text-[color:var(--text-body)]">
-                  {activeNav.hint}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Badge variant={serviceState === "offline" ? "halt" : serviceState === "checking" ? "warn" : "signal"}>
-                    {serviceState === "online" ? "LINK" : serviceState === "checking" ? "SYNC" : "OFF"}
-                  </Badge>
-                  <Badge variant="mute">PKT {String(packetCount).padStart(3, "0")}</Badge>
-                </div>
-              </div>
-            </div>
           </div>
         </motion.aside>
 
         <div className="min-w-0 flex-1">
           <DeckStatusBar
-            activeCode={activeNav.code}
             activeLabel={activeNav.label}
             activeHint={activeNav.hint}
-            packetCount={packetCount}
             serviceState={serviceState}
             sidebarCollapsed={sidebarCollapsed}
             onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
             themeMode={themeMode}
             onThemeModeChange={setThemeMode}
+            activeTaskCount={activeTasks.length}
+            onOpenTasks={() => setTaskPanelOpen(true)}
           />
+
+          {serviceState === "offline" ? (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border border-[color:var(--telltale-red)] bg-[color:var(--screen-void)] px-4 py-3 text-sm text-[color:var(--text-body)]">
+              <span>本地 API 无法连接。搜索、同步和任务操作暂不可用。</span>
+              <div className="flex gap-2">
+                <Button variant="secondary" size="sm" onClick={() => void healthQuery.refetch()}>重新连接</Button>
+                <Link to="/settings" className="deck-button-secondary inline-flex min-h-9 items-center border px-3 text-xs font-bold">检查设置</Link>
+              </div>
+            </div>
+          ) : null}
 
           <AnimatePresence mode="wait">
             <motion.main
@@ -237,35 +226,35 @@ export function Layout({ children }: { children: ReactNode }) {
           </AnimatePresence>
         </div>
       </div>
-      <DeckFooter packetCount={packetCount} serviceState={serviceState} />
-    </div>
-  );
-}
-
-function SidebarChip({
-  label,
-  value,
-  tone = "online",
-}: {
-  label: string;
-  value: string;
-  tone?: ServiceState;
-}) {
-  const toneClass =
-    tone === "offline"
-      ? "text-[color:var(--telltale-red)]"
-      : tone === "checking"
-        ? "text-[color:var(--telltale-amber)]"
-        : "text-[color:var(--phosphor-primary)]";
-
-  return (
-    <div className="deck-plate px-2 py-2 text-center">
-      <div className="console-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--text-mute)]">
-        {label}
-      </div>
-      <div className={cn("console-readout mt-1 text-sm font-bold", toneClass)}>
-        {value}
-      </div>
+      <DeckDialog
+        open={taskPanelOpen}
+        onOpenChange={setTaskPanelOpen}
+        kicker="Task Activity"
+        title="进行中的任务"
+        description="这里汇总所有排队和执行中的后台任务。"
+        tone={activeTasks.length > 0 ? "signal" : "mute"}
+        footer={<Link to="/queue" onClick={() => setTaskPanelOpen(false)} className="deck-button-secondary inline-flex min-h-10 items-center border px-4 text-xs font-bold">打开任务中心</Link>}
+      >
+        <div className="space-y-3">
+          {activeTasks.map((task) => (
+            <Link
+              key={task.id}
+              to="/queue"
+              onClick={() => setTaskPanelOpen(false)}
+              className="deck-plate block p-4 transition hover:border-[color:var(--telltale-amber)]"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate font-semibold text-[color:var(--text-display)]">{task.name}</div>
+                  <div className="mt-1 text-xs text-[color:var(--text-mute)]">#{task.id} · {task.message || "等待后台更新"}</div>
+                </div>
+                <Badge variant={task.status === "RUNNING" ? "live" : "warn"}>{task.status === "RUNNING" ? "执行中" : "排队中"}</Badge>
+              </div>
+            </Link>
+          ))}
+          {activeTasks.length === 0 ? <div className="deck-screen p-5 text-sm text-[color:var(--text-body)]">当前没有排队或执行中的任务。</div> : null}
+        </div>
+      </DeckDialog>
     </div>
   );
 }

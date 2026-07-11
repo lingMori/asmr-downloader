@@ -28,13 +28,17 @@ export function Dashboard() {
     queryKey: ["dashboard", "tasks"],
     queryFn: () => apiClient.getTasks(),
   });
+  const taskSummaryQuery = useQuery({
+    queryKey: ["task-summary", "dashboard"],
+    queryFn: () => apiClient.getTaskSummary(),
+  });
   const libraryQuery = useQuery({
     queryKey: ["dashboard", "library"],
     queryFn: () => apiClient.getLibraryWorks({ page: 1, pageSize: 6 }),
   });
 
   const tasks = tasksQuery.data?.items ?? [];
-  const runningTasks = tasks.filter((task) => task.status === "RUNNING").length;
+  const runningTasks = taskSummaryQuery.data?.running ?? 0;
   const totalIndex = reportQuery.data?.totals.metadata ?? 0;
   const reportState = reportQuery.isError
     ? "error"
@@ -120,7 +124,7 @@ export function Dashboard() {
           <CardContent className="space-y-3">
             <Meter label="运行中" value={runningTasks} max={6} variant="live" />
             <Meter label="本地作品" value={libraryQuery.data?.total ?? 0} max={Math.max(1, libraryQuery.data?.total ?? 1)} variant="signal" />
-            <Meter label="失败记录" value={reportQuery.data?.downloads.failed ?? 0} max={Math.max(1, reportQuery.data?.downloads.failed ?? 1)} variant="halt" />
+            <Meter label="失败任务" value={taskSummaryQuery.data?.failed ?? 0} max={Math.max(1, taskSummaryQuery.data?.failed ?? 1)} variant="halt" />
           </CardContent>
         </Card>
 
@@ -129,7 +133,7 @@ export function Dashboard() {
             <CardTitle>数量概览</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <RailReadout label="任务" value={tasksQuery.data?.total ?? 0} />
+            <RailReadout label="任务" value={taskSummaryQuery.data?.total ?? 0} />
             <RailReadout label="本地库" value={libraryQuery.data?.total ?? 0} />
             <RailReadout label="待下载" value={reportQuery.data?.downloads.pending ?? 0} />
           </CardContent>

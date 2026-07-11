@@ -46,7 +46,7 @@ ASMRoner 是一个面向 asmr.one 的本地 Web 控制台，用于完成作品�
 ### 1. 启动后端
 
 ```bash
-go run . --addr :8080
+go run .
 ```
 
 首次启动时，如果 `.asmroner-data/config.toml` 不存在，服务会自动生成默认配置。
@@ -64,10 +64,10 @@ npm run dev:web
 http://localhost:5173
 ```
 
-默认 API 地址：
+开发环境默认连接本地 Go 服务：
 
 ```text
-http://localhost:8080/api
+http://127.0.0.1:8080/api
 ```
 
 连接其他后端：
@@ -81,8 +81,8 @@ VITE_API_BASE_URL=http://localhost:8080/api npm run dev:web
 | 模块 | 呼号 | 能力 |
 | --- | --- | --- |
 | 总览 | `DASH / COMMAND STATUS` | 展示运行概览、任务数量、同步进度和本地媒体状态 |
-| 发现雷达 | `RADAR / REMOTE INDEX` | 搜索、筛选、作品详情、结果导出、选中下载、RJ 批量下载、hot100 |
-| 任务队列 | `QUEUE / JOB CONTROL` | 任务列表、状态过滤、进度、日志、payload / result 检查 |
+| 发现雷达 | `RADAR / REMOTE INDEX` | 搜索、筛选、作品详情、结果导出和选中下载 |
+| 任务队列 | `QUEUE / JOB CONTROL` | 新建 RJ / Hot100 下载，查看进度、失败、日志和重试 |
 | 媒体档案 | `ARCH / LOCAL MEDIA` | 本地作品浏览、文件列表、音频播放、字幕匹配、媒体访问 |
 | 同步舱 | `SYNC / BATCH OPS` | 元数据同步、同步下载、失败重试、同步报告、导出 |
 | 系统参数 | `SYS / CONFIG BUS` | 账号、代理、目录、限流、重试、请求头等持久化配置 |
@@ -106,8 +106,12 @@ VITE_API_BASE_URL=http://localhost:8080/api npm run dev:web
 后端监听地址可通过环境变量覆盖：
 
 ```bash
-ASMRO_HTTP_ADDR=:8080
+ASMRO_HTTP_ADDR=127.0.0.1:8080
 ```
+
+默认只监听本机回环地址。确需从局域网访问时可显式传入 `--addr :8080`，并自行配置防火墙和访问控制。
+
+生产构建完成后，Go 服务会自动提供 `apps/web/dist`；发布压缩包则从可执行文件旁的 `web/` 目录提供控制台。也可用 `ASMRO_WEB_DIR` 指定其他静态目录。
 
 ## 项目结构
 

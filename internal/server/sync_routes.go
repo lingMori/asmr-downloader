@@ -55,6 +55,10 @@ func (s *Server) handleSyncDownload(ctx *gin.Context) {
 	}
 	taskID, err := s.syncSvc.EnqueueSyncDownload(ctx.Request.Context(), req)
 	if err != nil {
+		if errors.Is(err, services.ErrSyncRunnerBusy) {
+			respondError(ctx, http.StatusConflict, "SYNC_RUNNER_BUSY", err)
+			return
+		}
 		respondError(ctx, http.StatusInternalServerError, "SYNC_DOWNLOAD_ENQUEUE_FAILED", err)
 		return
 	}
@@ -64,6 +68,10 @@ func (s *Server) handleSyncDownload(ctx *gin.Context) {
 func (s *Server) handleSyncRetry(ctx *gin.Context) {
 	taskID, err := s.syncSvc.EnqueueSyncRetry(ctx.Request.Context())
 	if err != nil {
+		if errors.Is(err, services.ErrSyncRunnerBusy) {
+			respondError(ctx, http.StatusConflict, "SYNC_RUNNER_BUSY", err)
+			return
+		}
 		respondError(ctx, http.StatusInternalServerError, "SYNC_RETRY_ENQUEUE_FAILED", err)
 		return
 	}
