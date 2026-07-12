@@ -65,25 +65,57 @@ export function findSubtitleForAudio(subtitleFiles: LibraryFile[], audioFile?: L
   if (!audioFile) {
     return undefined;
   }
-  const audioBase = normalizeMediaBase(audioFile.name);
-  const audioPathBase = normalizeMediaBase(audioFile.path);
-  return subtitleFiles.find((file) => {
-    const subtitleBase = normalizeMediaBase(file.name);
-    const subtitlePathBase = normalizeMediaBase(file.path);
-    return (
-      subtitleBase === audioBase ||
-      subtitlePathBase === audioPathBase ||
-      subtitleBase.startsWith(audioBase) ||
-      audioBase.startsWith(subtitleBase)
+
+  const audioNames = mediaStems(audioFile);
+  const audioDirectory = mediaDirectory(audioFile);
+  const candidates = subtitleFiles
+    .map((file, index) => {
+      const subtitleNames = mediaStems(file);
+      const exact = subtitleNames.some((name) => audioNames.includes(name));
+      const normalized = subtitleNames.some((name) =>
+        audioNames.some((audioName) => normalizeComparableStem(name) === normalizeComparableStem(audioName))
+      );
+      return {
+        file,
+        index,
+        exact,
+        normalized,
+        sameDirectory: Boolean(audioDirectory && mediaDirectory(file) === audioDirectory),
+      };
+    })
+    .filter((candidate) => candidate.exact || candidate.normalized)
+    .sort((a, b) =>
+      Number(b.sameDirectory) - Number(a.sameDirectory) ||
+      Number(b.exact) - Number(a.exact) ||
+      a.index - b.index
     );
-  });
+
+  return candidates[0]?.file;
+}
+
+function mediaStems(file: LibraryFile) {
+  return Array.from(new Set([file.name, file.path].map(normalizeMediaBase).filter(Boolean)));
 }
 
 function normalizeMediaBase(value: string) {
   return value
+    .normalize("NFKC")
+    .replace(/\\/g, "/")
     .split("/")
     .pop()!
-    .replace(/\.[^.]+$/, "")
+    .replace(/\.(lrc|srt|vtt|ass|ssa)$/i, "")
     .replace(/\.(mp3|wav|flac|m4a|aac|ogg|opus)$/i, "")
+    .trim()
     .toLowerCase();
+}
+
+function normalizeComparableStem(value: string) {
+  return value.normalize("NFKC").replace(/[\s\p{P}\p{S}]+/gu, "").toLowerCase();
+}
+
+function mediaDirectory(file: LibraryFile) {
+  const source = file.path.includes("/") || file.path.includes("\\") ? file.path : file.name;
+  const parts = source.normalize("NFKC").replace(/\\/g, "/").split("/");
+  parts.pop();
+  return parts.join("/").trim().toLowerCase();
 }

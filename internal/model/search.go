@@ -1,5 +1,7 @@
 package model
 
+import "encoding/json"
+
 // 搜索结果
 type SearchResult struct {
 	Works []struct {
@@ -46,9 +48,9 @@ type SearchResult struct {
 			VoteRank   int    `json:"voteRank"`
 			VoteStatus int    `json:"voteStatus"`
 		} `json:"tags"`
-		LanguageEditions          []interface{} `json:"language_editions"`
-		OriginalWorkno            interface{}   `json:"original_workno"`
-		OtherLanguageEditionsInDb []interface{} `json:"other_language_editions_in_db"`
+		LanguageEditions          json.RawMessage `json:"language_editions"`
+		OriginalWorkno            interface{}     `json:"original_workno"`
+		OtherLanguageEditionsInDb json.RawMessage `json:"other_language_editions_in_db"`
 		TranslationInfo           struct {
 			Lang                    interface{}   `json:"lang"`
 			IsChild                 bool          `json:"is_child"`

@@ -2,11 +2,65 @@ package store
 
 import (
 	"context"
+	"math"
 	"testing"
 
 	"asmroner/internal/database"
 	"asmroner/internal/model"
 )
+
+func TestTaskStoreCancelActivePreservesProgressAndTerminalState(t *testing.T) {
+	db, err := database.NewInMemoryDb()
+	if err != nil {
+		t.Fatalf("NewInMemoryDb() error = %v", err)
+	}
+	if err := db.AutoMigrate(&model.Task{}, &model.TaskLog{}); err != nil {
+		t.Fatalf("AutoMigrate() error = %v", err)
+	}
+
+	taskStore := NewTaskStore(db)
+	task := &model.Task{
+		Type:     model.TaskTypeDownload,
+		Status:   model.TaskStatusRunning,
+		Name:     "partially downloaded",
+		Progress: 0.77,
+	}
+	if err := taskStore.Create(context.Background(), task); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	changed, err := taskStore.CancelActive(context.Background(), task.ID, "task canceled")
+	if err != nil {
+		t.Fatalf("CancelActive() error = %v", err)
+	}
+	if !changed {
+		t.Fatal("expected active task to transition to canceled")
+	}
+
+	if changed, err := taskStore.UpdateRunning(context.Background(), task.ID, 0.9, "late progress"); err != nil || changed {
+		t.Fatalf("late UpdateRunning() = (%v, %v), want (false, nil)", changed, err)
+	}
+	if changed, err := taskStore.FinalizeActive(context.Background(), task.ID, model.TaskStatusSuccess, 1, "late success"); err != nil || changed {
+		t.Fatalf("late FinalizeActive() = (%v, %v), want (false, nil)", changed, err)
+	}
+	if changed, err := taskStore.CancelActive(context.Background(), task.ID, "task canceled again"); err != nil || changed {
+		t.Fatalf("second CancelActive() = (%v, %v), want (false, nil)", changed, err)
+	}
+
+	got, err := taskStore.Get(context.Background(), task.ID)
+	if err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+	if got.Status != model.TaskStatusCanceled {
+		t.Fatalf("expected canceled status, got %s", got.Status)
+	}
+	if math.Abs(got.Progress-0.77) > 0.0001 {
+		t.Fatalf("expected progress 0.77 to be preserved, got %f", got.Progress)
+	}
+	if got.CompletedAt == nil {
+		t.Fatal("expected completed_at to be set")
+	}
+}
 
 func TestTaskStoreDeleteRemovesTaskAndLogs(t *testing.T) {
 	db, err := database.NewInMemoryDb()

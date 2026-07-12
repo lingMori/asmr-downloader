@@ -116,11 +116,10 @@ func (s *DownloadService) Cancel(taskID uint) error {
 	s.mu.Lock()
 	cancel, ok := s.active[taskID]
 	s.mu.Unlock()
-	if !ok {
-		return errors.New("task is not running")
+	if ok {
+		cancel()
 	}
-	cancel()
-	return nil
+	return s.finishCanceled(taskID)
 }
 
 func validateDownloadRequest(req *DownloadRequest) error {
@@ -157,11 +156,12 @@ func validateDownloadRequest(req *DownloadRequest) error {
 func (s *DownloadService) executeDownload(ctx context.Context, taskID uint, req DownloadRequest) {
 	defer s.unregisterTask(taskID)
 	if err := ctx.Err(); err != nil {
-		s.finishCanceled(taskID)
+		_ = s.finishCanceled(taskID)
 		return
 	}
-	_ = s.taskStore.UpdateStatus(ctx, taskID, model.TaskStatusRunning, 0, "starting download")
-	s.publishEvent(taskID, model.TaskStatusRunning, "starting download", 0)
+	if changed, _ := s.taskStore.UpdateRunning(ctx, taskID, 0, "starting download"); changed {
+		s.publishEvent(taskID, model.TaskStatusRunning, "starting download", 0)
+	}
 	s.appendLog(taskID, fmt.Sprintf("mode=%s ids=%v count=%d dir=%s", req.Mode, req.IDs, req.Count, req.OutputDir))
 
 	outputDir := req.OutputDir
@@ -177,12 +177,16 @@ func (s *DownloadService) executeDownload(ctx context.Context, taskID uint, req 
 	mode := strings.ToLower(req.Mode)
 	var runErr error
 	progressFn := func(done, total int, message string) {
+		if ctx.Err() != nil {
+			return
+		}
 		progress := 0.0
 		if total > 0 {
 			progress = float64(done) / float64(total)
 		}
-		_ = s.taskStore.UpdateStatus(context.Background(), taskID, model.TaskStatusRunning, progress, message)
-		s.publishEvent(taskID, model.TaskStatusRunning, message, progress)
+		if changed, _ := s.taskStore.UpdateRunning(context.Background(), taskID, progress, message); changed {
+			s.publishEvent(taskID, model.TaskStatusRunning, message, progress)
+		}
 	}
 	if progressEngine, ok := s.engine.(DownloadProgressEngine); ok {
 		switch mode {
@@ -204,22 +208,37 @@ func (s *DownloadService) executeDownload(ctx context.Context, taskID uint, req 
 		}
 	}
 
+	if ctx.Err() != nil || errors.Is(runErr, context.Canceled) {
+		_ = s.finishCanceled(taskID)
+		return
+	}
+
+	finishCtx := context.Background()
 	if runErr != nil {
-		if errors.Is(runErr, context.Canceled) {
-			s.finishCanceled(taskID)
-			s.appendLog(taskID, "canceled")
+		changed, updateErr := s.taskStore.FinalizeActive(finishCtx, taskID, model.TaskStatusFailed, 1, runErr.Error())
+		if updateErr != nil {
+			s.appendLog(taskID, "failed to persist task failure: "+updateErr.Error())
 			return
 		}
-		_ = s.taskStore.UpdateStatus(ctx, taskID, model.TaskStatusFailed, 1, runErr.Error())
-		_ = s.taskStore.UpdateResult(ctx, taskID, "", truncateLog(runErr.Error()))
+		if !changed {
+			return
+		}
+		_ = s.taskStore.UpdateResult(finishCtx, taskID, "", truncateLog(runErr.Error()))
 		s.publishEvent(taskID, model.TaskStatusFailed, runErr.Error(), 1)
 		s.appendLog(taskID, "failed: "+runErr.Error())
 		return
 	}
 
 	message := fmt.Sprintf("completed %s", time.Now().Format(time.RFC3339))
-	_ = s.taskStore.UpdateStatus(ctx, taskID, model.TaskStatusSuccess, 1, message)
-	_ = s.taskStore.UpdateResult(ctx, taskID, fmt.Sprintf("{\"output_dir\":\"%s\"}", absDir), "")
+	changed, updateErr := s.taskStore.FinalizeActive(finishCtx, taskID, model.TaskStatusSuccess, 1, message)
+	if updateErr != nil {
+		s.appendLog(taskID, "failed to persist task success: "+updateErr.Error())
+		return
+	}
+	if !changed {
+		return
+	}
+	_ = s.taskStore.UpdateResult(finishCtx, taskID, fmt.Sprintf("{\"output_dir\":\"%s\"}", absDir), "")
 	s.publishEvent(taskID, model.TaskStatusSuccess, message, 1)
 	s.appendLog(taskID, message)
 }
@@ -263,11 +282,30 @@ func (s *DownloadService) unregisterTask(taskID uint) {
 	delete(s.active, taskID)
 }
 
-func (s *DownloadService) finishCanceled(taskID uint) {
+func (s *DownloadService) finishCanceled(taskID uint) error {
 	message := "task canceled"
-	_ = s.taskStore.UpdateStatusKeepProgress(context.Background(), taskID, model.TaskStatusCanceled, message)
-	_ = s.taskStore.UpdateResult(context.Background(), taskID, "", message)
-	s.publishEvent(taskID, model.TaskStatusCanceled, message, 1)
+	ctx := context.Background()
+	changed, err := s.taskStore.CancelActive(ctx, taskID, message)
+	if err != nil {
+		return err
+	}
+	if !changed {
+		task, getErr := s.taskStore.Get(ctx, taskID)
+		if getErr != nil {
+			return getErr
+		}
+		if task.Status == model.TaskStatusQueued || task.Status == model.TaskStatusRunning {
+			return errors.New("task cancellation did not update active task")
+		}
+		return nil
+	}
+	task, err := s.taskStore.Get(ctx, taskID)
+	if err != nil {
+		return err
+	}
+	s.publishEvent(taskID, model.TaskStatusCanceled, message, task.Progress)
+	s.appendLog(taskID, message)
+	return nil
 }
 
 func (s *DownloadService) DeleteTaskFiles(task *model.Task) (int, error) {

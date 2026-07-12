@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -146,9 +147,9 @@ func buildSearchResultFixture() model.SearchResult {
 			VoteRank   int    "json:\"voteRank\""
 			VoteStatus int    "json:\"voteStatus\""
 		} "json:\"tags\""
-		LanguageEditions          []interface{} "json:\"language_editions\""
-		OriginalWorkno            interface{}   "json:\"original_workno\""
-		OtherLanguageEditionsInDb []interface{} "json:\"other_language_editions_in_db\""
+		LanguageEditions          json.RawMessage "json:\"language_editions\""
+		OriginalWorkno            interface{}     "json:\"original_workno\""
+		OtherLanguageEditionsInDb json.RawMessage "json:\"other_language_editions_in_db\""
 		TranslationInfo           struct {
 			Lang                    interface{}   "json:\"lang\""
 			IsChild                 bool          "json:\"is_child\""

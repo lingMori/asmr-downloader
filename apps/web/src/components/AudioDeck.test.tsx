@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AudioDeck } from "./AudioDeck";
@@ -63,5 +63,55 @@ describe("AudioDeck seeking", () => {
 
     expect(committedTimes).toEqual([120]);
     expect(currentTime).toBe(120);
+  });
+
+  it("shows only the active parsed subtitle and can hide it", async () => {
+    const subtitleText = "1\n00:00:01,000 --> 00:00:03,000\nFirst line\n\n2\n00:00:04,000 --> 00:00:06,000\nSecond line";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "Content-Type": "text/plain; charset=utf-8" }),
+      arrayBuffer: async () => new TextEncoder().encode(subtitleText).buffer,
+    }));
+
+    const { container } = render(
+      <AudioDeck
+        tracks={[{
+          path: "disc/track.wav",
+          name: "track.wav",
+          kind: "audio",
+          url: "/audio",
+        }]}
+        selectedPath="disc/track.wav"
+        onSelect={vi.fn()}
+        subtitle={{
+          path: "disc/track.srt",
+          name: "track.srt",
+          kind: "subtitle",
+          url: "/subtitle",
+        }}
+        title="Test work"
+        mediaId="RJ00000001"
+        variant="dock"
+      />,
+    );
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(
+      "/subtitle",
+      expect.objectContaining({ cache: "no-store" }),
+    ));
+    const audio = container.querySelector("audio");
+    if (!audio) {
+      throw new Error("audio element was not rendered");
+    }
+    Object.defineProperty(audio, "currentTime", { configurable: true, value: 2 });
+    fireEvent.timeUpdate(audio);
+
+    await waitFor(() => expect(
+      container.querySelector(".yoru-floating-subtitle-text"),
+    ).toHaveTextContent("First line"));
+    expect(screen.queryByText("Second line")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "隐藏字幕" })[0]);
+    expect(container.querySelector(".yoru-floating-subtitle-text")).toBeNull();
   });
 });

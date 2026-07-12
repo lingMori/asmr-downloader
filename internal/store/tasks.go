@@ -136,6 +136,68 @@ func (s *TaskStore) UpdateStatus(ctx context.Context, id uint, status model.Task
 	return nil
 }
 
+// UpdateRunning advances an active task without reviving a terminal task.
+func (s *TaskStore) UpdateRunning(ctx context.Context, id uint, progress float64, message string) (bool, error) {
+	now := time.Now()
+	tx := s.db.WithContext(ctx).
+		Model(&model.Task{}).
+		Where("id = ?", id).
+		Where("status IN ?", []model.TaskStatus{model.TaskStatusQueued, model.TaskStatusRunning}).
+		Updates(map[string]interface{}{
+			"status":     model.TaskStatusRunning,
+			"progress":   progress,
+			"message":    message,
+			"started_at": gorm.Expr("COALESCE(started_at, ?)", now),
+		})
+	if tx.Error != nil {
+		return false, tx.Error
+	}
+	return tx.RowsAffected > 0, nil
+}
+
+// FinalizeActive applies a terminal state only while a task is still active.
+func (s *TaskStore) FinalizeActive(ctx context.Context, id uint, status model.TaskStatus, progress float64, message string) (bool, error) {
+	switch status {
+	case model.TaskStatusSuccess, model.TaskStatusFailed, model.TaskStatusCanceled, model.TaskStatusTerminated:
+	default:
+		return false, errors.New("final task status is not terminal")
+	}
+
+	tx := s.db.WithContext(ctx).
+		Model(&model.Task{}).
+		Where("id = ?", id).
+		Where("status IN ?", []model.TaskStatus{model.TaskStatusQueued, model.TaskStatusRunning}).
+		Updates(map[string]interface{}{
+			"status":       status,
+			"progress":     progress,
+			"message":      message,
+			"completed_at": time.Now(),
+		})
+	if tx.Error != nil {
+		return false, tx.Error
+	}
+	return tx.RowsAffected > 0, nil
+}
+
+// CancelActive marks an active task canceled while preserving its last progress.
+func (s *TaskStore) CancelActive(ctx context.Context, id uint, message string) (bool, error) {
+	tx := s.db.WithContext(ctx).
+		Model(&model.Task{}).
+		Where("id = ?", id).
+		Where("status IN ?", []model.TaskStatus{model.TaskStatusQueued, model.TaskStatusRunning}).
+		Updates(map[string]interface{}{
+			"status":       model.TaskStatusCanceled,
+			"message":      message,
+			"result":       "",
+			"log_excerpt":  message,
+			"completed_at": time.Now(),
+		})
+	if tx.Error != nil {
+		return false, tx.Error
+	}
+	return tx.RowsAffected > 0, nil
+}
+
 // UpdateStatusKeepProgress updates status/message timestamps without overwriting progress.
 func (s *TaskStore) UpdateStatusKeepProgress(ctx context.Context, id uint, status model.TaskStatus, message string) error {
 	updates := map[string]interface{}{

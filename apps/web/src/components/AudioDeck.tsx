@@ -21,6 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { LibraryFile } from "@/lib/api";
+import { decodeSubtitleBuffer, parseSubtitleText } from "@/lib/subtitles";
 import { cn } from "@/lib/utils";
 
 const PLAYER_LOG_PREFIX = "[ASMRoner Player]";
@@ -72,7 +73,9 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
   const [seekDraft, setSeekDraft] = useState(0);
   const [playError, setPlayError] = useState("");
   const [dockExpanded, setDockExpanded] = useState(false);
+  const [subtitlesVisible, setSubtitlesVisible] = useState(true);
   const [subtitleText, setSubtitleText] = useState("");
+  const [loadedSubtitleUrl, setLoadedSubtitleUrl] = useState("");
   const [subtitleLoading, setSubtitleLoading] = useState(false);
   const [subtitleError, setSubtitleError] = useState("");
 
@@ -86,8 +89,10 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
   const seekPercent = canSeek ? (seekValue / duration) * 100 : 0;
   const nativeSubtitle = subtitle && isNativeSubtitleFile(subtitle) ? subtitle : undefined;
   const subtitleCues = useMemo(
-    () => parseSubtitleText(subtitleText, subtitle?.name ?? ""),
-    [subtitleText, subtitle?.name],
+    () => loadedSubtitleUrl === subtitle?.url
+      ? parseSubtitleText(subtitleText, subtitle?.name ?? "")
+      : [],
+    [loadedSubtitleUrl, subtitleText, subtitle?.name, subtitle?.url],
   );
   const activeSubtitle = useMemo(
     () => subtitleCues.find((cue) => time >= cue.start && time < cue.end),
@@ -103,14 +108,38 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
   }, [volume]);
 
   useEffect(() => {
+    const audio = audioRef.current;
+    const loadedSource = audio?.getAttribute("src");
+    if (!audio || !loadedSource || loadedSource === selected?.url) {
+      return;
+    }
+
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
+    setPlaying(false);
+    setPlayError("");
+    setTime(0);
+    setDuration(0);
+    setSeekDraft(0);
+    setSeeking(false);
+    seekingRef.current = false;
+    seekDraftRef.current = 0;
+    resumeAfterSeekRef.current = false;
+  }, [selected?.url]);
+
+  useEffect(() => {
     if (!subtitle?.url) {
       setSubtitleText("");
+      setLoadedSubtitleUrl("");
       setSubtitleError("");
       setSubtitleLoading(false);
       return;
     }
 
     const controller = new AbortController();
+    setSubtitleText("");
+    setLoadedSubtitleUrl("");
     setSubtitleLoading(true);
     setSubtitleError("");
     fetch(subtitle.url, { signal: controller.signal, cache: "no-store" })
@@ -124,6 +153,7 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
       })
       .then((text) => {
         setSubtitleText(text);
+        setLoadedSubtitleUrl(subtitle.url);
       })
       .catch((error) => {
         if (controller.signal.aborted) {
@@ -134,6 +164,7 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
           subtitle,
         });
         setSubtitleText("");
+        setLoadedSubtitleUrl(subtitle.url);
         setSubtitleError("字幕加载失败");
       })
       .finally(() => {
@@ -522,35 +553,11 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
           {subtitleError ? subtitleError : null}
           {!subtitleLoading && !subtitleError ? (
             activeSubtitle?.text ||
-            subtitleCues[0]?.text ||
-            "字幕已加载，等待播放时间命中。"
+            (subtitleCues.length > 0
+              ? "当前时间没有字幕。"
+              : "无法识别字幕时间轴。")
           ) : null}
         </div>
-        {subtitleCues.length > 0 ? (
-          <div className="mt-4 max-h-40 space-y-2 overflow-y-auto pr-1">
-            {subtitleCues.slice(0, 80).map((cue, index) => {
-              const active = cue === activeSubtitle;
-              return (
-                <button
-                  key={`${cue.start}-${index}`}
-                  type="button"
-                  className={cn(
-                    "deck-plate flex w-full gap-3 px-3 py-2 text-left text-xs transition",
-                    active
-                      ? "border-[color:var(--tape-pink)] text-[color:var(--text-display)] shadow-[var(--glow-tape)]"
-                      : "text-[color:var(--text-body)] hover:border-[color:var(--telltale-amber)]",
-                  )}
-                  onClick={() => commitSeek(cue.start)}
-                >
-                  <span className="console-readout shrink-0 text-[10px]">
-                    {formatTime(cue.start)}
-                  </span>
-                  <span className="min-w-0 flex-1">{cue.text}</span>
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
       </div>
     );
   }
@@ -580,7 +587,7 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
           ))}
         </div>
         <div className="deck-decal">SUBTITLE {subtitles.length}</div>
-        {renderSubtitlePanel()}
+        {subtitlesVisible ? renderSubtitlePanel() : null}
       </div>
     );
   }
@@ -627,7 +634,7 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
           </div>
         </div>
         {coverUrl ? (
-          <div className="deck-screen h-20 w-20 shrink-0">
+          <div className="audio-panel-cover deck-screen h-20 w-20 shrink-0">
             <img src={coverUrl} alt="" className="h-full w-full object-cover opacity-80" />
           </div>
         ) : null}
@@ -653,6 +660,17 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
           </Button>
           <Button variant={loop ? "primary" : "secondary"} size="sm" onClick={() => setLoop((value) => !value)}>
             Loop
+          </Button>
+          <Button
+            variant={subtitle && subtitlesVisible ? "primary" : "secondary"}
+            size="sm"
+            onClick={() => setSubtitlesVisible((value) => !value)}
+            disabled={!subtitle}
+            aria-label={subtitlesVisible ? "隐藏字幕" : "显示字幕"}
+            aria-pressed={Boolean(subtitle && subtitlesVisible)}
+            title={subtitlesVisible ? "隐藏字幕" : "显示字幕"}
+          >
+            <Subtitles className="h-4 w-4" weight={subtitle && subtitlesVisible ? "fill" : "regular"} />
           </Button>
         </div>
 
@@ -680,14 +698,14 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={subtitle ? "signal" : "mute"}>
             <Subtitles className="mr-1 h-3 w-3" weight="duotone" />
-            {subtitle ? "CC ON" : "CC OFF"}
+            {subtitle ? (subtitlesVisible ? "CC ON" : "CC HIDDEN") : "CC OFF"}
           </Badge>
           <span className="console-readout text-sm">
             {formatTime(time)} / {formatTime(duration)}
           </span>
         </div>
       </div>
-      {variant === "panel" ? <div className="mt-4">{renderSubtitlePanel()}</div> : null}
+      {variant === "panel" && subtitlesVisible ? <div className="mt-4">{renderSubtitlePanel()}</div> : null}
     </div>
   );
 
@@ -697,9 +715,14 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
 
   return (
     <div className="audio-dock-shell" data-expanded={dockExpanded ? "true" : "false"}>
+      {subtitlesVisible && activeSubtitle ? (
+        <div className="yoru-floating-subtitle" aria-live="polite" aria-atomic="true">
+          <div className="yoru-floating-subtitle-text">{activeSubtitle.text}</div>
+        </div>
+      ) : null}
       <div className="deck-chassis audio-dock-bar p-3" data-live={playing ? "true" : undefined}>
         {coverUrl ? (
-          <div className="deck-screen h-14 w-14 shrink-0">
+          <div className="audio-panel-cover deck-screen h-14 w-14 shrink-0">
             <img src={coverUrl} alt="" className="h-full w-full object-cover opacity-85" />
           </div>
         ) : null}
@@ -713,11 +736,6 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
           <div className="mt-1 truncate text-sm font-bold text-[color:var(--text-display)]">
             {selected?.name || title}
           </div>
-          {activeSubtitle ? (
-            <div className="mt-0.5 truncate text-xs text-[color:var(--text-body)]">
-              {activeSubtitle.text}
-            </div>
-          ) : null}
         </div>
         <div className="hidden min-w-[14rem] flex-1 md:block">{renderSeekControl(true)}</div>
         <div className="flex shrink-0 items-center gap-2">
@@ -726,6 +744,17 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
           </Button>
           <Button size="sm" onClick={togglePlayback} disabled={!selected}>
             {playing ? <Pause className="h-4 w-4" weight="duotone" /> : <Play className="h-4 w-4" weight="duotone" />}
+          </Button>
+          <Button
+            variant={subtitle && subtitlesVisible ? "primary" : "secondary"}
+            size="sm"
+            onClick={() => setSubtitlesVisible((value) => !value)}
+            disabled={!subtitle}
+            aria-label={subtitlesVisible ? "隐藏字幕" : "显示字幕"}
+            aria-pressed={Boolean(subtitle && subtitlesVisible)}
+            title={subtitlesVisible ? "隐藏字幕" : "显示字幕"}
+          >
+            <Subtitles className="h-4 w-4" weight={subtitle && subtitlesVisible ? "fill" : "regular"} />
           </Button>
           <Button variant="secondary" size="sm" onClick={() => selectRelative(1)} disabled={tracks.length === 0}>
             <SkipForward className="h-4 w-4" weight="duotone" />
@@ -775,132 +804,8 @@ function clampTime(value: number, duration: number) {
   return Math.min(duration, Math.max(0, value));
 }
 
-type SubtitleCue = {
-  start: number;
-  end: number;
-  text: string;
-};
-
-function parseSubtitleText(raw: string, name: string): SubtitleCue[] {
-  const text = raw.trim();
-  if (!text) {
-    return [];
-  }
-  if (/\.lrc$/i.test(name) || /^\[[0-9:.]+\]/m.test(text)) {
-    return parseLrc(text);
-  }
-  if (/-->/.test(text)) {
-    return parseTimedText(text);
-  }
-  return text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .slice(0, 120)
-    .map((line, index) => ({
-      start: index * 4,
-      end: (index + 1) * 4,
-      text: line,
-    }));
-}
-
-function parseLrc(text: string): SubtitleCue[] {
-  const cues: SubtitleCue[] = [];
-  for (const line of text.split(/\r?\n/)) {
-    const stamps = [...line.matchAll(/\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]/g)];
-    const content = line.replace(/\[[^\]]+\]/g, "").trim();
-    if (stamps.length === 0 || !content) {
-      continue;
-    }
-    for (const stamp of stamps) {
-      const minutes = Number(stamp[1]);
-      const seconds = Number(stamp[2]);
-      const fraction = stamp[3] ? Number(`0.${stamp[3].padEnd(3, "0").slice(0, 3)}`) : 0;
-      cues.push({
-        start: minutes * 60 + seconds + fraction,
-        end: minutes * 60 + seconds + fraction + 4,
-        text: content,
-      });
-    }
-  }
-  return cues
-    .sort((a, b) => a.start - b.start)
-    .map((cue, index, sorted) => ({
-      ...cue,
-      end: sorted[index + 1]?.start ?? cue.end,
-    }));
-}
-
-function parseTimedText(text: string): SubtitleCue[] {
-  const blocks = text
-    .replace(/^WEBVTT.*?(\r?\n){2}/i, "")
-    .split(/\r?\n\r?\n/);
-  const cues: SubtitleCue[] = [];
-  for (const block of blocks) {
-    const lines = block.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    const timeLineIndex = lines.findIndex((line) => line.includes("-->"));
-    if (timeLineIndex < 0) {
-      continue;
-    }
-    const [startRaw, endRaw] = lines[timeLineIndex].split("-->").map((part) => part.trim());
-    const start = parseSubtitleTime(startRaw);
-    const end = parseSubtitleTime(endRaw.split(/\s+/)[0]);
-    const cueText = lines.slice(timeLineIndex + 1).join(" ").replace(/<[^>]+>/g, "").trim();
-    if (Number.isFinite(start) && Number.isFinite(end) && cueText) {
-      cues.push({ start, end, text: cueText });
-    }
-  }
-  return cues;
-}
-
-function parseSubtitleTime(value: string) {
-  const clean = value.replace(",", ".");
-  const parts = clean.split(":");
-  const seconds = Number(parts.pop());
-  const minutes = Number(parts.pop() ?? 0);
-  const hours = Number(parts.pop() ?? 0);
-  return hours * 3600 + minutes * 60 + seconds;
-}
-
 function isNativeSubtitleFile(file: LibraryFile) {
   return /\.vtt($|\?)/i.test(file.name) || /\.vtt($|\?)/i.test(file.url);
-}
-
-function decodeSubtitleBuffer(buffer: ArrayBuffer, contentType: string) {
-  const charset = contentType.match(/charset=([^;]+)/i)?.[1]?.trim();
-  const candidates = [
-    charset,
-    "utf-8",
-    "shift_jis",
-    "euc-jp",
-    "gb18030",
-  ].filter(Boolean) as string[];
-  let bestText = "";
-  let bestScore = Number.POSITIVE_INFINITY;
-
-  for (const encoding of candidates) {
-    try {
-      const text = new TextDecoder(encoding).decode(buffer);
-      const score = replacementScore(text);
-      if (score < bestScore) {
-        bestText = text;
-        bestScore = score;
-      }
-      if (score === 0) {
-        break;
-      }
-    } catch {
-      // Some browsers may not support every legacy label.
-    }
-  }
-
-  return bestText || new TextDecoder().decode(buffer);
-}
-
-function replacementScore(text: string) {
-  const replacements = (text.match(/\uFFFD/g) || []).length;
-  const mojibake = (text.match(/[�]/g) || []).length;
-  return replacements + mojibake;
 }
 
 function logPlayer(message: string, details?: unknown) {
