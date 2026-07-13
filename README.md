@@ -1,137 +1,131 @@
 # ASMRoner
 
-<p align="center">
-  <img src="docs/assets/asmroner-readme-console.svg" alt="ASMRoner Sonic Mission Control" width="100%" />
+把 asmr.one 上想听的作品，稳定地下载、整理并留在自己的设备上。
+
+ASMRoner 是一个本地运行的 ASMR 下载与媒体管理工具。你可以在浏览器里搜索作品、创建下载任务、查看实时进度、重试失败任务，并在下载完成后直接浏览和播放本地音频。
+
+```text
+找到作品 -> 加入下载 -> 查看进度 -> 自动整理 -> 本地播放
+```
+
+<p>
+  <img alt="Go 1.25+" src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat-square&logo=go&logoColor=white" />
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=0b0e0c" />
+  <img alt="Vite 8" src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white" />
+  <img alt="SQLite" src="https://img.shields.io/badge/SQLite-local_tasks-003B57?style=flat-square&logo=sqlite&logoColor=white" />
 </p>
 
-<p align="center">
-  <a href="#快速开始">快速开始</a> ·
-  <a href="#运行界面">运行界面</a> ·
-  <a href="#控制台模块">控制台模块</a> ·
-  <a href="#配置与数据">配置与数据</a> ·
-  <a href="#开发">开发</a>
-</p>
+![ASMRoner YORU 本地下载工作台](docs/assets/asmroner-yoru-workbench.jpg)
 
-<p align="center">
-  <img alt="Go" src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat-square&logo=go&logoColor=white" />
-  <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=0b0e0c" />
-  <img alt="Vite" src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white" />
-  <img alt="SQLite" src="https://img.shields.io/badge/SQLite-task_store-003B57?style=flat-square&logo=sqlite&logoColor=white" />
-  <img alt="SSE" src="https://img.shields.io/badge/SSE-live_tasks-7CFFB2?style=flat-square" />
-</p>
+## 能做什么
 
-ASMRoner 是一个面向 asmr.one 的本地 Web 控制台，用于完成作品发现、下载编排、元数据同步、本地媒体浏览和音频播放。
+- 按标题、RJ 号和标签搜索远端作品，查看作品详情。
+- 下载单个作品、批量 RJ、选中的搜索结果或 Hot100 内容。
+- 在任务中心查看排队、运行、完成和失败状态。
+- 实时接收任务进度与日志，不需要守着终端等待。
+- 对失败任务执行重试，并保留之前的任务记录。
+- 同步作品元数据，将下载结果整理进本地媒体库。
+- 浏览本地文件、播放音频并匹配已有字幕。
+- 在界面中管理账号、代理、下载目录、并发和限流配置。
 
-项目由 Go HTTP 服务和 React/Vite 前端组成，以 **Sonic Mission Control** 为视觉方向，将下载器、任务队列、同步状态和媒体库组织成一套本机常驻的操作面板。
-
-核心目标是让作品管理流程保持连续：从远端索引检索，到任务执行、状态追踪、失败恢复，再到本地归档和播放，均在同一个界面中完成。
-
-## 运行界面
-
-![ASMRoner command deck](docs/assets/asmroner-command-deck.png)
-
-## 核心工作流
-
-| 工作流 | 能力 |
-| --- | --- |
-| 作品发现 | 搜索、筛选、查看详情，导出 CSV / JSON |
-| 下载编排 | 发起单个作品、批量 RJ、选中结果和 hot100 下载任务 |
-| 任务观测 | 使用 SQLite 持久化任务、进度、结果和日志，并通过 SSE 推送实时状态 |
-| 元数据同步 | 执行同步、同步下载、失败重试和报告导出 |
-| 本地媒体库 | 浏览本地作品、文件、音频、字幕和媒体访问链接 |
-| 运行配置 | 管理账号、代理、API、并发、重试、目录、限流和请求头 |
+整个工作台运行在本机。任务记录保存在 SQLite 中，配置与媒体文件保存在本地目录中；默认情况下，服务不会暴露到局域网。
 
 ## 快速开始
 
-### 1. 启动后端
+需要准备：
+
+- Go 1.25 或更高版本
+- Node.js 22
+- npm
+
+### 1. 启动服务
 
 ```bash
 go run .
 ```
 
-首次启动时，如果 `.asmroner-data/config.toml` 不存在，服务会自动生成默认配置。
+第一次启动时，ASMRoner 会自动创建 `.asmroner-data/config.toml`。
 
-### 2. 启动前端
+### 2. 启动网页工作台
+
+打开另一个终端：
 
 ```bash
 npm install --prefix apps/web
 npm run dev:web
 ```
 
-访问控制台：
+然后访问：
 
 ```text
-http://localhost:5173
+http://127.0.0.1:5173
 ```
 
-开发环境默认连接本地 Go 服务：
-
-```text
-http://127.0.0.1:8080/api
-```
-
-连接其他后端：
+前端默认连接 `http://127.0.0.1:8080/api`。后端运行在其他地址时，可以这样指定：
 
 ```bash
-VITE_API_BASE_URL=http://localhost:8080/api npm run dev:web
+VITE_API_BASE_URL=http://127.0.0.1:18080/api npm run dev:web
 ```
 
-## 控制台模块
+## 第一次使用
 
-| 模块 | 呼号 | 能力 |
-| --- | --- | --- |
-| 总览 | `DASH / COMMAND STATUS` | 展示运行概览、任务数量、同步进度和本地媒体状态 |
-| 发现雷达 | `RADAR / REMOTE INDEX` | 搜索、筛选、作品详情、结果导出和选中下载 |
-| 任务队列 | `QUEUE / JOB CONTROL` | 新建 RJ / Hot100 下载，查看进度、失败、日志和重试 |
-| 媒体档案 | `ARCH / LOCAL MEDIA` | 本地作品浏览、文件列表、音频播放、字幕匹配、媒体访问 |
-| 同步舱 | `SYNC / BATCH OPS` | 元数据同步、同步下载、失败重试、同步报告、导出 |
-| 系统参数 | `SYS / CONFIG BUS` | 账号、代理、目录、限流、重试、请求头等持久化配置 |
+1. 打开“设置”，填写账号信息并确认下载目录。
+2. 根据网络环境配置代理、并发数和请求限速。
+3. 前往“搜索”，输入作品标题或 RJ 号。
+4. 打开作品详情并创建下载任务。
+5. 在“任务”中观察进度，必要时取消或重试。
+6. 下载和同步完成后，从“媒体库”浏览并播放作品。
+
+总览页会集中显示活动任务、同步状态和最近进入媒体库的作品。顶栏的任务入口可以在任何页面快速查看正在运行的任务。
+
+## 批量下载与同步
+
+除了从搜索结果创建任务，任务中心也支持直接输入多个 RJ 号，以及创建 Hot100 下载任务。
+
+同步页面用于刷新作品清单和元数据，也可以继续下载同步过程中发现的缺失内容。失败记录会保留在报告中，方便之后重新执行，而不是从头开始。
+
+## 本地媒体与播放
+
+媒体库展示已经保存到本地的作品。进入作品后，可以查看目录与文件、播放音频，并在存在匹配字幕时同步显示字幕。
+
+播放器在页面之间保持播放状态，所以可以一边听作品，一边继续搜索或管理下载任务。
 
 ## 配置与数据
 
-运行时数据默认放在：
+默认运行目录：
 
 ```text
 .asmroner-data/
+├── config.toml       # 账号、代理、目录和运行参数
+└── asmroner.db       # 任务与任务日志
 ```
 
-主配置文件：
+实际媒体文件保存在配置的下载或同步目录中。建议定期备份配置文件、任务数据库和媒体目录。
+
+后端默认监听本机回环地址：
 
 ```text
-.asmroner-data/config.toml
+127.0.0.1:8080
 ```
 
-`Settings` 页面支持持久化保存账号密码、代理、API 地址、同步目录、优先媒体格式、最大并发、最大重试、QPS 限制、抖动参数和请求头。
-
-后端监听地址可通过环境变量覆盖：
+确实需要从其他设备访问时，可以显式指定监听地址：
 
 ```bash
-ASMRO_HTTP_ADDR=127.0.0.1:8080
+go run . --addr :8080
 ```
 
-默认只监听本机回环地址。确需从局域网访问时可显式传入 `--addr :8080`，并自行配置防火墙和访问控制。
+这会让服务可以被局域网访问。请同时配置防火墙和访问控制，不要直接暴露到公网。
 
-生产构建完成后，Go 服务会自动提供 `apps/web/dist`；发布压缩包则从可执行文件旁的 `web/` 目录提供控制台。也可用 `ASMRO_WEB_DIR` 指定其他静态目录。
+## 生产构建
 
-## 项目结构
-
-```text
-asmr-downloader/
-├── apps/web/              # React + Vite 控制台
-├── internal/
-│   ├── server/            # HTTP 路由与响应编排
-│   ├── services/          # 搜索、下载、同步、配置、媒体库、任务服务
-│   ├── store/             # SQLite 任务与任务日志存储
-│   ├── engine/            # asmr.one 搜索、元数据、音轨与下载引擎
-│   ├── model/             # 配置、任务、元数据、同步与音轨模型
-│   ├── events/            # SSE 事件中心
-│   └── database/          # SQLite 初始化
-├── docs/                  # 架构说明与开发参考
-├── main.go                # 统一 HTTP 服务入口
-└── package.json           # 根目录前端脚本
+```bash
+npm run build:web
+go run .
 ```
 
-## 开发
+完成前端构建后，Go 服务会自动提供 `apps/web/dist`。发布包也可以从可执行文件旁的 `web/` 目录加载前端，或通过 `ASMRO_WEB_DIR` 指定其他目录。
+
+## 开发与测试
 
 ```bash
 # 后端测试
@@ -144,15 +138,35 @@ npm run test:web
 npm run build:web
 ```
 
-补充文档：
+主要目录：
+
+```text
+apps/web/          React 前端
+internal/server/   HTTP 接口与静态资源服务
+internal/services/ 搜索、下载、同步、媒体库和任务服务
+internal/store/    SQLite 任务存储
+internal/engine/   asmr.one 数据与下载引擎
+docs/              架构和开发文档
+```
+
+进一步阅读：
 
 - [当前项目地图](docs/current-project-map.md)
 - [服务端开发说明](docs/server-dev.md)
 - [API 草案](docs/api-spec-draft.md)
-- [前端视觉系统](apps/web/docs/style-system.md)
+- [YORU 前端重构说明](<apps/web/docs/ASMRoner 前端重构文档 · YORU_FM「深夜电台」改版.md>)
 
-## 状态与边界
+## 分支说明
 
-当前主线为 HTTP 服务 + React 控制台架构。旧 Cobra CLI 命令与旧内嵌 `webui` 已经从主运行路径移除。
+这份 README 对应 `codex/yoru-workbench-refactor`。它作为偏向下载器和任务管理的 YORU 工作台版本独立保留，不与默认分支 `v2` 合并。
 
-本项目仅应在有权访问和保存的内容范围内使用，并应遵守来源站点规则与相关版权要求。
+## 使用边界
+
+请只下载和保存你有权访问的内容，并遵守来源站点规则及相关版权要求。
+
+
+## 未来版本目标
+- 打包软件
+- 继续修改前端，大概率会出两种思路的前端版本，分别是下载器和媒体库
+- 当前的前端版本是下载器，媒体库版本会在后续开发中出现
+- 可以的话，媒体库版本会尽量和asmrone的官方前端功能保持一致
