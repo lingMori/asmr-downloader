@@ -1,30 +1,35 @@
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
-import { FolderOpen, MusicNotes, Subtitles } from "@phosphor-icons/react";
+import {
+  ArrowSquareOut,
+  FolderOpen,
+  GridFour,
+  ListBullets,
+  MagnifyingGlass,
+  MusicNotes,
+  Play,
+  Subtitles,
+} from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
 import { useGlobalPlayer } from "@/components/GlobalPlayer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  EmptyState,
-  PageHeader,
-  RouteFeedback,
-  fadeUpItem,
-  staggerContainer,
-} from "@/components/ui/sweet";
+import { EmptyState, PageHeader, RouteFeedback } from "@/components/ui/sweet";
 import { apiClient } from "@/lib/api";
 
 const routeApi = getRouteApi("/library");
+
+type LibraryView = "grid" | "list";
 
 export function Library() {
   const routeSearch = routeApi.useSearch();
   const navigate = useNavigate({ from: "/library" });
   const player = useGlobalPlayer();
   const [searchInput, setSearchInput] = useState(routeSearch.q);
+  const [view, setView] = useState<LibraryView>("grid");
   const search = routeSearch.q;
   const page = routeSearch.page;
   const selectedId = routeSearch.id;
@@ -48,6 +53,10 @@ export function Library() {
     () => detailQuery.data?.files.filter((file) => file.kind === "image") ?? [],
     [detailQuery.data],
   );
+  const subtitleFiles = useMemo(
+    () => detailQuery.data?.files.filter((file) => file.kind === "subtitle") ?? [],
+    [detailQuery.data],
+  );
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -61,13 +70,26 @@ export function Library() {
 
   useEffect(() => setSearchInput(routeSearch.q), [routeSearch.q]);
 
-  const subtitleFiles = useMemo(
-    () => detailQuery.data?.files.filter((file) => file.kind === "subtitle") ?? [],
-    [detailQuery.data],
-  );
   const coverUrl =
     detailQuery.data?.summary.thumbnail_url || imageFiles[0]?.url || undefined;
   const totalPages = Math.max(1, Math.ceil((libraryQuery.data?.total ?? 0) / 24));
+  const isSelectedTrack = (path: string) =>
+    player.activeMediaId === detailQuery.data?.summary.media_id &&
+    player.selectedPath === path;
+
+  const playTrack = (path: string) => {
+    if (!detailQuery.data) return;
+    player.play(
+      {
+        tracks: audioFiles,
+        subtitles: subtitleFiles,
+        title: detailQuery.data.summary.title,
+        mediaId: detailQuery.data.summary.media_id,
+        coverUrl,
+      },
+      path,
+    );
+  };
 
   if (libraryQuery.isError) {
     return (
@@ -85,121 +107,196 @@ export function Library() {
   }
 
   return (
-    <motion.section
-      className="space-y-4"
-      variants={staggerContainer}
-      initial="hidden"
-      animate="show"
-    >
-      <motion.div variants={fadeUpItem}>
-        <PageHeader
-          kicker="媒体库"
-          title="本地媒体库"
-          description="浏览已下载作品，播放音频，查看字幕和文件。"
-          meta={
-            <div className="deck-screen min-w-[12rem] p-4">
-              <Badge variant="signal">本地作品 {libraryQuery.data?.total ?? 0}</Badge>
-              <div className="console-readout mt-3 text-xl">{page} / {totalPages}</div>
-            </div>
-          }
-        />
-      </motion.div>
+    <section className="space-y-4">
+      <PageHeader
+        kicker="媒体库"
+        title="本地媒体库"
+        description="浏览已下载作品，播放音频，查看字幕和文件。"
+        meta={
+          <div className="flex items-center gap-3 text-sm text-[color:var(--text-body)]">
+            <Badge variant="signal">本地作品 {libraryQuery.data?.total ?? 0}</Badge>
+            <span className="console-mono whitespace-nowrap">
+              {page} / {totalPages} 页
+            </span>
+          </div>
+        }
+      />
 
-      <motion.div variants={fadeUpItem}>
-        <Card foil>
-          <CardContent className="flex flex-col gap-3 p-5 md:flex-row md:items-center">
-            <Input
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              placeholder="按标题或 RJ 编号搜索本地媒体库..."
-              className="flex-1"
-            />
-            <Badge variant="warn">PAGE SIZE 24</Badge>
-          </CardContent>
-        </Card>
-      </motion.div>
+      <div className="deck-chassis flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <MagnifyingGlass
+            className="h-5 w-5 shrink-0 text-[color:var(--text-mute)]"
+            aria-hidden="true"
+          />
+          <Input
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="按标题或 RJ 编号搜索本地媒体库..."
+            aria-label="搜索本地媒体库"
+            className="flex-1"
+          />
+        </div>
+        <div className="flex items-center justify-between gap-3 sm:justify-end">
+          <span className="text-xs text-[color:var(--text-mute)]">每页 24 项</span>
+          <div className="flex gap-1" role="group" aria-label="媒体库视图">
+            <Button
+              type="button"
+              variant={view === "grid" ? "primary" : "ghost"}
+              size="sm"
+              className="h-9 w-9 px-0"
+              aria-label="封面网格"
+              title="封面网格"
+              aria-pressed={view === "grid"}
+              onClick={() => setView("grid")}
+            >
+              <GridFour className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant={view === "list" ? "primary" : "ghost"}
+              size="sm"
+              className="h-9 w-9 px-0"
+              aria-label="紧凑列表"
+              title="紧凑列表"
+              aria-pressed={view === "list"}
+              onClick={() => setView("list")}
+            >
+              <ListBullets className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
 
-      <motion.div variants={fadeUpItem} className="grid gap-4 xl:grid-cols-[1.45fr_0.95fr]">
-        <div className="space-y-4">
-          <motion.div
-            className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
-            variants={staggerContainer}
-            initial="hidden"
-            animate="show"
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_23rem]">
+        <div className="min-w-0 space-y-4">
+          <div
+            className={
+              view === "grid"
+                ? "grid gap-3 sm:grid-cols-2 2xl:grid-cols-3"
+                : "grid gap-2"
+            }
           >
-            {libraryQuery.data?.items.map((work, index) => (
-              <motion.div key={work.id} variants={fadeUpItem} transition={{ delay: index * 0.02 }}>
+            {libraryQuery.isLoading ? (
+              <div
+                className={`border border-[color:var(--chassis-edge)] p-8 text-center text-sm text-[color:var(--text-mute)] ${
+                  view === "grid" ? "sm:col-span-2 2xl:col-span-3" : ""
+                }`}
+                aria-live="polite"
+              >
+                正在读取本地媒体库...
+              </div>
+            ) : null}
+
+            {libraryQuery.data?.items.map((work) => {
+              const selected = selectedId === work.id;
+              const selectedHasAudio =
+                selected && detailQuery.data && audioFiles.length > 0;
+
+              return (
                 <Card
-                  interactive
-                  foil={selectedId === work.id}
-                  className={selectedId === work.id ? "border-[color:var(--tape-pink)]" : undefined}
-                  onClick={() => void navigate({ search: { ...routeSearch, id: work.id } })}
+                  key={work.id}
+                  className={
+                    selected
+                      ? "border-[color:var(--tape-pink)] bg-[color:var(--surface-elevated)]"
+                      : undefined
+                  }
                 >
-                  <CardContent className="flex h-full flex-col gap-4 p-4">
-                    <div className="deck-screen aspect-[4/3]">
+                  <CardContent
+                    className={
+                      view === "grid"
+                        ? "flex h-full flex-col gap-3 p-3"
+                        : "grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 p-3 sm:grid-cols-[6.5rem_minmax(0,1fr)_auto] sm:items-center"
+                    }
+                  >
+                    <button
+                      type="button"
+                      className="relative aspect-square w-full overflow-hidden border border-[color:var(--chassis-edge)] bg-[color:var(--surface-inset)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--tape-pink)]"
+                      aria-label={`查看 ${work.title}`}
+                      aria-pressed={selected}
+                      onClick={() =>
+                        void navigate({ search: { ...routeSearch, id: work.id } })
+                      }
+                    >
                       {work.thumbnail_url ? (
                         <img
                           src={work.thumbnail_url}
-                          alt={work.title}
-                          className="h-full w-full object-cover opacity-90 transition duration-500 group-hover:brightness-110"
+                          alt=""
+                          className="h-full w-full object-cover"
+                          loading="lazy"
                         />
                       ) : (
-                        <div className="flex h-full items-center justify-center text-sm text-[color:var(--text-mute)]">
-                          NO COVER
-                        </div>
+                        <span className="flex h-full items-center justify-center text-xs text-[color:var(--text-mute)]">
+                          暂无封面
+                        </span>
                       )}
-                      <div className="absolute bottom-3 left-3">
-                        <Badge variant="warn">{work.media_id}</Badge>
+                      <span className="absolute bottom-2 left-2">
+                        <Badge variant="mute" className="bg-[color:var(--surface-overlay)]">
+                          {work.media_id}
+                        </Badge>
+                      </span>
+                    </button>
+
+                    <div className="flex min-w-0 flex-1 flex-col gap-3">
+                      <button
+                        type="button"
+                        className="text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--tape-pink)]"
+                        onClick={() =>
+                          void navigate({ search: { ...routeSearch, id: work.id } })
+                        }
+                      >
+                        <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-[color:var(--text-display)]">
+                          {work.title}
+                        </h3>
+                        <span className="console-mono mt-1 block text-xs text-[color:var(--text-mute)]">
+                          {work.release_date || "日期未知"}
+                        </span>
+                      </button>
+
+                      <div className="mt-auto grid grid-cols-3 gap-2">
+                        <MiniStat icon={FolderOpen} value={String(work.file_count)} label="文件" />
+                        <MiniStat icon={MusicNotes} value={String(work.audio_file_count)} label="音频" />
+                        <MiniStat icon={Subtitles} value={String(work.subtitle_count)} label="字幕" />
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <h3 className="console-title line-clamp-2 text-xl font-black leading-7 text-[color:var(--text-display)]">
-                        {work.title}
-                      </h3>
-                      <div className="console-mono text-[10px] uppercase tracking-[0.16em] text-[color:var(--text-mute)]">
-                        {work.release_date || "NO DATE"}
+                    {view === "list" ? (
+                      <div className="col-span-2 flex justify-end sm:col-span-1">
+                        {selectedHasAudio ? (
+                          <Button size="sm" onClick={() => playTrack(audioFiles[0].path)}>
+                            <Play className="h-4 w-4" weight="fill" />
+                            播放
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant={selected ? "secondary" : "ghost"}
+                            onClick={() =>
+                              void navigate({ search: { ...routeSearch, id: work.id } })
+                            }
+                          >
+                            查看
+                          </Button>
+                        )}
                       </div>
-                    </div>
-
-                    <div className="deck-decal justify-between">
-                      <span>ASMRoner</span>
-                      <span>TYPE-II</span>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2">
-                      <MiniStat icon={FolderOpen} value={String(work.file_count)} label="FILES" />
-                      <MiniStat icon={MusicNotes} value={String(work.audio_file_count)} label="AUDIO" />
-                      <MiniStat icon={Subtitles} value={String(work.subtitle_count)} label="SUB" />
-                    </div>
-
-                    <div className="mt-auto flex flex-wrap gap-2">
-                      <Badge variant="decal">TAPE CASE</Badge>
-                      {work.has_subtitles ? (
-                        <Badge variant="signal">CC READY</Badge>
-                      ) : (
-                        <Badge variant="mute">NO CC</Badge>
-                      )}
-                    </div>
+                    ) : null}
                   </CardContent>
                 </Card>
-              </motion.div>
-            ))}
+              );
+            })}
 
-            {libraryQuery.data && libraryQuery.data.items.length === 0 && (
-              <Card className="md:col-span-2 xl:col-span-3">
-                <CardContent>
-                  <EmptyState
-                    symbol="无数据"
-                    title="没有匹配作品"
-                    description="当前搜索条件下没有匹配的本地作品。去搜索作品页把喜欢的作品下载进来，这里就会慢慢变满。"
-                  />
-                </CardContent>
-              </Card>
-            )}
-          </motion.div>
+            {libraryQuery.data && libraryQuery.data.items.length === 0 ? (
+              <div className={view === "grid" ? "sm:col-span-2 2xl:col-span-3" : undefined}>
+                <EmptyState
+                  symbol="无数据"
+                  title="没有匹配作品"
+                  description="当前搜索条件下没有匹配的本地作品。去搜索作品页下载作品后会显示在这里。"
+                  className="min-h-[14rem]"
+                />
+              </div>
+            ) : null}
+          </div>
 
-          <div className="deck-plate flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--chassis-edge)] pt-3">
             <span className="text-sm text-[color:var(--text-body)]">
               第 {page} / {totalPages} 页，共 {libraryQuery.data?.total ?? 0} 个作品
             </span>
@@ -208,7 +305,9 @@ export function Library() {
                 variant="secondary"
                 size="sm"
                 disabled={page <= 1}
-                onClick={() => void navigate({ search: { ...routeSearch, page: page - 1 } })}
+                onClick={() =>
+                  void navigate({ search: { ...routeSearch, page: page - 1 } })
+                }
               >
                 上一页
               </Button>
@@ -216,7 +315,9 @@ export function Library() {
                 variant="secondary"
                 size="sm"
                 disabled={page >= totalPages}
-                onClick={() => void navigate({ search: { ...routeSearch, page: page + 1 } })}
+                onClick={() =>
+                  void navigate({ search: { ...routeSearch, page: page + 1 } })
+                }
               >
                 下一页
               </Button>
@@ -224,96 +325,153 @@ export function Library() {
           </div>
         </div>
 
-        <Card foil className="h-fit overflow-hidden xl:sticky xl:top-28">
+        <Card className="h-fit xl:sticky xl:top-24">
           <CardHeader>
-            <CardTitle>播放器与作品详情</CardTitle>
+            <CardTitle>作品详情与播放</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-5">
-            {!selectedId && (
+          <CardContent className="space-y-4">
+            {!selectedId ? (
               <EmptyState
                 symbol="请选择"
                 title="选择本地作品"
-                description="选中左侧任意作品后，这里会显示封面、播放列表、字幕轨和全部文件。"
-                className="min-h-[16rem]"
+                description="选中任意作品后，这里会显示封面、播放列表、字幕轨和全部文件。"
+                className="min-h-[14rem]"
               />
-            )}
+            ) : null}
 
-            {detailQuery.data && (
+            {selectedId && detailQuery.isLoading ? (
+              <div className="py-12 text-center text-sm text-[color:var(--text-mute)]">
+                正在读取作品文件...
+              </div>
+            ) : null}
+
+            {detailQuery.isError ? (
+              <div className="space-y-3 border border-[color:var(--telltale-red)] p-4 text-sm text-[color:var(--text-body)]">
+                <p>作品详情加载失败：{formatErrorMessage(detailQuery.error)}</p>
+                <Button size="sm" variant="secondary" onClick={() => void detailQuery.refetch()}>
+                  重新加载详情
+                </Button>
+              </div>
+            ) : null}
+
+            {detailQuery.data ? (
               <>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-3">
+                  <div className="aspect-square overflow-hidden border border-[color:var(--chassis-edge)] bg-[color:var(--surface-inset)]">
+                    {coverUrl ? (
+                      <img
+                        src={coverUrl}
+                        alt={detailQuery.data.summary.title}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-full items-center justify-center text-xs text-[color:var(--text-mute)]">
+                        暂无封面
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0 space-y-2">
+                    <Badge variant="mute">{detailQuery.data.summary.media_id}</Badge>
+                    <h2 className="line-clamp-3 text-base font-semibold leading-6 text-[color:var(--text-display)]">
+                      {detailQuery.data.summary.title}
+                    </h2>
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      disabled={audioFiles.length === 0}
+                      onClick={() => audioFiles[0] && playTrack(audioFiles[0].path)}
+                    >
+                      <Play className="h-4 w-4" weight="fill" />
+                      播放首曲
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 border-y border-[color:var(--chassis-edge)] py-3">
                   <MiniStat
                     icon={FolderOpen}
                     value={String(detailQuery.data.summary.file_count)}
-                    label="FILES"
+                    label="文件"
                   />
                   <MiniStat
                     icon={MusicNotes}
                     value={String(detailQuery.data.summary.audio_file_count)}
-                    label="AUDIO"
+                    label="音频"
                   />
                   <MiniStat
                     icon={Subtitles}
                     value={String(detailQuery.data.summary.subtitle_count)}
-                    label="SUB"
+                    label="字幕"
                   />
                 </div>
 
-                <div className="space-y-3">
-                  <div className="deck-decal">PLAYLIST</div>
-                  <div className="space-y-2">
+                <section className="space-y-2" aria-labelledby="library-playlist-title">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 id="library-playlist-title" className="text-sm font-semibold text-[color:var(--text-display)]">
+                      播放列表
+                    </h3>
+                    <span className="text-xs text-[color:var(--text-mute)]">{audioFiles.length} 首</span>
+                  </div>
+                  <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
                     {audioFiles.map((file, index) => (
                       <button
                         key={file.path}
-                        className={`deck-plate flex w-full items-center gap-3 px-3 py-3 text-left text-sm transition ${
-                          player.activeMediaId === detailQuery.data.summary.media_id && player.selectedPath === file.path
-                            ? "border-[color:var(--tape-pink)] text-[color:var(--text-display)] shadow-[var(--glow-tape)]"
-                            : "text-[color:var(--text-body)] hover:border-[color:var(--telltale-amber)]"
+                        type="button"
+                        className={`flex w-full items-center gap-3 border px-3 py-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--tape-pink)] ${
+                          isSelectedTrack(file.path)
+                            ? "border-[color:var(--tape-pink)] bg-[color:var(--surface-elevated)] text-[color:var(--text-display)]"
+                            : "border-[color:var(--chassis-edge)] text-[color:var(--text-body)] hover:bg-[color:var(--surface-elevated)]"
                         }`}
-                        onClick={() => player.play({
-                          tracks: audioFiles,
-                          subtitles: subtitleFiles,
-                          title: detailQuery.data.summary.title,
-                          mediaId: detailQuery.data.summary.media_id,
-                          coverUrl,
-                        }, file.path)}
+                        onClick={() => playTrack(file.path)}
                       >
-                        <Badge variant={player.activeMediaId === detailQuery.data.summary.media_id && player.selectedPath === file.path ? "live" : "mute"}>
+                        <Play className="h-4 w-4 shrink-0" weight={isSelectedTrack(file.path) ? "fill" : "regular"} />
+                        <span className="console-mono w-5 shrink-0 text-xs text-[color:var(--text-mute)]">
                           {String(index + 1).padStart(2, "0")}
-                        </Badge>
+                        </span>
                         <span className="truncate">{file.name}</span>
                       </button>
                     ))}
                     {audioFiles.length === 0 ? (
-                      <div className="deck-screen p-4 text-sm text-[color:var(--text-mute)]">
+                      <div className="border border-[color:var(--chassis-edge)] p-3 text-sm text-[color:var(--text-mute)]">
                         当前作品未找到可播放音频文件。
                       </div>
                     ) : null}
                   </div>
-                </div>
+                </section>
 
-                <div className="space-y-3">
-                  <div className="deck-decal">FILE DRAWER</div>
-                  <div className="space-y-2">
+                <section className="space-y-2" aria-labelledby="library-files-title">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 id="library-files-title" className="text-sm font-semibold text-[color:var(--text-display)]">
+                      全部文件
+                    </h3>
+                    <span className="text-xs text-[color:var(--text-mute)]">
+                      {detailQuery.data.files.length} 项
+                    </span>
+                  </div>
+                  <div className="max-h-72 divide-y divide-[color:var(--chassis-edge)] overflow-y-auto border border-[color:var(--chassis-edge)]">
                     {detailQuery.data.files.map((file) => (
                       <a
                         key={file.path}
                         href={file.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="deck-plate block p-3 text-sm transition hover:border-[color:var(--telltale-amber)]"
+                        className="flex items-center gap-3 px-3 py-2.5 text-sm transition-colors hover:bg-[color:var(--surface-elevated)]"
                       >
-                        <div className="font-medium text-[color:var(--text-display)]">{file.name}</div>
-                        <div className="mt-1 text-xs text-[color:var(--text-mute)]">{file.kind}</div>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[color:var(--text-display)]">{file.name}</span>
+                          <span className="mt-0.5 block text-xs text-[color:var(--text-mute)]">{file.kind}</span>
+                        </span>
+                        <ArrowSquareOut className="h-4 w-4 shrink-0 text-[color:var(--text-mute)]" aria-hidden="true" />
                       </a>
                     ))}
                   </div>
-                </div>
+                </section>
               </>
-            )}
+            ) : null}
           </CardContent>
         </Card>
-      </motion.div>
-    </motion.section>
+      </div>
+    </section>
   );
 }
 
@@ -331,12 +489,14 @@ function MiniStat({
   label: string;
 }) {
   return (
-    <div className="deck-screen px-3 py-3">
-      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-[color:var(--text-mute)]">
-        <Icon className="h-3.5 w-3.5" weight="duotone" />
-        {label}
+    <div className="min-w-0">
+      <div className="flex items-center gap-1.5 text-xs text-[color:var(--text-mute)]">
+        <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <span className="truncate">{label}</span>
       </div>
-      <div className="console-readout mt-2 text-sm">{value}</div>
+      <div className="console-mono mt-1 text-sm font-semibold text-[color:var(--text-display)]">
+        {value}
+      </div>
     </div>
   );
 }

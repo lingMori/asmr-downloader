@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { motion } from "framer-motion";
 import { Link, getRouteApi } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Icon } from "@phosphor-icons/react";
@@ -12,23 +11,20 @@ import {
   Globe,
   Info,
   MusicNotes,
-  ShieldCheck,
   Star,
   Tag,
   UserCircle,
-  Buildings,
   CaretDown,
   CaretRight,
   Calendar,
-  Clock,
   FolderOpen,
+  Play,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { useGlobalPlayer } from "@/components/GlobalPlayer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PageHeader, fadeUpItem, staggerContainer } from "@/components/ui/sweet";
 import type { DiscoverRouteSearch } from "@/routes/discoverSearch";
 import { apiClient, type TrackNode, type WorkStatus } from "@/lib/api";
 import {
@@ -41,7 +37,7 @@ import { cn } from "@/lib/utils";
 const routeApi = getRouteApi("/discover/$sourceId");
 const PLAYER_LOG_PREFIX = "[ASMRoner Player]";
 const pillActionClass =
-  "deck-button-secondary inline-flex h-[38px] items-center justify-center gap-2 border px-4 py-2 text-xs font-bold transition hover:brightness-110";
+  "deck-button-secondary inline-flex h-9 items-center justify-center gap-2 border px-3 text-xs font-bold";
 
 export function DiscoverDetail() {
   const player = useGlobalPlayer();
@@ -139,117 +135,96 @@ export function DiscoverDetail() {
   const coverUrl = detail.summary.main_cover_url || detail.summary.thumbnail_url;
 
   return (
-    <motion.section
-      className="space-y-4 pb-28"
-      variants={staggerContainer}
-      initial="hidden"
-      animate="show"
-    >
-      <motion.div variants={fadeUpItem}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <section className="space-y-4">
+      <header className="space-y-4 border-b border-[color:var(--chassis-edge)] pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Link to="/discover" search={discoverSearch} className={pillActionClass}>
             <ArrowLeft className="h-4 w-4" />
             返回作品搜索
           </Link>
-          <Button
-            busy={downloadMutation.isPending}
-            onClick={() => downloadMutation.mutate()}
-            disabled={downloadMutation.isPending}
-          >
-            <Download className="h-4 w-4" />
-            下载当前作品
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => selectedTrackPath && selectAndPlayTrack(selectedTrackPath)}
+              disabled={!selectedTrackPath}
+            >
+              <Play className="h-4 w-4" weight="fill" />
+              播放选中音轨
+            </Button>
+            <Button
+              size="sm"
+              busy={downloadMutation.isPending}
+              onClick={() => downloadMutation.mutate()}
+              disabled={downloadMutation.isPending}
+            >
+              <Download className="h-4 w-4" />
+              下载当前作品
+            </Button>
+          </div>
         </div>
-      </motion.div>
+        <div className="min-w-0 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="warn">{detail.summary.source_id}</Badge>
+            <WorkStatusBadge status={workStatus} />
+            <Badge variant={detail.summary.has_subtitle ? "signal" : "mute"}>
+              {detail.summary.has_subtitle ? "有字幕" : "无字幕"}
+            </Badge>
+            {detail.age_category ? <Badge variant="mute">{detail.age_category}</Badge> : null}
+          </div>
+          <h1 className="max-w-5xl text-2xl font-semibold leading-tight text-[color:var(--text-display)]">
+            {detail.summary.title}
+          </h1>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[color:var(--text-body)]">
+            {detail.summary.circle ? (
+              <DetailSearchChip
+                kind="社团"
+                label={detail.summary.circle}
+                variant="decal"
+                search={buildDetailFacetSearch(discoverSearch, {
+                  circle: detail.summary.circle,
+                })}
+              />
+            ) : (
+              <span>未知社团</span>
+            )}
+            <span>{detail.summary.release || "发售日期未知"}</span>
+            <span>{formatDuration(detail.summary.duration)}</span>
+          </div>
+        </div>
+      </header>
 
-      <motion.div variants={fadeUpItem}>
-        <PageHeader
-          kicker="作品详情"
-          title={detail.summary.title}
-          description="查看封面、指标、标签、声优和音轨，确认后加入下载。"
-          meta={
-            <div className="deck-screen grid gap-2 p-3">
-              <Badge variant="warn">{detail.summary.source_id}</Badge>
-              {detail.summary.circle ? (
-                <DetailSearchChip
-                  kind="社团"
-                  label={detail.summary.circle}
-                  variant="decal"
-                  search={buildDetailFacetSearch(discoverSearch, {
-                    circle: detail.summary.circle,
-                  })}
-                />
-              ) : (
-                <Badge variant="decal">未知社团</Badge>
-              )}
-              {detail.age_category ? <Badge variant="live">{detail.age_category}</Badge> : null}
-              <WorkStatusBadge status={workStatus} />
-            </div>
-          }
-        />
-      </motion.div>
-
-      <motion.div
-        variants={fadeUpItem}
-        className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem] 2xl:grid-cols-[minmax(0,1fr)_19rem]"
-      >
+      <div>
         <div className="space-y-4">
-          <Card foil className="overflow-hidden">
-            <CardContent className="space-y-4 p-4">
-              <div className="deck-bezel">
-                <div className="deck-screen min-h-[16rem] p-3 sm:min-h-[22rem]">
+          <Card className="overflow-hidden">
+            <CardContent className="grid gap-5 p-4 lg:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)]">
+              <div className="space-y-3 lg:sticky lg:top-20 lg:self-start">
+                <div className="flex aspect-square items-center justify-center overflow-hidden border border-[color:var(--chassis-edge)] bg-[color:var(--interactive-bg)]">
                   {coverUrl ? (
-                    <>
-                      <img
-                        src={coverUrl}
-                        alt=""
-                        aria-hidden="true"
-                        className="deck-screen-fill h-full w-full scale-110 object-cover opacity-20 blur-3xl"
-                      />
-                      <div className="deck-screen-fill bg-[linear-gradient(180deg,rgba(5,12,9,0.04),rgba(5,12,9,0.62))]" />
-                      <div className="deck-screen-content flex min-h-[14rem] items-center justify-center sm:min-h-[20rem]">
-                        <img
-                          src={coverUrl}
-                          alt={detail.summary.title}
-                          className="max-h-[min(68vh,42rem)] w-full max-w-full object-contain"
-                        />
-                      </div>
-                    </>
+                    <img
+                      src={coverUrl}
+                      alt={detail.summary.title}
+                      className="h-full w-full object-contain"
+                    />
                   ) : (
-                    <div className="flex min-h-[14rem] items-center justify-center text-sm text-[color:var(--text-mute)] sm:min-h-[20rem]">
+                    <div className="flex h-full items-center justify-center text-sm text-[color:var(--text-mute)]">
                       暂无封面
                     </div>
                   )}
                 </div>
+                <a
+                  href={detail.source_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`${pillActionClass} w-full`}
+                >
+                  <Globe className="h-4 w-4" />
+                  打开源站作品页
+                </a>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="warn">{detail.summary.source_id}</Badge>
-                {detail.summary.circle ? (
-                  <DetailSearchChip
-                    kind="社团"
-                    label={detail.summary.circle}
-                    variant="decal"
-                    search={buildDetailFacetSearch(discoverSearch, {
-                      circle: detail.summary.circle,
-                    })}
-                  />
-                ) : (
-                  <Badge variant="decal">未知社团</Badge>
-                )}
-                {detail.age_category ? <Badge variant="live">{detail.age_category}</Badge> : null}
-                <WorkStatusBadge status={workStatus} />
-                <Badge variant={detail.summary.has_subtitle ? "signal" : "mute"}>
-                  {detail.summary.has_subtitle ? "有字幕" : "无字幕"}
-                </Badge>
-              </div>
-
-              <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
-                <InfoStat
-                  icon={Calendar}
-                  label="发售日"
-                  value={detail.summary.release || "-"}
-                />
+              <div className="min-w-0 space-y-5">
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                 <InfoStat
                   icon={CurrencyDollar}
                   label="价格"
@@ -280,38 +255,18 @@ export function DiscoverDetail() {
                   label="音轨数"
                   value={String(detail.tracks.length)}
                 />
-                <InfoStat
-                  icon={Clock}
-                  label="时长"
-                  value={formatDuration(detail.summary.duration)}
-                />
               </div>
 
-              <div className="grid gap-2.5 sm:grid-cols-2 2xl:grid-cols-3">
-                <CompactInfoRow
-                  icon={Buildings}
-                  label="社团"
-                  value={detail.summary.circle || "-"}
-                />
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 <CompactInfoRow
                   icon={Info}
                   label="社团 ID"
                   value={String(detail.circle_id)}
                 />
                 <CompactInfoRow
-                  icon={ShieldCheck}
-                  label="年龄分级"
-                  value={detail.age_category || "-"}
-                />
-                <CompactInfoRow
                   icon={MusicNotes}
                   label="作品属性"
                   value={detail.work_attributes || "-"}
-                />
-                <CompactInfoRow
-                  icon={FileText}
-                  label="字幕状态"
-                  value={detail.summary.has_subtitle ? "有字幕" : "无字幕"}
                 />
                 <CompactInfoRow
                   icon={Calendar}
@@ -320,7 +275,7 @@ export function DiscoverDetail() {
                 />
               </div>
 
-              <div className="grid gap-3 lg:grid-cols-2">
+              <div className="grid gap-4 border-t border-[color:var(--chassis-edge)] pt-4 lg:grid-cols-2">
                 <MetaBlock title="标签" icon={Tag}>
                   <div className="flex flex-wrap gap-2">
                     {detail.summary.tags.length > 0 ? (
@@ -358,84 +313,43 @@ export function DiscoverDetail() {
                   </div>
                 </MetaBlock>
               </div>
+              </div>
             </CardContent>
           </Card>
 
           <Card className="overflow-hidden">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <MusicNotes className="h-4 w-4 text-[color:var(--tape-pink)]" weight="duotone" />
-                文件树
+            <CardHeader className="border-b border-[color:var(--chassis-edge)] pb-3">
+              <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-sm normal-case">
+                <span className="flex items-center gap-2">
+                  <MusicNotes className="h-4 w-4 text-[color:var(--tape-pink)]" />
+                  文件树
+                </span>
+                <span className="font-normal text-[color:var(--text-mute)]">
+                  {remoteAudioFiles.length} 个可播放文件，点击文件立即播放
+                </span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {detail.tracks.map((track, index) => (
-                <TrackTree
-                  key={`${track.title}-${index}`}
-                  node={track}
-                  depth={0}
-                  selectedTrackPath={selectedTrackPath}
-                  onSelectTrack={selectAndPlayTrack}
-                />
-              ))}
+            <CardContent className="p-0">
+              {detail.tracks.length > 0 ? (
+                <div className="divide-y divide-[color:var(--chassis-edge)]">
+                  {detail.tracks.map((track, index) => (
+                    <TrackTree
+                      key={`${track.title}-${index}`}
+                      node={track}
+                      depth={0}
+                      selectedTrackPath={selectedTrackPath}
+                      onSelectTrack={selectAndPlayTrack}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="p-5 text-sm text-[color:var(--text-mute)]">暂无文件。</div>
+              )}
             </CardContent>
           </Card>
         </div>
-
-        <div className="space-y-4 xl:sticky xl:top-24 xl:self-start">
-          <Card foil className="overflow-hidden">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Globe className="h-4 w-4 text-[color:var(--tape-pink)]" weight="duotone" />
-                快速操作
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button
-                className="w-full"
-                busy={downloadMutation.isPending}
-                onClick={() => downloadMutation.mutate()}
-                disabled={downloadMutation.isPending}
-              >
-                <Download className="h-4 w-4" />
-                加入下载队列
-              </Button>
-              <a
-                href={detail.source_url}
-                target="_blank"
-                rel="noreferrer"
-                className={pillActionClass}
-              >
-                <Globe className="h-4 w-4" />
-                打开源站作品页
-              </a>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Star className="h-4 w-4 text-[color:var(--tape-pink)]" weight="duotone" />
-                作品概览
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
-              <SummaryTile label="RJ 编号" value={detail.summary.source_id} />
-              <SummaryTile label="下载状态" value={workStatus?.label || "未下载"} />
-              <SummaryTile label="社团名" value={detail.summary.circle || "-"} />
-              <SummaryTile label="标签数量" value={String(detail.summary.tags.length)} />
-              <SummaryTile label="声优数量" value={String(detail.summary.vas.length)} />
-              <SummaryTile
-                label="字幕状态"
-                value={detail.summary.has_subtitle ? "有字幕" : "无字幕"}
-              />
-              <SummaryTile label="评分人数" value={String(detail.rate_count)} />
-            </CardContent>
-          </Card>
-        </div>
-      </motion.div>
-
-    </motion.section>
+      </div>
+    </section>
   );
 }
 
@@ -472,9 +386,9 @@ function DetailSearchChip({
       to="/discover"
       search={search}
       title={`搜索${kind}: ${label}`}
-      className="max-w-full min-w-0 transition hover:brightness-110"
+      className="max-w-full min-w-0"
     >
-      <Badge variant={variant} active className="max-w-full min-w-0 gap-1">
+      <Badge variant={variant} className="max-w-full min-w-0 gap-1">
         <span className="min-w-0 max-w-[min(18rem,72vw)] truncate">
           {prefix}
           {label}
@@ -528,16 +442,16 @@ function InfoStat({
   value: string;
 }) {
   return (
-    <div className="deck-screen px-3 py-2.5">
-      <div className="flex items-center gap-2.5">
-        <span className="deck-plate flex h-9 w-9 items-center justify-center text-[color:var(--telltale-amber)]">
-          <Icon className="h-4 w-4" weight="duotone" />
+    <div className="border border-[color:var(--chassis-edge)] px-3 py-2.5">
+      <div className="flex items-center gap-2">
+        <span className="flex h-7 w-7 items-center justify-center text-[color:var(--text-mute)]">
+          <Icon className="h-4 w-4" />
         </span>
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.16em] text-[color:var(--text-mute)]">
+          <div className="text-xs text-[color:var(--text-mute)]">
             {label}
           </div>
-          <div className="console-readout mt-0.5 truncate text-sm">
+          <div className="mt-0.5 truncate text-sm font-semibold text-[color:var(--text-display)]">
             {value}
           </div>
         </div>
@@ -556,15 +470,13 @@ function MetaBlock({
   children: ReactNode;
 }) {
   return (
-    <Card surface="screen">
-      <CardHeader className="pb-0">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Icon className="h-4 w-4 text-[color:var(--telltale-amber)]" weight="duotone" />
+    <section>
+      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[color:var(--text-display)]">
+          <Icon className="h-4 w-4 text-[color:var(--text-mute)]" />
           {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pt-3 pb-4">{children}</CardContent>
-    </Card>
+      </h2>
+      {children}
+    </section>
   );
 }
 
@@ -578,13 +490,13 @@ function CompactInfoRow({
   value: string;
 }) {
   return (
-    <div className="deck-screen px-3 py-2.5">
+    <div className="border-l-2 border-[color:var(--chassis-edge)] px-3 py-2">
       <div className="flex items-start gap-3">
-        <span className="deck-plate mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center text-[color:var(--telltale-amber)]">
-          <Icon className="h-4 w-4" weight="duotone" />
+        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center text-[color:var(--text-mute)]">
+          <Icon className="h-4 w-4" />
         </span>
         <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--text-mute)]">
+          <div className="text-xs text-[color:var(--text-mute)]">
             {label}
           </div>
           <div className="mt-1 text-sm font-semibold leading-6 text-[color:var(--text-display)]">
@@ -592,17 +504,6 @@ function CompactInfoRow({
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function SummaryTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="deck-screen px-3 py-2.5">
-      <div className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--text-mute)]">
-        {label}
-      </div>
-      <div className="mt-2 text-sm font-semibold text-[color:var(--text-display)]">{value}</div>
     </div>
   );
 }
@@ -626,16 +527,16 @@ function TrackTree({
   const isActive = isPlayable && selectedTrackPath === node.id;
 
   return (
-    <div className="space-y-1">
+    <div>
       <button
         type="button"
         aria-expanded={isFolder ? expanded : undefined}
         aria-current={isActive ? "true" : undefined}
         className={cn(
-          "deck-plate group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[color:var(--text-display)] transition",
+          "group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[color:var(--text-display)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--tape-pink)]",
           isActive
-            ? "border-[color:var(--tape-pink)] shadow-[var(--glow-tape)]"
-            : "hover:border-[color:var(--telltale-amber)] hover:brightness-110",
+            ? "bg-[color:var(--tape-pink-trail)] text-[color:var(--tape-pink)]"
+            : "hover:bg-[color:var(--interactive-bg)]",
           !isFolder && !isPlayable ? "cursor-default opacity-75" : "",
         )}
         style={{ paddingLeft: `${12 + depth * 14}px` }}
@@ -673,8 +574,8 @@ function TrackTree({
             )
           ) : null}
         </span>
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center text-[color:var(--telltale-amber)]">
-          <Icon className="h-4 w-4" weight="duotone" />
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center text-[color:var(--text-mute)]">
+          <Icon className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium">{node.title}</div>
@@ -684,7 +585,7 @@ function TrackTree({
         </div>
       </button>
       {isFolder && expanded ? (
-        <div className="ml-5 border-l border-[color:var(--chassis-edge)] pl-2">
+        <div className="ml-5 border-l border-[color:var(--chassis-edge)]">
           {node.children?.map((child, index) => (
             <TrackTree
               key={`${child.title}-${index}`}

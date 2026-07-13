@@ -1,8 +1,7 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowClockwise, Clock, DownloadSimple, Fire, Plus, Pulse, Trash, XCircle } from "@phosphor-icons/react";
+import { ArrowClockwise, DownloadSimple, Fire, Plus, Trash, XCircle } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,8 +14,6 @@ import {
   PageHeader,
   ProgressTrack,
   RouteFeedback,
-  fadeUpItem,
-  staggerContainer,
 } from "@/components/ui/sweet";
 import { apiClient, type Task } from "@/lib/api";
 
@@ -219,199 +216,161 @@ export function Queue() {
   }
 
   return (
-    <motion.section
-      className="space-y-4"
-      variants={staggerContainer}
-      initial="hidden"
-      animate="show"
-    >
-      <motion.div variants={fadeUpItem}>
-        <PageHeader
-          kicker="任务"
-          title="下载任务"
-          description="查看下载和同步任务进度，处理取消、重试、删除和文件清理。"
-          meta={
-            <div className="deck-screen space-y-3 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <Badge variant="signal">自动刷新</Badge>
-                <span className="text-sm text-[color:var(--text-body)]">
-                  {tasksQuery.data?.total ?? 0} 条任务
-                </span>
-              </div>
-              <Button size="sm" className="w-full" onClick={() => setDownloadComposerOpen(true)}>
-                <Plus className="h-4 w-4" weight="bold" />
-                新建下载任务
-              </Button>
-            </div>
-          }
-        />
-      </motion.div>
+    <section className="space-y-4">
+      <PageHeader
+        kicker="任务中心"
+        title="下载任务"
+        description="扫描任务状态，处理取消、重试、删除和文件清理。"
+        meta={
+          <Button size="sm" onClick={() => setDownloadComposerOpen(true)}>
+            <Plus className="h-4 w-4" weight="bold" />
+            新建下载任务
+          </Button>
+        }
+      />
 
-      <motion.div variants={fadeUpItem}>
-        <div className="deck-chassis grid gap-2 p-2.5 md:grid-cols-3">
-          <QueueStat
-            label="运行中"
-            value={summary.running}
-            hint="正在推进"
-            icon={<Clock className="h-4 w-4" weight="duotone" />}
-            tone="live"
-          />
-          <QueueStat
-            label="失败"
-            value={summary.failed}
-            hint="待处理"
-            icon={<Pulse className="h-4 w-4" weight="duotone" />}
-            tone="halt"
-          />
-          <QueueStat
-            label="命中任务数"
-            value={summary.total}
-            hint="当前筛选"
-            icon={<DownloadSimple className="h-4 w-4" weight="duotone" />}
-            tone="warn"
-          />
+      <Card className="overflow-hidden">
+        <div className="grid grid-cols-3 border-b border-[color:var(--chassis-edge)]">
+          <QueueMetric label="运行中" value={summary.running} tone="live" />
+          <QueueMetric label="失败" value={summary.failed} tone="halt" />
+          <QueueMetric label="当前筛选" value={summary.total} tone="warn" />
         </div>
-      </motion.div>
+        <CardContent className="grid gap-3 p-3 lg:grid-cols-[2fr_1fr_1fr_140px]">
+          <Input
+            aria-label="搜索任务"
+            value={filters.search}
+            onChange={(event) =>
+              setFilters((prev) => ({ ...prev, search: event.target.value, page: 1 }))
+            }
+            placeholder="按任务名称或消息搜索"
+          />
+          <Select
+            aria-label="任务类型"
+            value={filters.type}
+            onChange={(event) =>
+              setFilters((prev) => ({ ...prev, type: event.target.value, page: 1 }))
+            }
+          >
+            <option value="">全部类型</option>
+            <option value="download">下载</option>
+            <option value="sync">刷新作品清单</option>
+            <option value="sync-download">批量下载</option>
+            <option value="sync-retry">同步重试</option>
+          </Select>
+          <Select
+            aria-label="任务状态"
+            value={filters.status}
+            onChange={(event) =>
+              setFilters((prev) => ({ ...prev, status: event.target.value, page: 1 }))
+            }
+          >
+            <option value="">全部状态</option>
+            <option value="QUEUED">排队中</option>
+            <option value="RUNNING">运行中</option>
+            <option value="SUCCESS">成功</option>
+            <option value="FAILED">失败</option>
+            <option value="CANCELED">已取消</option>
+            <option value="TERMINATED">已终止</option>
+          </Select>
+          <Select
+            aria-label="每页任务数量"
+            value={String(filters.pageSize)}
+            onChange={(event) =>
+              setFilters((prev) => ({
+                ...prev,
+                pageSize: Number(event.target.value) || 20,
+                page: 1,
+              }))
+            }
+          >
+            <option value="10">每页 10 条</option>
+            <option value="20">每页 20 条</option>
+            <option value="50">每页 50 条</option>
+          </Select>
+        </CardContent>
+      </Card>
 
-      <motion.div variants={fadeUpItem}>
-        <Card foil>
-          <CardHeader>
-            <CardTitle className="text-base">筛选条件</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3 lg:grid-cols-[2fr_1fr_1fr_140px]">
-            <Input
-              value={filters.search}
-              onChange={(event) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  search: event.target.value,
-                  page: 1,
-                }))
-              }
-              placeholder="按任务名称或消息搜索"
-            />
-            <Select
-              value={filters.type}
-              onChange={(event) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  type: event.target.value,
-                  page: 1,
-                }))
-              }
-            >
-              <option value="">全部类型</option>
-              <option value="download">下载</option>
-              <option value="sync">刷新作品清单</option>
-              <option value="sync-download">批量下载</option>
-              <option value="sync-retry">同步重试</option>
-            </Select>
-            <Select
-              value={filters.status}
-              onChange={(event) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  status: event.target.value,
-                  page: 1,
-                }))
-              }
-            >
-              <option value="">全部状态</option>
-              <option value="QUEUED">排队中</option>
-              <option value="RUNNING">运行中</option>
-              <option value="SUCCESS">成功</option>
-              <option value="FAILED">失败</option>
-              <option value="CANCELED">已取消</option>
-              <option value="TERMINATED">已终止</option>
-            </Select>
-            <Select
-              value={String(filters.pageSize)}
-              onChange={(event) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  pageSize: Number(event.target.value) || 20,
-                  page: 1,
-                }))
-              }
-            >
-              <option value="10">每页 10 条</option>
-              <option value="20">每页 20 条</option>
-              <option value="50">每页 50 条</option>
-            </Select>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      <motion.div variants={fadeUpItem} className="grid gap-4 xl:grid-cols-[1.25fr_0.95fr]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(22rem,0.8fr)]">
         <Card className="overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-[color:var(--chassis-edge)] pb-3">
             <div>
               <CardTitle className="text-base">任务列表</CardTitle>
-              <p className="mt-2 text-sm text-[color:var(--text-body)]">
-                点击任意任务卡查看参数、日志和操作按钮。
-              </p>
+              <p className="mt-1 text-xs text-[color:var(--text-mute)]">自动刷新 · 点击任务名称检查详情</p>
             </div>
-            <Badge variant="warn">
-              第 {filters.page} / {totalPages} 页
-            </Badge>
+            <Badge variant="mute">{tasksQuery.data?.total ?? 0} 条</Badge>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {(tasksQuery.data?.items ?? []).map((task) => (
-              <button
-                key={task.id}
-                type="button"
-                className={`block w-full border p-4 text-left transition ${
-                  selectedTaskId === task.id
-                    ? "deck-live border-[color:var(--tape-pink)] bg-[color:var(--screen-void)]"
-                    : "deck-plate hover:border-[color:var(--telltale-amber)]"
-                }`}
-                onClick={() => setSelectedTaskId(task.id)}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="console-mono text-sm font-semibold text-[color:var(--text-display)]">
-                      {task.name}
-                    </div>
-                    <div className="console-mono text-xs text-[color:var(--text-mute)]">
-                      #{task.id} · {translateTaskType(task.type)}
-                    </div>
-                  </div>
-                  <Badge variant={statusBadgeVariant(task.status)}>
-                    {translateTaskStatus(task.status)}
-                  </Badge>
-                </div>
-                <div className="mt-4">
-                  <ProgressTrack
-                    label="进度"
-                    value={task.progress ?? 0}
-                    running={task.status === "RUNNING"}
-                    hint={task.message || "等待更多日志..."}
-                  />
-                </div>
-              </button>
-            ))}
+          <CardContent className="p-0">
+            <div className="overflow-x-auto" role="region" aria-label="任务列表，可横向滚动" tabIndex={0}>
+              <table className="w-full min-w-[46rem] border-collapse text-left text-sm">
+                <caption className="sr-only">符合当前筛选条件的下载与同步任务</caption>
+                <thead className="bg-[color:var(--screen-void)] text-xs text-[color:var(--text-mute)]">
+                  <tr>
+                    <th className="px-4 py-2.5 font-medium">任务</th>
+                    <th className="px-3 py-2.5 font-medium">类型</th>
+                    <th className="px-3 py-2.5 font-medium">状态</th>
+                    <th className="px-3 py-2.5 font-medium">进度</th>
+                    <th className="px-4 py-2.5 font-medium">最近消息</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[color:var(--chassis-edge)]">
+                  {(tasksQuery.data?.items ?? []).map((task) => {
+                    const percent = Math.round((task.progress ?? 0) * 100);
+                    const selected = selectedTaskId === task.id;
+                    return (
+                      <tr
+                        key={task.id}
+                        className={selected ? "bg-[color:var(--screen-void)] shadow-[inset_2px_0_0_var(--accent)]" : "hover:bg-[color:var(--surface-elevated)]"}
+                      >
+                        <td className="max-w-[17rem] px-4 py-3">
+                          <button
+                            type="button"
+                            className="block w-full text-left"
+                            aria-pressed={selected}
+                            onClick={() => setSelectedTaskId(task.id)}
+                          >
+                            <span className="block truncate font-semibold text-[color:var(--text-display)]">{task.name}</span>
+                            <span className="console-mono mt-0.5 block text-xs text-[color:var(--text-mute)]">#{task.id}</span>
+                          </button>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-3 text-xs text-[color:var(--text-body)]">{translateTaskType(task.type)}</td>
+                        <td className="px-3 py-3">
+                          <Badge variant={statusBadgeVariant(task.status)}>{translateTaskStatus(task.status)}</Badge>
+                        </td>
+                        <td className="w-32 px-3 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="h-1.5 flex-1 overflow-hidden bg-[color:var(--screen-void)]">
+                              <div className="h-full bg-[color:var(--phosphor-primary)]" style={{ width: `${percent}%` }} />
+                            </div>
+                            <span className="console-mono w-9 text-right text-xs text-[color:var(--text-body)]">{percent}%</span>
+                          </div>
+                        </td>
+                        <td className="max-w-[18rem] px-4 py-3">
+                          <div className="truncate text-xs text-[color:var(--text-mute)]">{task.message || "等待更多日志..."}</div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-            {(tasksQuery.data?.items.length ?? 0) === 0 && (
+            {(tasksQuery.data?.items.length ?? 0) === 0 ? (
               <EmptyState
                 symbol="无任务"
                 title="当前筛选下没有任务"
-                description="试着放宽搜索条件，或者回到发现页、同步页创建新的下载和同步任务。"
-                className="min-h-[14rem]"
+                description="放宽筛选条件，或新建下载和同步任务。"
+                className="min-h-[12rem]"
               />
-            )}
+            ) : null}
 
-            <div className="deck-plate flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-              <span className="text-sm text-[color:var(--text-body)]">
-                第 {filters.page} / {totalPages} 页
-              </span>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--chassis-edge)] px-4 py-3">
+              <span className="text-xs text-[color:var(--text-mute)]">第 {filters.page} / {totalPages} 页</span>
               <div className="flex gap-2">
                 <Button
                   variant="secondary"
                   size="sm"
                   disabled={filters.page <= 1}
-                  onClick={() =>
-                    setFilters((prev) => ({ ...prev, page: prev.page - 1 }))
-                  }
+                  onClick={() => setFilters((prev) => ({ ...prev, page: prev.page - 1 }))}
                 >
                   上一页
                 </Button>
@@ -419,9 +378,7 @@ export function Queue() {
                   variant="secondary"
                   size="sm"
                   disabled={filters.page >= totalPages}
-                  onClick={() =>
-                    setFilters((prev) => ({ ...prev, page: prev.page + 1 }))
-                  }
+                  onClick={() => setFilters((prev) => ({ ...prev, page: prev.page + 1 }))}
                 >
                   下一页
                 </Button>
@@ -430,45 +387,36 @@ export function Queue() {
           </CardContent>
         </Card>
 
-        <Card foil className="overflow-hidden">
-          <CardHeader>
+        <Card className="overflow-hidden self-start">
+          <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-[color:var(--chassis-edge)] pb-3">
             <CardTitle className="text-base">任务详情</CardTitle>
+            {selectedTask ? (
+              <Badge variant={statusBadgeVariant(selectedTask.status)}>{translateTaskStatus(selectedTask.status)}</Badge>
+            ) : null}
           </CardHeader>
-          <CardContent className="space-y-4">
-            {!selectedTaskId && (
+          <CardContent className="space-y-4 p-4">
+            {!selectedTaskId ? (
               <EmptyState
                 symbol="请选择"
                 title="先选一个任务"
-                description="选中左侧任意任务后，可以查看请求参数、执行结果、日志，并进行取消、重试或删除。"
-                className="min-h-[16rem]"
+                description="选中任务名称后查看参数、结果、日志和可用操作。"
+                className="min-h-[14rem]"
               />
-            )}
-            {taskDetailQuery.isLoading && (
+            ) : null}
+            {taskDetailQuery.isLoading ? (
               <div className="text-sm text-[color:var(--text-body)]">正在加载任务详情...</div>
-            )}
-            {selectedTask && (
+            ) : null}
+            {selectedTask ? (
               <>
                 {selectedTaskInsight ? (
-                  <div className="deck-screen space-y-3 p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="deck-decal">推荐下一步</div>
-                        <div className="console-title mt-3 text-xl font-black text-[color:var(--text-display)]">
-                          {selectedTaskInsight.guidanceTitle}
-                        </div>
-                      </div>
-                      <Badge variant={statusBadgeVariant(selectedTask.status)}>
-                        {translateTaskStatus(selectedTask.status)}
-                      </Badge>
-                    </div>
-                    <p className="text-sm leading-6 text-[color:var(--text-body)]">
-                      {selectedTaskInsight.guidance}
-                    </p>
+                  <div className="border-l-2 border-[color:var(--accent)] pl-3">
+                    <div className="text-sm font-semibold text-[color:var(--text-display)]">{selectedTaskInsight.guidanceTitle}</div>
+                    <p className="mt-1 text-sm leading-5 text-[color:var(--text-body)]">{selectedTaskInsight.guidance}</p>
                     {selectedTaskInsight.canOpenLibrary ? (
                       <Link
                         to="/library"
                         search={{ q: "", id: "", page: 1 }}
-                        className="deck-button-secondary inline-flex h-[38px] items-center justify-center border px-4 py-2 text-center text-xs font-bold transition hover:brightness-110"
+                        className="mt-2 inline-flex text-xs font-semibold text-[color:var(--accent)]"
                       >
                         去本地媒体库查看
                       </Link>
@@ -476,42 +424,18 @@ export function Queue() {
                   </div>
                 ) : null}
 
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    variant="secondary"
-                    busy={cancelMutation.isPending}
-                    onClick={() => cancelMutation.mutate(selectedTask.id)}
-                    disabled={!canCancel || cancelMutation.isPending}
-                  >
-                    <XCircle className="h-4 w-4" weight="duotone" />
-                    取消任务
+                <div className="flex flex-wrap gap-2 border-y border-[color:var(--chassis-edge)] py-3">
+                  <Button variant="secondary" size="sm" busy={cancelMutation.isPending} onClick={() => cancelMutation.mutate(selectedTask.id)} disabled={!canCancel || cancelMutation.isPending}>
+                    <XCircle className="h-4 w-4" weight="duotone" />取消任务
                   </Button>
-                  <Button
-                    variant="secondary"
-                    busy={retryMutation.isPending}
-                    onClick={() => retryMutation.mutate(selectedTask.id)}
-                    disabled={!canRetry || retryMutation.isPending}
-                  >
-                    <ArrowClockwise className="h-4 w-4" weight="duotone" />
-                    重新创建任务
+                  <Button variant="secondary" size="sm" busy={retryMutation.isPending} onClick={() => retryMutation.mutate(selectedTask.id)} disabled={!canRetry || retryMutation.isPending}>
+                    <ArrowClockwise className="h-4 w-4" weight="duotone" />重新创建任务
                   </Button>
-                  <Button
-                    variant="danger"
-                    busy={deleteMutation.isPending}
-                    onClick={() => setDeleteIntent("record")}
-                    disabled={!canDelete || deleteMutation.isPending}
-                  >
-                    <Trash className="h-4 w-4" weight="duotone" />
-                    删除记录
+                  <Button variant="danger" size="sm" busy={deleteMutation.isPending} onClick={() => setDeleteIntent("record")} disabled={!canDelete || deleteMutation.isPending}>
+                    <Trash className="h-4 w-4" weight="duotone" />删除记录
                   </Button>
-                  <Button
-                    variant="danger"
-                    busy={deleteWithFilesMutation.isPending}
-                    onClick={() => setDeleteIntent("files")}
-                    disabled={!canDeleteWithFiles || deleteWithFilesMutation.isPending}
-                  >
-                    <Trash className="h-4 w-4" weight="duotone" />
-                    清理文件并移除记录
+                  <Button variant="danger" size="sm" busy={deleteWithFilesMutation.isPending} onClick={() => setDeleteIntent("files")} disabled={!canDeleteWithFiles || deleteWithFilesMutation.isPending}>
+                    <Trash className="h-4 w-4" weight="duotone" />清理文件并移除记录
                   </Button>
                 </div>
 
@@ -522,47 +446,31 @@ export function Queue() {
                   hint={selectedTask.message || "任务还没有返回额外消息。"}
                 />
 
-                <div className="grid gap-3 sm:grid-cols-2">
+                <dl className="divide-y divide-[color:var(--chassis-edge)] border-y border-[color:var(--chassis-edge)]">
                   <Summary label="状态" value={translateTaskStatus(selectedTask.status)} />
                   <Summary label="来源" value={selectedTask.source || "-"} />
                   <Summary label="类型" value={translateTaskType(selectedTask.type)} />
                   <Summary label="创建时间" value={selectedTask.created_at || "-"} />
                   <Summary label="开始时间" value={selectedTask.started_at || "-"} />
                   <Summary label="完成时间" value={selectedTask.completed_at || "-"} />
-                </div>
+                </dl>
 
                 {selectedTaskInsight ? (
                   <>
-                    <TaskSummaryPanel
-                      title="任务参数摘要"
-                      rows={selectedTaskInsight.payloadRows}
-                    />
+                    <TaskSummaryPanel title="任务参数摘要" rows={selectedTaskInsight.payloadRows} />
                     {selectedTaskInsight.relatedIDs.length > 0 ? (
                       <div className="space-y-2">
-                        <div className="text-sm font-semibold text-[color:var(--text-body)]">
-                          相关作品
-                        </div>
-                        <div className="deck-screen flex flex-wrap gap-2 p-3">
-                          {selectedTaskInsight.relatedIDs.map((id) => (
-                            <Badge key={id} variant="warn">
-                              {id}
-                            </Badge>
-                          ))}
+                        <div className="text-sm font-semibold text-[color:var(--text-body)]">相关作品</div>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedTaskInsight.relatedIDs.map((id) => <Badge key={id} variant="warn">{id}</Badge>)}
                         </div>
                       </div>
                     ) : null}
-                    {selectedTaskInsight.resultRows.length > 0 ? (
-                      <TaskSummaryPanel
-                        title="执行结果摘要"
-                        rows={selectedTaskInsight.resultRows}
-                      />
-                    ) : null}
+                    {selectedTaskInsight.resultRows.length > 0 ? <TaskSummaryPanel title="执行结果摘要" rows={selectedTaskInsight.resultRows} /> : null}
                     {selectedTask.status === "FAILED" ? (
-                      <div className="deck-screen p-4">
-                        <div className="deck-decal">失败原因</div>
-                        <p className="mt-3 text-sm leading-6 text-[color:var(--text-display)]">
-                          {selectedTask.log_excerpt || selectedTask.message || "任务失败，但没有返回详细原因。"}
-                        </p>
+                      <div className="border-l-2 border-[color:var(--danger)] pl-3 text-sm leading-5 text-[color:var(--text-display)]">
+                        <div className="mb-1 font-semibold">失败原因</div>
+                        {selectedTask.log_excerpt || selectedTask.message || "任务失败，但没有返回详细原因。"}
                       </div>
                     ) : null}
                   </>
@@ -571,34 +479,26 @@ export function Queue() {
                 <CodeBlock title="原始请求 JSON" value={formatJSON(selectedTask.payload)} />
                 <CodeBlock title="原始结果 JSON" value={formatJSON(selectedTask.result)} />
 
-                <div className="space-y-2">
-                  <div className="text-sm font-semibold text-[color:var(--text-body)]">日志</div>
-                  <div className="space-y-2">
-                    {(selectedTask.logs ?? []).length === 0 && (
-                      <div className="deck-screen p-3 text-sm text-[color:var(--text-mute)]">
-                        暂无日志输出。
-                      </div>
-                    )}
+                <details className="deck-plate group">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-sm font-semibold text-[color:var(--text-display)]">
+                    <span>日志</span>
+                    <Badge variant="mute">{selectedTask.logs?.length ?? 0}</Badge>
+                  </summary>
+                  <div className="space-y-2 border-t border-[color:var(--chassis-edge)] p-3">
+                    {(selectedTask.logs ?? []).length === 0 ? <div className="text-sm text-[color:var(--text-mute)]">暂无日志输出。</div> : null}
                     {(selectedTask.logs ?? []).map((log) => (
-                      <div
-                        key={log.id}
-                        className="deck-screen p-3 text-sm text-[color:var(--text-display)]"
-                      >
+                      <div key={log.id} className="border-b border-[color:var(--chassis-edge)] pb-2 text-sm text-[color:var(--text-display)] last:border-0 last:pb-0">
                         <div>{log.message}</div>
-                        {log.created_at ? (
-                          <div className="mt-2 text-xs text-[color:var(--text-mute)]">
-                            {log.created_at}
-                          </div>
-                        ) : null}
+                        {log.created_at ? <div className="console-mono mt-1 text-xs text-[color:var(--text-mute)]">{log.created_at}</div> : null}
                       </div>
                     ))}
                   </div>
-                </div>
+                </details>
               </>
-            )}
+            ) : null}
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
 
       <DeckDialog
         open={downloadComposerOpen}
@@ -620,6 +520,7 @@ export function Queue() {
               <p className="mt-1 text-sm text-[color:var(--text-body)]">支持逗号、空格或换行分隔，并会自动去重。</p>
             </div>
             <Input
+              aria-label="RJ 编号"
               value={downloadDraft.ids}
               onChange={(event) => setDownloadDraft((current) => ({ ...current, ids: event.target.value }))}
               placeholder="例如 RJ123456, RJ234567"
@@ -627,7 +528,10 @@ export function Queue() {
             <Button
               className="w-full"
               disabled={parseDirectIDs(downloadDraft.ids).length === 0}
-              onClick={() => setCreateReview("batch")}
+              onClick={() => {
+                setDownloadComposerOpen(false);
+                setCreateReview("batch");
+              }}
             >
               <DownloadSimple className="h-4 w-4" weight="duotone" />
               复核 RJ 批量任务
@@ -639,13 +543,20 @@ export function Queue() {
             <p className="mt-1 text-sm text-[color:var(--text-body)]">按远端热门榜单顺序下载，最多 100 部作品。</p>
             <div className="mt-3 grid gap-3 sm:grid-cols-[9rem_1fr]">
               <Input
+                aria-label="Hot100 下载数量"
                 type="number"
                 min={1}
                 max={100}
                 value={downloadDraft.hotCount}
                 onChange={(event) => setDownloadDraft((current) => ({ ...current, hotCount: event.target.value }))}
               />
-              <Button variant="secondary" onClick={() => setCreateReview("hot100")}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setDownloadComposerOpen(false);
+                  setCreateReview("hot100");
+                }}
+              >
                 <Fire className="h-4 w-4" weight="duotone" />
                 复核 Hot100 任务
               </Button>
@@ -655,6 +566,7 @@ export function Queue() {
           <div className="space-y-2 border-t border-[color:var(--chassis-edge)] pt-5">
             <div className="text-sm font-semibold text-[color:var(--text-display)]">输出目录（可选）</div>
             <Input
+              aria-label="下载输出目录"
               value={downloadDraft.outputDir}
               onChange={(event) => setDownloadDraft((current) => ({ ...current, outputDir: event.target.value }))}
               placeholder="留空则使用设置中的同步目录"
@@ -665,7 +577,12 @@ export function Queue() {
 
       <ActionReviewDialog
         open={createReview !== null}
-        onOpenChange={(open) => !open && !createDownloadMutation.isPending && setCreateReview(null)}
+        onOpenChange={(open) => {
+          if (!open && !createDownloadMutation.isPending) {
+            setCreateReview(null);
+            setDownloadComposerOpen(true);
+          }
+        }}
         title={createReview === "hot100" ? "确认创建 Hot100 下载" : "确认创建 RJ 批量下载"}
         description="任务创建后会立即进入后台执行，可在任务中心查看进度或取消。"
         rows={[
@@ -703,7 +620,7 @@ export function Queue() {
           else deleteMutation.mutate(selectedTask.id);
         }}
       />
-    </motion.section>
+    </section>
   );
 }
 
@@ -720,11 +637,9 @@ function parseDirectIDs(raw: string) {
 
 function Summary({ label, value }: { label: string; value: string }) {
   return (
-    <div className="deck-screen p-4">
-      <div className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-mute)]">
-        {label}
-      </div>
-      <div className="mt-2 text-sm font-semibold text-[color:var(--text-display)]">{value}</div>
+    <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-3 py-2 text-sm">
+      <dt className="text-[color:var(--text-mute)]">{label}</dt>
+      <dd className="min-w-0 break-words text-[color:var(--text-display)]">{value}</dd>
     </div>
   );
 }
@@ -757,11 +672,11 @@ function TaskSummaryPanel({
   return (
     <div className="space-y-2">
       <div className="text-sm font-semibold text-[color:var(--text-body)]">{title}</div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <dl className="divide-y divide-[color:var(--chassis-edge)] border-y border-[color:var(--chassis-edge)]">
         {rows.map((row) => (
           <Summary key={`${title}-${row.label}`} label={row.label} value={row.value} />
         ))}
-      </div>
+      </dl>
     </div>
   );
 }
@@ -931,52 +846,24 @@ function translateDownloadMode(mode: string) {
   }
 }
 
-function QueueStat({
+function QueueMetric({
   label,
   value,
-  hint,
-  icon,
   tone,
 }: {
   label: string;
   value: number;
-  hint: string;
-  icon: ReactNode;
   tone: BadgeTone;
 }) {
   return (
-    <div className="deck-plate flex min-h-[4rem] items-center gap-3 px-3 py-2.5">
-      <span className="deck-screen flex h-9 w-9 shrink-0 items-center justify-center text-[color:var(--phosphor-primary)]">
-        {icon}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={tone} className="shrink-0">
-            {label}
-          </Badge>
-          <span className="truncate text-xs text-[color:var(--text-mute)]">
-            {hint}
-          </span>
-        </div>
-        <div className="mt-1.5 h-1.5 overflow-hidden border border-[color:var(--chassis-edge)] bg-[color:var(--screen-void)]">
-          <div
-            className="h-full bg-[color:var(--phosphor-primary)] shadow-[var(--glow-phosphor)]"
-            style={{ width: `${statBarWidth(value)}%` }}
-          />
-        </div>
+    <div className="flex min-h-16 items-center justify-between gap-3 border-r border-[color:var(--chassis-edge)] px-3 py-2.5 last:border-r-0">
+      <div>
+        <div className="text-xs text-[color:var(--text-mute)]">{label}</div>
+        <div className="console-readout mt-1 text-xl">{formatStatValue(value)}</div>
       </div>
-      <div className="console-readout shrink-0 text-2xl font-bold leading-none md:text-3xl">
-        {formatStatValue(value)}
-      </div>
+      <Badge variant={tone}>{value > 0 ? "有" : "无"}</Badge>
     </div>
   );
-}
-
-function statBarWidth(value: number) {
-  if (value <= 0) {
-    return 4;
-  }
-  return Math.max(12, Math.min(100, Math.log10(value + 1) * 42));
 }
 
 function formatStatValue(value: number) {
@@ -985,12 +872,12 @@ function formatStatValue(value: number) {
 
 function CodeBlock({ title, value }: { title: string; value: string }) {
   return (
-    <div className="space-y-2">
-      <div className="text-sm font-semibold text-[color:var(--text-body)]">{title}</div>
-      <pre className="deck-screen overflow-auto p-4 text-xs text-[color:var(--text-display)]">
-        {value}
-      </pre>
-    </div>
+    <details className="deck-plate group">
+      <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-semibold text-[color:var(--text-display)]">
+        {title}
+      </summary>
+      <pre className="max-h-80 overflow-auto border-t border-[color:var(--chassis-edge)] bg-[color:var(--screen-void)] p-3 text-xs text-[color:var(--text-display)]">{value}</pre>
+    </details>
   );
 }
 

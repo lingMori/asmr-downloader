@@ -3,7 +3,7 @@ import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "deck-badge inline-flex items-center border px-2 py-0.5 font-bold transition duration-150",
+  "deck-badge inline-flex items-center border px-2 py-0.5 font-semibold transition-colors duration-150",
   {
     variants: {
       variant: {
@@ -12,32 +12,32 @@ const badgeVariants = cva(
         decal:
           "border-[color-mix(in_srgb,var(--tape-pink)_42%,transparent)] bg-[color:var(--tape-pink-trail)] text-[color:var(--tape-pink)]",
         live:
-          "border-[color:var(--tape-pink)] bg-[color:var(--tape-pink-trail)] text-[color:var(--tape-pink)] shadow-[var(--glow-tape)] animate-[flicker_2s_steps(3,end)_infinite]",
+          "border-[color:var(--tape-pink)] bg-[color:var(--tape-pink-trail)] text-[color:var(--tape-pink)]",
         signal:
-          "border-[color:var(--phosphor-mid)] bg-[color:var(--phosphor-trail)] text-[color:var(--phosphor-primary)] shadow-[var(--glow-phosphor)]",
+          "border-[color:var(--phosphor-mid)] bg-[color:var(--phosphor-trail)] text-[color:var(--phosphor-primary)]",
         warn:
-          "border-[color:var(--telltale-amber)] bg-[rgba(242,169,59,0.14)] text-[color:var(--telltale-amber)] shadow-[var(--glow-amber)]",
+          "border-[color:var(--telltale-amber)] bg-[color:var(--warning-soft)] text-[color:var(--telltale-amber)]",
         halt:
-          "border-[color:var(--telltale-red)] bg-[rgba(255,90,60,0.14)] text-[color:var(--telltale-red)] shadow-[0_0_12px_rgba(255,90,60,0.28)]",
+          "border-[color:var(--telltale-red)] bg-[color:var(--danger-soft)] text-[color:var(--telltale-red)]",
         mute:
           "border-[color:var(--chassis-edge)] bg-transparent text-[color:var(--text-mute)]",
         pink:
           "border-[color-mix(in_srgb,var(--tape-pink)_42%,transparent)] bg-[color:var(--tape-pink-trail)] text-[color:var(--tape-pink)]",
         mint:
-          "border-[color:var(--phosphor-mid)] bg-[color:var(--phosphor-trail)] text-[color:var(--phosphor-primary)] shadow-[var(--glow-phosphor)]",
+          "border-[color:var(--phosphor-mid)] bg-[color:var(--phosphor-trail)] text-[color:var(--phosphor-primary)]",
         violet:
           "border-[color:var(--tape-pink)] bg-[color:var(--tape-pink-trail)] text-[color:var(--tape-pink)]",
         blue:
-          "border-[color:var(--telltale-cyan)] bg-[rgba(93,211,243,0.12)] text-[color:var(--telltale-cyan)]",
+          "border-[color:var(--telltale-cyan)] bg-[color:var(--info-soft)] text-[color:var(--telltale-cyan)]",
         gold:
-          "border-[color:var(--telltale-amber)] bg-[rgba(242,169,59,0.14)] text-[color:var(--telltale-amber)]",
+          "border-[color:var(--telltale-amber)] bg-[color:var(--warning-soft)] text-[color:var(--telltale-amber)]",
         danger:
-          "border-[color:var(--telltale-red)] bg-[rgba(255,90,60,0.14)] text-[color:var(--telltale-red)] shadow-[0_0_12px_rgba(255,90,60,0.28)]",
+          "border-[color:var(--telltale-red)] bg-[color:var(--danger-soft)] text-[color:var(--telltale-red)]",
         ghost:
           "border-[color:var(--chassis-edge)] bg-transparent text-[color:var(--text-mute)]",
       },
       active: {
-        true: "shadow-[0_0_0_2px_var(--tape-pink-trail)]",
+        true: "ring-2 ring-[color:var(--tape-pink-trail)]",
         false: "",
       },
     },

@@ -3,7 +3,7 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "group relative inline-flex items-center justify-center overflow-hidden border text-xs font-bold transition-[filter,box-shadow,transform] duration-150 active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--tape-pink)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--chassis-base)] disabled:pointer-events-none disabled:opacity-45",
+  "group relative inline-flex items-center justify-center whitespace-nowrap border text-xs font-semibold transition-[background-color,border-color,color,transform] duration-150 active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--tape-pink)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--chassis-base)] disabled:pointer-events-none disabled:opacity-45",
   {
     variants: {
       variant: {

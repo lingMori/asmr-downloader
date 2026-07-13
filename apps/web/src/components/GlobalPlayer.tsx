@@ -69,6 +69,12 @@ export function GlobalPlayerProvider({ children }: { children: ReactNode }) {
           title={session.title}
           mediaId={session.mediaId}
           coverUrl={session.coverUrl}
+          onClose={() => {
+            deckRef.current?.pause();
+            setSession(null);
+            setSelectedPath("");
+            setPlayRequest(0);
+          }}
           onEnded={() => {
             const currentIndex = session.tracks.findIndex((track) => track.path === selectedPath);
             const next = session.tracks[currentIndex + 1];

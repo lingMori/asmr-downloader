@@ -1,7 +1,13 @@
-import { ListChecks, SidebarSimple, TerminalWindow } from "@phosphor-icons/react";
+import {
+  Desktop,
+  ListChecks,
+  Moon,
+  SidebarSimple,
+  Sun,
+} from "@phosphor-icons/react";
+import type { Icon } from "@phosphor-icons/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 type ThemeMode = "light" | "dark" | "system";
 type ServiceState = "online" | "checking" | "offline";
@@ -28,44 +34,44 @@ export function DeckStatusBar({
   onOpenTasks: () => void;
 }) {
   return (
-    <div
-      className="deck-chassis z-20 mb-2 p-2 lg:sticky lg:top-3"
-      data-live={serviceState === "online" ? "soft" : undefined}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2.5">
+    <div className="deck-chassis status-bar p-2">
+      <div className="flex min-h-10 flex-wrap items-center justify-between gap-2.5">
         <div className="flex min-w-0 items-center gap-2.5">
           <Button
             type="button"
-            variant="secondary"
+            variant="ghost"
             size="sm"
-            className="hidden h-11 w-11 px-0 lg:inline-flex"
+            className="hidden w-10 px-0 lg:inline-flex"
             onClick={onToggleSidebar}
             aria-label={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
             title={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
           >
-            <SidebarSimple className="h-4 w-4" weight="duotone" />
+            <SidebarSimple className="h-4 w-4" weight="regular" />
           </Button>
-          <div className="deck-screen flex h-7 w-7 shrink-0 items-center justify-center text-[color:var(--phosphor-primary)]">
-            <TerminalWindow className="h-4 w-4" weight="duotone" />
-          </div>
-          <div className="min-w-0 leading-none">
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="console-title truncate text-lg font-black text-[color:var(--text-display)]">
-                {activeLabel}
-              </span>
+          <div className="min-w-0">
+            <div className="console-title truncate text-base font-bold text-[color:var(--text-display)]">
+              {activeLabel}
             </div>
-            <div className="mt-1 hidden truncate text-xs text-[color:var(--text-mute)] sm:block">
+            <div className="mt-0.5 hidden truncate text-xs text-[color:var(--text-mute)] sm:block">
               {activeHint}
             </div>
           </div>
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={serviceBadgeVariant(serviceState)}>
             {serviceBadgeLabel(serviceState)}
           </Badge>
-          <Button type="button" variant="secondary" size="sm" className="h-11" onClick={onOpenTasks}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={onOpenTasks}
+            aria-label={`进行中的任务 ${activeTaskCount}`}
+          >
             <ListChecks className="h-4 w-4" weight="duotone" />
-            进行中 {activeTaskCount}
+            <span className="hidden sm:inline">进行中</span>
+            <span className="console-mono">{activeTaskCount}</span>
           </Button>
           <ThemeSwitch value={themeMode} onChange={onThemeModeChange} />
         </div>
@@ -75,23 +81,15 @@ export function DeckStatusBar({
 }
 
 function serviceBadgeVariant(state: ServiceState): "halt" | "warn" | "signal" {
-  if (state === "offline") {
-    return "halt";
-  }
-  if (state === "checking") {
-    return "warn";
-  }
+  if (state === "offline") return "halt";
+  if (state === "checking") return "warn";
   return "signal";
 }
 
 function serviceBadgeLabel(state: ServiceState) {
-  if (state === "offline") {
-    return "API OFF";
-  }
-  if (state === "checking") {
-    return "API CHECK";
-  }
-  return "API OK";
+  if (state === "offline") return "API 离线";
+  if (state === "checking") return "API 检查中";
+  return "API 可用";
 }
 
 function ThemeSwitch({
@@ -102,42 +100,28 @@ function ThemeSwitch({
   onChange: (mode: ThemeMode) => void;
 }) {
   const options = [
-    { value: "dark" as const, label: "CRT" },
-    { value: "light" as const, label: "PANEL" },
-    { value: "system" as const, label: "AUTO" },
-  ];
-  const activeIndex = Math.max(0, options.findIndex((option) => option.value === value));
-  const slotWidth = 50;
-  const offset = 12;
+    { value: "dark" as const, label: "深色", icon: Moon },
+    { value: "light" as const, label: "浅色", icon: Sun },
+    { value: "system" as const, label: "跟随系统", icon: Desktop },
+  ] satisfies Array<{ value: ThemeMode; label: string; icon: Icon }>;
 
   return (
-    <div
-      className="deck-plate relative h-[52px] w-[146px] p-1"
-      role="group"
-      aria-label="主题模式"
-    >
-      <div className="absolute inset-x-3 top-1/2 h-px bg-[color:var(--chassis-edge)]" />
-      <div
-        className="absolute top-1/2 h-4 w-4 -translate-y-1/2 border border-[color:var(--telltale-amber)] bg-[color:var(--chassis-raise)] shadow-[var(--glow-amber)] transition-[left] duration-[30ms] ease-linear"
-        style={{ left: `${offset + activeIndex * slotWidth}px` }}
-      />
-      <div className="relative z-10 grid grid-cols-3 gap-1">
-        {options.map((option) => (
+    <div className="theme-segmented" role="group" aria-label="主题模式">
+      {options.map((option) => {
+        const IconComponent = option.icon;
+        return (
           <button
             key={option.value}
             type="button"
-            className={cn(
-              "h-11 text-[11px] font-semibold transition",
-              value === option.value
-                ? "text-[color:var(--telltale-amber)]"
-                : "text-[color:var(--text-mute)] hover:text-[color:var(--text-body)]",
-            )}
+            aria-label={option.label}
+            aria-pressed={value === option.value}
+            title={option.label}
             onClick={() => onChange(option.value)}
           >
-            {option.label}
+            <IconComponent className="h-4 w-4" weight={value === option.value ? "fill" : "regular"} />
           </button>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }

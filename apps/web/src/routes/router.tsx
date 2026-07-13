@@ -86,7 +86,7 @@ export const router = createRouter({
   defaultPendingMs: 0,
   defaultPendingMinMs: 120,
   defaultPendingComponent: () => (
-    <div className="deck-screen flex min-h-40 items-center justify-center p-5 text-sm text-[color:var(--text-body)]">
+    <div className="buffering-line flex min-h-40 items-center justify-center p-5 text-sm text-[color:var(--text-body)]" role="status">
       正在加载页面...
     </div>
   ),

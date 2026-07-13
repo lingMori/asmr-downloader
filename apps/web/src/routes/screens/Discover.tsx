@@ -1,5 +1,4 @@
 import { Link, getRouteApi, useNavigate } from "@tanstack/react-router";
-import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -12,7 +11,6 @@ import {
   MagnifyingGlass,
   MusicNotes,
   SlidersHorizontal,
-  Sparkle,
   Square,
   Tag,
   Wrench,
@@ -27,10 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
   EmptyState,
-  PageHeader,
   RouteFeedback,
-  fadeUpItem,
-  staggerContainer,
 } from "@/components/ui/sweet";
 import {
   defaultDiscoverRouteSearch,
@@ -197,9 +192,11 @@ export function Discover() {
           output_dir: outputDir || undefined,
         });
       }
+      const currentItems = searchQuery.data?.items ?? [];
+      const currentSourceIDs = new Set(currentItems.map((item) => item.source_id));
       const ids = downloadScope === "selected"
-        ? Array.from(selectedIDs)
-        : (searchQuery.data?.items ?? []).map((item) => item.source_id);
+        ? Array.from(selectedIDs).filter((sourceId) => currentSourceIDs.has(sourceId))
+        : currentItems.map((item) => item.source_id);
       return apiClient.createDownload({
         mode: "batch",
         ids,
@@ -288,6 +285,10 @@ export function Discover() {
     setDraft(nextFilters);
     setFilters(nextFilters);
     setPage(routeSearch.page);
+    setSelectedSourceId("");
+    setSelectedIDs(new Set());
+    setDownloadScope("page");
+    setDownloadReviewOpen(false);
   }, [routeSearch]);
 
   function submitSearch(nextDraft = draft) {
@@ -338,66 +339,59 @@ export function Discover() {
   }
 
   return (
-    <motion.section
-      className="space-y-4"
-      variants={staggerContainer}
-      initial="hidden"
-      animate="show"
-    >
-      <motion.div variants={fadeUpItem}>
-        <PageHeader
-          kicker="搜索"
-          title="搜索远端作品"
-          description="按关键词、标签、声优或社团筛选作品，确认后加入下载。"
-          meta={
-            <div className="deck-screen space-y-2 p-3">
-              <div className="flex flex-wrap gap-2">
-                <Badge variant={draftIsLegacyQuery ? "warn" : "live"} active={!draftIsLegacyQuery}>
-                  条件搜索
-                </Badge>
-                <Badge variant={draftIsLegacyQuery ? "live" : "mute"} active={draftIsLegacyQuery}>
-                  高级语法
-                </Badge>
-              </div>
-              <div className="text-sm leading-5 text-[color:var(--text-body)]">
-                当前共命中 <span className="font-semibold">{searchQuery.data?.total ?? 0}</span> 个作品
-              </div>
+    <section className="space-y-4">
+      <Card className="overflow-hidden">
+        <CardContent className="p-0">
+          <div className="flex flex-col gap-2 border-b border-[color:var(--chassis-edge)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="text-lg font-semibold text-[color:var(--text-display)]">搜索远端作品</h1>
+              <p className="mt-0.5 text-sm text-[color:var(--text-body)]">
+                按关键词、标签、声优或社团筛选，确认后加入下载。
+              </p>
             </div>
-          }
-        />
-      </motion.div>
-
-      <motion.div variants={fadeUpItem}>
-        <Card foil className="overflow-hidden">
-          <CardContent className="space-y-4 p-4">
+            <div className="flex shrink-0 flex-wrap items-center gap-2 text-sm text-[color:var(--text-body)]">
+              <Badge variant={draftIsLegacyQuery ? "warn" : "live"} active>
+                {draftIsLegacyQuery ? "高级语法" : "条件搜索"}
+              </Badge>
+              <span>
+                <strong className="font-semibold text-[color:var(--text-display)]">
+                  {searchQuery.data?.total ?? 0}
+                </strong>{" "}
+                个作品
+              </span>
+            </div>
+          </div>
             <form
-              className="space-y-4"
+              className="divide-y divide-[color:var(--chassis-edge)]"
               onSubmit={(event) => {
                 event.preventDefault();
                 submitSearch();
               }}
             >
-              <div className="deck-plate p-3">
-                <div className="flex flex-col gap-3 xl:flex-row">
+              <div className="p-3">
+                <div className="flex flex-col gap-2 xl:flex-row">
                   <div className="min-w-0 flex-1">
                     <Input
+                      aria-label="搜索关键词或高级查询表达式"
                       value={draft.q}
                       onChange={(event) =>
                         setDraft((prev) => ({ ...prev, q: event.target.value }))
                       }
                       placeholder="输入关键词、RJ 编号，或直接贴高级查询表达式"
-                      className="h-12 text-base"
+                      className="h-10 text-sm"
                     />
                   </div>
-                  <div className="flex flex-wrap gap-3">
-                    <Button type="submit" className="h-12 px-5">
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="submit" size="sm">
                       <MagnifyingGlass className="h-4 w-4" />
                       搜索
                     </Button>
                     <Button
                       type="button"
                       variant="secondary"
-                      className="h-12 px-4"
+                      size="sm"
+                      aria-expanded={showFilters || hasAdvancedDraft}
+                      aria-controls="discover-filter-panel"
                       onClick={() => setShowFilters((value) => !value)}
                     >
                       <SlidersHorizontal className="h-4 w-4" />
@@ -411,7 +405,9 @@ export function Discover() {
                     <Button
                       type="button"
                       variant="secondary"
-                      className="h-12 px-4"
+                      size="sm"
+                      aria-expanded={showTools}
+                      aria-controls="discover-tools-panel"
                       onClick={() => setShowTools((value) => !value)}
                     >
                       <Wrench className="h-4 w-4" />
@@ -425,7 +421,7 @@ export function Discover() {
                     <Button
                       type="button"
                       variant="secondary"
-                      className="h-12 px-4"
+                      size="sm"
                       onClick={resetSearchPanel}
                     >
                       <ArrowClockwise className="h-4 w-4" />
@@ -435,7 +431,7 @@ export function Discover() {
                 </div>
               </div>
 
-              <div className="deck-plate flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
                 <div className="flex flex-wrap gap-2">
                   {activeFilters.length === 0 && (
                     <Badge variant="mute">还没有激活筛选条件</Badge>
@@ -451,16 +447,8 @@ export function Discover() {
                 </Badge>
               </div>
 
-              <AnimatePresence initial={false}>
-                {(showFilters || hasAdvancedDraft) && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0, y: -10 }}
-                    animate={{ opacity: 1, height: "auto", y: 0 }}
-                    exit={{ opacity: 0, height: 0, y: -10 }}
-                    transition={{ duration: 0.24 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="deck-plate p-4">
+              {(showFilters || hasAdvancedDraft) && (
+                <div id="discover-filter-panel" className="p-4">
                       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.95fr]">
                         <div className="space-y-4">
                           <PanelLabel
@@ -470,6 +458,7 @@ export function Discover() {
                           <div className="space-y-2">
                             <FieldLabel>标签</FieldLabel>
                             <Input
+                              aria-label="标签筛选"
                               value={draft.tag}
                               onChange={(event) =>
                                 setDraft((prev) => ({ ...prev, tag: event.target.value }))
@@ -506,6 +495,7 @@ export function Discover() {
                             <div className="space-y-2">
                               <FieldLabel>社团</FieldLabel>
                               <Input
+                                aria-label="社团筛选"
                                 value={draft.circle}
                                 onChange={(event) =>
                                   setDraft((prev) => ({ ...prev, circle: event.target.value }))
@@ -516,6 +506,7 @@ export function Discover() {
                             <div className="space-y-2">
                               <FieldLabel>声优</FieldLabel>
                               <Input
+                                aria-label="声优筛选"
                                 value={draft.va}
                                 onChange={(event) =>
                                   setDraft((prev) => ({ ...prev, va: event.target.value }))
@@ -551,6 +542,7 @@ export function Discover() {
                             <div className="space-y-2 md:col-span-2">
                               <FieldLabel>排序字段</FieldLabel>
                               <Select
+                                aria-label="排序字段"
                                 value={draft.order}
                                 onChange={(event) =>
                                   setDraft((prev) => ({ ...prev, order: event.target.value }))
@@ -566,6 +558,7 @@ export function Discover() {
                             <div className="space-y-2">
                               <FieldLabel>顺序</FieldLabel>
                               <Select
+                                aria-label="排序顺序"
                                 value={draft.sort}
                                 onChange={(event) =>
                                   setDraft((prev) => ({ ...prev, sort: event.target.value }))
@@ -578,6 +571,7 @@ export function Discover() {
                             <div className="space-y-2">
                               <FieldLabel>每页数量</FieldLabel>
                               <Input
+                                aria-label="每页数量"
                                 type="number"
                                 min={1}
                                 max={48}
@@ -593,21 +587,11 @@ export function Discover() {
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                </div>
+              )}
 
-              <AnimatePresence initial={false}>
-                {showTools && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0, y: -10 }}
-                    animate={{ opacity: 1, height: "auto", y: 0 }}
-                    exit={{ opacity: 0, height: 0, y: -10 }}
-                    transition={{ duration: 0.24 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="deck-plate p-4">
+              {showTools && (
+                <div id="discover-tools-panel" className="p-4">
                       <div className="grid gap-5">
                         <div className="space-y-4">
                           <PanelLabel
@@ -616,12 +600,13 @@ export function Discover() {
                           />
                           <div className="grid gap-3 md:grid-cols-[1.15fr_12rem_auto_auto_auto]">
                             <Input
+                              aria-label="下载输出目录"
                               value={outputDir}
                               onChange={(event) => setOutputDir(event.target.value)}
                               placeholder="可选输出目录"
                             />
                             {!usingLegacyQuery ? (
-                              <Select value={downloadScope} onChange={(event) => setDownloadScope(event.target.value as "page" | "selected")}>
+                              <Select aria-label="批量下载范围" value={downloadScope} onChange={(event) => setDownloadScope(event.target.value as "page" | "selected")}>
                                 <option value="page">本页 {works.length} 项</option>
                                 <option value="selected">已选 {selectedIDs.size} 项</option>
                               </Select>
@@ -662,41 +647,77 @@ export function Discover() {
                         </div>
 
                       </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                </div>
+              )}
             </form>
           </CardContent>
         </Card>
-      </motion.div>
 
-      <motion.div
-        variants={fadeUpItem}
-        className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_24rem]"
-      >
-        <div className="space-y-5">
-          <div ref={resultsTopRef} />
-          <motion.div
-            className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3"
-            variants={staggerContainer}
-            initial="hidden"
-            animate="show"
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="min-w-0 space-y-3">
+          <div
+            ref={resultsTopRef}
+            className="flex flex-wrap items-center justify-between gap-2"
           >
+            <div>
+              <h2 className="text-base font-semibold text-[color:var(--text-display)]">搜索结果</h2>
+              <p className="text-sm text-[color:var(--text-body)]">
+                第 {page} 页，共 {searchQuery.data?.total ?? 0} 个作品
+              </p>
+            </div>
+            {!usingLegacyQuery && works.length > 0 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  setSelectedIDs((current) =>
+                    current.size === works.length
+                      ? new Set()
+                      : new Set(works.map((work) => work.source_id)),
+                  )
+                }
+              >
+                <CheckSquare className="h-4 w-4" />
+                {selectedIDs.size === works.length ? "取消全选" : "选择本页"}
+              </Button>
+            ) : null}
+          </div>
+
+          {selectedIDs.size > 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 border border-[color:var(--tape-pink)] bg-[color:var(--tape-pink-trail)] px-3 py-2">
+              <span className="text-sm font-medium text-[color:var(--text-display)]">
+                已选择 {selectedIDs.size} 个作品
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  setDownloadScope("selected");
+                  setDownloadReviewOpen(true);
+                }}
+              >
+                <DownloadSimple className="h-4 w-4" />
+                下载所选
+              </Button>
+            </div>
+          ) : null}
+
+          <Card className="overflow-hidden">
+            <div className="divide-y divide-[color:var(--chassis-edge)]">
             {searchQuery.isLoading &&
               Array.from({ length: 6 }).map((_, index) => (
-                <Card key={index} className="overflow-hidden">
-                  <CardContent className="space-y-4 p-5">
-                    <div className="deck-screen h-52 animate-pulse" />
-                    <div className="h-4 animate-pulse rounded-md bg-[color:var(--interactive-bg)]" />
-                    <div className="h-4 w-2/3 animate-pulse rounded-md bg-[color:var(--interactive-bg)]" />
-                  </CardContent>
-                </Card>
+                <div key={index} className="flex gap-3 p-3">
+                  <div className="h-24 w-24 shrink-0 animate-pulse bg-[color:var(--interactive-bg)]" />
+                  <div className="flex-1 space-y-3 py-1">
+                    <div className="h-4 animate-pulse bg-[color:var(--interactive-bg)]" />
+                    <div className="h-4 w-2/3 animate-pulse bg-[color:var(--interactive-bg)]" />
+                  </div>
+                </div>
               ))}
 
             {searchQuery.isError && (
-              <Card className="md:col-span-2 2xl:col-span-3">
-                <CardContent>
+              <div className="p-4">
                   <RouteFeedback
                     tone="halt"
                     title="搜索结果加载失败"
@@ -708,18 +729,13 @@ export function Discover() {
                       </Button>
                     }
                   />
-                </CardContent>
-              </Card>
+              </div>
             )}
 
             {!searchQuery.isLoading &&
               !searchQuery.isError &&
-              works.map((work, index) => (
-                <motion.div
-                  key={work.source_id}
-                  variants={fadeUpItem}
-                  transition={{ delay: index * 0.02 }}
-                >
+              works.map((work) => (
+                <div key={work.source_id}>
                   <WorkCard
                     work={work}
                     status={statusBySourceId.get(work.source_id)}
@@ -734,21 +750,20 @@ export function Discover() {
                       return next;
                     })}
                   />
-                </motion.div>
+                </div>
               ))}
 
             {!searchQuery.isLoading && !searchQuery.isError && works.length === 0 && (
-              <Card className="md:col-span-2 2xl:col-span-3">
-                <CardContent>
+              <div className="p-4">
                   <EmptyState
                     symbol="无结果"
                     title="没有匹配作品"
                     description="当前筛选条件下没有匹配结果。可以减少限制，或改用高级语法搜索。"
                   />
-                </CardContent>
-              </Card>
+              </div>
             )}
-          </motion.div>
+            </div>
+          </Card>
 
           <div className="deck-plate flex flex-wrap items-center justify-between gap-3 px-4 py-3">
             <div className="text-sm text-[color:var(--text-body)]">
@@ -775,7 +790,21 @@ export function Discover() {
           </div>
         </div>
 
-        <div className="space-y-4 xl:sticky xl:top-24 xl:self-start">
+        <aside className="space-y-4 xl:sticky xl:top-20 xl:self-start">
+          <WorkDetailCard
+            detail={detailQuery.data}
+            detailSearch={routeSearch}
+            loading={detailQuery.isLoading}
+            onQueue={(sourceId) => singleDownloadMutation.mutate(sourceId)}
+          />
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b border-[color:var(--chassis-edge)] pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm normal-case">
+                <Tag className="h-4 w-4 text-[color:var(--text-mute)]" />
+                本页聚合
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="divide-y divide-[color:var(--chassis-edge)] p-0">
           <FacetCard
             title="本页标签"
             items={facets.tags}
@@ -812,14 +841,10 @@ export function Discover() {
               });
             }}
           />
-          <WorkDetailCard
-            detail={detailQuery.data}
-            detailSearch={routeSearch}
-            loading={detailQuery.isLoading}
-            onQueue={(sourceId) => singleDownloadMutation.mutate(sourceId)}
-          />
-        </div>
-      </motion.div>
+            </CardContent>
+          </Card>
+        </aside>
+      </div>
 
       <ActionReviewDialog
         open={downloadReviewOpen}
@@ -835,7 +860,7 @@ export function Discover() {
         busy={searchDownloadMutation.isPending}
         onConfirm={() => searchDownloadMutation.mutate()}
       />
-    </motion.section>
+    </section>
   );
 }
 
@@ -848,10 +873,7 @@ function PanelLabel({
 }) {
   return (
     <div className="space-y-1">
-      <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.2em] text-[color:var(--telltale-amber)]">
-        <Sparkle className="h-3.5 w-3.5" />
-        {title}
-      </div>
+      <div className="text-sm font-semibold text-[color:var(--text-display)]">{title}</div>
       <div className="text-sm text-[color:var(--text-body)]">{description}</div>
     </div>
   );
@@ -859,9 +881,7 @@ function PanelLabel({
 
 function FieldLabel({ children }: { children: string }) {
   return (
-    <div className="deck-decal">
-      {children}
-    </div>
+    <div className="text-xs font-medium text-[color:var(--text-body)]">{children}</div>
   );
 }
 
@@ -886,95 +906,98 @@ function WorkCard({
   const hiddenTagCount = Math.max(0, work.tags.length - visibleTags.length);
 
   return (
-    <Card interactive foil className="h-full overflow-hidden" onClick={onSelect}>
-      <CardContent className="flex h-full flex-col gap-5 p-5">
-        <div className="deck-screen aspect-[16/10]">
-          <button
-            type="button"
-            aria-label={selected ? `取消选择 ${work.source_id}` : `选择 ${work.source_id}`}
-            title={selected ? "取消选择" : "加入批量选择"}
-            className="deck-plate absolute left-3 top-3 z-10 flex h-11 w-11 items-center justify-center text-[color:var(--text-display)]"
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleSelected();
-            }}
-          >
-            {selected ? <CheckSquare className="h-5 w-5" weight="fill" /> : <Square className="h-5 w-5" />}
-          </button>
+    <article
+      className={`grid grid-cols-[auto_minmax(0,1fr)] gap-3 p-3 transition-colors sm:grid-cols-[auto_6.5rem_minmax(0,1fr)_auto] sm:items-center ${
+        selected ? "bg-[color:var(--tape-pink-trail)]" : "hover:bg-[color:var(--interactive-bg)]"
+      }`}
+    >
+      <button
+        type="button"
+        aria-label={selected ? `取消选择 ${work.source_id}` : `选择 ${work.source_id}`}
+        title={selected ? "取消选择" : "加入批量选择"}
+        className="flex h-9 w-9 items-center justify-center text-[color:var(--text-body)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--tape-pink)]"
+        onClick={onToggleSelected}
+      >
+        {selected ? (
+          <CheckSquare className="h-5 w-5 text-[color:var(--tape-pink)]" weight="fill" />
+        ) : (
+          <Square className="h-5 w-5" />
+        )}
+      </button>
+
+      <Link
+        to="/discover/$sourceId"
+        params={{ sourceId: work.source_id }}
+        search={detailSearch}
+        className="block h-24 w-full overflow-hidden border border-[color:var(--chassis-edge)] bg-[color:var(--interactive-bg)] sm:w-[6.5rem]"
+      >
           {work.main_cover_url || work.thumbnail_url ? (
             <img
               src={work.main_cover_url || work.thumbnail_url}
               alt={work.title}
-              className="h-full w-full object-cover opacity-90 transition duration-500 group-hover:brightness-110"
+              className="h-full w-full object-cover"
             />
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-[color:var(--text-mute)]">
               暂无封面
             </div>
           )}
-          <div className="absolute bottom-3 right-3">
-            {work.circle ? (
+      </Link>
+
+      <div className="col-span-2 min-w-0 space-y-2 sm:col-span-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="warn" className="shrink-0">{work.source_id}</Badge>
+          {status && status.state !== "none" ? (
+            <Badge
+              variant={workStatusBadgeVariant(status.state)}
+              title={status.message || status.label}
+              className="shrink-0"
+            >
+              {status.label}
+            </Badge>
+          ) : null}
+          <span className="font-mono text-xs text-[color:var(--text-mute)]">{work.release || "-"}</span>
+        </div>
+
+        <Link
+          to="/discover/$sourceId"
+          params={{ sourceId: work.source_id }}
+          search={detailSearch}
+          className="block"
+        >
+          <h3 className="line-clamp-2 text-base font-semibold leading-6 text-[color:var(--text-display)] hover:text-[color:var(--tape-pink)]">
+            {work.title}
+          </h3>
+        </Link>
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[color:var(--text-body)]">
+          {work.circle ? (
               <Link
                 to="/discover"
                 search={buildFacetRouteSearch(detailSearch, { circle: work.circle })}
                 title={`搜索社团: ${work.circle}`}
-                className="block max-w-[min(14rem,70vw)] transition hover:brightness-110"
-                onClick={(event) => event.stopPropagation()}
+                className="max-w-[16rem] truncate font-medium hover:text-[color:var(--tape-pink)]"
               >
-                <Badge variant="decal" active className="max-w-full min-w-0">
-                  <span className="min-w-0 truncate">{work.circle}</span>
-                </Badge>
+                {work.circle}
               </Link>
             ) : (
-              <Badge variant="decal">未知社团</Badge>
+              <span>未知社团</span>
             )}
-          </div>
+          <span>下载 {work.dl_count}</span>
+          <span>评分 {work.rate.toFixed(2)}</span>
+          <span>{work.has_subtitle ? "有字幕" : "无字幕"}</span>
         </div>
 
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="warn" className="shrink-0">
-                {work.source_id}
-              </Badge>
-              {status && status.state !== "none" ? (
-                <Badge
-                  variant={workStatusBadgeVariant(status.state)}
-                  title={status.message || status.label}
-                  className="shrink-0"
-                >
-                  {status.label}
-                </Badge>
-              ) : null}
-            </div>
-            <span className="console-mono text-xs text-[color:var(--text-mute)]">{work.release}</span>
-          </div>
-          <h3 className="console-title line-clamp-2 text-xl font-black leading-7 text-[color:var(--text-display)]">
-            {work.title}
-          </h3>
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <MiniMetric label="下载量" value={String(work.dl_count)} variant="signal" />
-          <MiniMetric label="评分" value={work.rate.toFixed(2)} variant="warn" />
-          <MiniMetric
-            label="字幕"
-            value={work.has_subtitle ? "有" : "无"}
-            variant={work.has_subtitle ? "live" : "mute"}
-          />
-        </div>
-
-        <div className="flex min-h-[1.75rem] flex-wrap gap-2.5 overflow-hidden">
+        <div className="flex min-h-6 flex-wrap gap-1.5 overflow-hidden">
           {visibleTags.map((tag) => (
             <Link
               key={tag}
               to="/discover"
               search={buildFacetRouteSearch(detailSearch, { tag })}
               title={`搜索标签: ${tag}`}
-              className="max-w-full min-w-0 transition hover:brightness-110"
-              onClick={(event) => event.stopPropagation()}
+              className="max-w-full min-w-0"
             >
-              <Badge variant={tagVariant(tag)} active className="max-w-full min-w-0">
+              <Badge variant={tagVariant(tag)} className="max-w-full min-w-0">
                 <span className="min-w-0 max-w-[min(11rem,68vw)] truncate">
                   #{tag}
                 </span>
@@ -991,30 +1014,31 @@ function WorkCard({
             </Badge>
           ) : null}
         </div>
+      </div>
 
-        <div className="mt-auto grid gap-3 pt-1">
+      <div className="col-span-2 flex flex-wrap gap-2 sm:col-span-1 sm:flex-col sm:items-stretch">
+          <Button type="button" variant="secondary" size="sm" onClick={onSelect}>
+            <MagnifyingGlass className="h-4 w-4" />
+            预览
+          </Button>
           <Button
-            className="w-full"
-            onClick={(event) => {
-              event.stopPropagation();
-              onQueue();
-            }}
+            type="button"
+            size="sm"
+            onClick={onQueue}
           >
             <DownloadSimple className="h-4 w-4" />
-            加入下载队列
+            下载
           </Button>
           <Link
             to="/discover/$sourceId"
             params={{ sourceId: work.source_id }}
             search={detailSearch}
-            className="deck-button-secondary inline-flex h-[38px] items-center justify-center border px-4 py-2 text-center text-xs font-bold transition hover:brightness-110"
-            onClick={(event) => event.stopPropagation()}
+            className="deck-button-secondary inline-flex h-9 items-center justify-center border px-3 text-center text-xs font-bold"
           >
-            查看详情页
+            详情
           </Link>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </article>
   );
 }
 
@@ -1028,14 +1052,11 @@ function MiniMetric({
   variant: BadgeSemantic;
 }) {
   return (
-    <div className="deck-screen px-3 py-3">
-      <div className="text-[11px] uppercase tracking-[0.18em] text-[color:var(--text-mute)]">
+    <div data-variant={variant} className="border-l-2 border-[color:var(--chassis-edge)] px-2 py-1">
+      <div className="text-xs text-[color:var(--text-mute)]">
         {label}
       </div>
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <span className="console-readout text-sm">{value}</span>
-        <Badge variant={variant}>•</Badge>
-      </div>
+      <div className="mt-0.5 truncate text-sm font-semibold text-[color:var(--text-display)]">{value}</div>
     </div>
   );
 }
@@ -1052,14 +1073,9 @@ function FacetCard({
   onPick: (value: string) => void;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Tag className="h-4 w-4 text-[color:var(--tape-pink)]" weight="duotone" />
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-wrap gap-2">
+    <section className="space-y-2.5 p-3">
+      <h3 className="text-xs font-semibold text-[color:var(--text-body)]">{title}</h3>
+      <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto">
         {items.length === 0 && (
           <div className="text-sm text-[color:var(--text-mute)]">暂无可用聚合</div>
         )}
@@ -1078,8 +1094,8 @@ function FacetCard({
             </Badge>
           </button>
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 
@@ -1118,17 +1134,6 @@ function WorkDetailCard({
     () => flattenSubtitleTracks(detail?.tracks ?? []),
     [detail?.tracks],
   );
-  const [selectedTrackPath, setSelectedTrackPath] = useState("");
-
-  useEffect(() => {
-    setSelectedTrackPath((current) => {
-      if (audioFiles.some((file) => file.path === current)) {
-        return current;
-      }
-      return audioFiles[0]?.path ?? "";
-    });
-  }, [audioFiles]);
-
   useEffect(() => {
     if (!detail) {
       return;
@@ -1149,7 +1154,6 @@ function WorkDetailCard({
       track: audioFiles.find((file) => file.path === path),
       sourceId: detail?.summary.source_id,
     });
-    setSelectedTrackPath(path);
     if (detail) {
       player.play({
         tracks: audioFiles,
@@ -1164,9 +1168,9 @@ function WorkDetailCard({
   const coverUrl = detail?.summary.main_cover_url || detail?.summary.thumbnail_url;
 
   return (
-    <Card foil className="overflow-hidden">
-      <CardHeader>
-        <CardTitle className="text-base">作品详情</CardTitle>
+    <Card className="overflow-hidden">
+      <CardHeader className="border-b border-[color:var(--chassis-edge)] pb-3">
+        <CardTitle className="text-sm normal-case">作品预览</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {!detail && !loading && (
@@ -1174,19 +1178,19 @@ function WorkDetailCard({
             symbol="请选择"
             title="选择一个作品"
             description="选择左侧作品后，这里会显示详情、音轨预览和详情页入口。"
-            className="min-h-[14rem]"
+            className="min-h-[11rem]"
           />
         )}
         {loading && (
           <div className="space-y-4">
-            <div className="deck-screen h-44 animate-pulse" />
+            <div className="h-40 animate-pulse bg-[color:var(--interactive-bg)]" />
             <div className="h-4 animate-pulse rounded-md bg-[color:var(--interactive-bg)]" />
             <div className="h-4 w-2/3 animate-pulse rounded-md bg-[color:var(--interactive-bg)]" />
           </div>
         )}
         {detail && (
           <>
-            <div className="deck-screen flex h-52 items-center justify-center p-2">
+            <div className="flex h-44 items-center justify-center overflow-hidden border border-[color:var(--chassis-edge)] bg-[color:var(--interactive-bg)]">
               {coverUrl ? (
                 <img
                   src={coverUrl}
@@ -1201,34 +1205,28 @@ function WorkDetailCard({
             </div>
             <div className="space-y-2">
               <Badge variant="warn">{detail.summary.source_id}</Badge>
-              <h3 className="console-title text-xl font-black text-[color:var(--text-display)]">
+              <h3 className="line-clamp-3 text-base font-semibold leading-6 text-[color:var(--text-display)]">
                 {detail.summary.title}
               </h3>
               <p className="text-sm text-[color:var(--text-body)]">{detail.summary.circle}</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               <MiniMetric label="发售日" value={detail.summary.release || "-"} variant="decal" />
               <MiniMetric label="价格" value={String(detail.price)} variant="warn" />
               <MiniMetric label="评论数" value={String(detail.review_count)} variant="signal" />
               <MiniMetric label="音轨数" value={String(detail.tracks.length)} variant="live" />
             </div>
 
-            {audioFiles.length === 0 ? (
-              <div className="deck-screen p-4 text-sm text-[color:var(--text-mute)]">
-                当前作品暂无可在线播放音轨。
-              </div>
-            ) : null}
-
             <div className="space-y-2">
               <div className="text-sm font-semibold text-[color:var(--text-body)]">音轨预览</div>
-              <div className="space-y-2">
+              <div className="divide-y divide-[color:var(--chassis-edge)] border-y border-[color:var(--chassis-edge)]">
                 {audioFiles.slice(0, 6).map((track, index) => (
                   <button
                     type="button"
                     key={track.path}
-                    className={`deck-screen flex w-full items-center gap-3 p-3 text-left text-sm transition hover:border-[color:var(--telltale-amber)] ${
+                    className={`flex w-full items-center gap-2 px-2 py-2 text-left text-sm transition-colors hover:bg-[color:var(--interactive-bg)] ${
                       player.activeMediaId === detail.summary.source_id && player.selectedPath === track.path
-                        ? "border-[color:var(--tape-pink)] shadow-[var(--glow-tape)]"
+                        ? "bg-[color:var(--tape-pink-trail)]"
                         : ""
                     }`}
                     onClick={() => selectAndPlayTrack(track.path)}
@@ -1236,31 +1234,33 @@ function WorkDetailCard({
                     <Badge variant={player.activeMediaId === detail.summary.source_id && player.selectedPath === track.path ? "live" : "mute"}>
                       {String(index + 1).padStart(2, "0")}
                     </Badge>
-                    <MusicNotes className="h-4 w-4 shrink-0 text-[color:var(--telltale-amber)]" weight="duotone" />
+                    <MusicNotes className="h-4 w-4 shrink-0 text-[color:var(--text-mute)]" />
                     <span className="min-w-0 truncate text-[color:var(--text-display)]">
                       {track.name}
                     </span>
                   </button>
                 ))}
                 {audioFiles.length === 0 ? (
-                  <div className="deck-screen p-3 text-sm text-[color:var(--text-mute)]">
+                  <div className="p-3 text-sm text-[color:var(--text-mute)]">
                     没有可在线播放的音频文件。
                   </div>
                 ) : null}
               </div>
             </div>
-            <Button className="w-full" onClick={() => onQueue(detail.summary.source_id)}>
-              <DownloadSimple className="h-4 w-4" />
-              下载当前作品
-            </Button>
-            <Link
-              to="/discover/$sourceId"
-              params={{ sourceId: detail.summary.source_id }}
-              search={detailSearch}
-              className="deck-button-secondary inline-flex h-[38px] items-center justify-center border px-4 py-2 text-center text-xs font-bold transition hover:brightness-110"
-            >
-              打开独立详情页
-            </Link>
+            <div className="grid grid-cols-2 gap-2">
+              <Button size="sm" onClick={() => onQueue(detail.summary.source_id)}>
+                <DownloadSimple className="h-4 w-4" />
+                下载
+              </Button>
+              <Link
+                to="/discover/$sourceId"
+                params={{ sourceId: detail.summary.source_id }}
+                search={detailSearch}
+                className="deck-button-secondary inline-flex h-9 items-center justify-center border px-3 text-center text-xs font-bold"
+              >
+                完整详情
+              </Link>
+            </div>
           </>
         )}
       </CardContent>

@@ -17,6 +17,7 @@ import {
   SkipForward,
   SpeakerHigh,
   Subtitles,
+  X,
 } from "@phosphor-icons/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,11 @@ import { decodeSubtitleBuffer, parseSubtitleText } from "@/lib/subtitles";
 import { cn } from "@/lib/utils";
 
 const PLAYER_LOG_PREFIX = "[ASMRoner Player]";
+
+type WaveformPalette = {
+  accent: string;
+  info: string;
+};
 
 export type AudioDeckHandle = {
   playTrack: (path?: string) => Promise<void>;
@@ -42,6 +48,7 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
   mediaId: string;
   coverUrl?: string;
   onEnded?: () => void;
+  onClose?: () => void;
 }>(function AudioDeck({
   tracks,
   selectedPath,
@@ -53,6 +60,7 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
   mediaId,
   coverUrl,
   onEnded,
+  onClose,
 }, ref) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -78,6 +86,10 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
   const [loadedSubtitleUrl, setLoadedSubtitleUrl] = useState("");
   const [subtitleLoading, setSubtitleLoading] = useState(false);
   const [subtitleError, setSubtitleError] = useState("");
+  const [reduceMotion, setReduceMotion] = useState(getReducedMotionPreference);
+  const [themeName, setThemeName] = useState(() =>
+    typeof document !== "undefined" ? document.documentElement.dataset.theme ?? "" : "",
+  );
 
   const selected = useMemo(
     () => tracks.find((track) => track.path === selectedPath),
@@ -98,6 +110,26 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
     () => subtitleCues.find((cue) => time >= cue.start && time < cue.end),
     [subtitleCues, time],
   );
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") {
+      return;
+    }
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updatePreference = () => setReduceMotion(mediaQuery.matches);
+    updatePreference();
+    mediaQuery.addEventListener("change", updatePreference);
+    return () => mediaQuery.removeEventListener("change", updatePreference);
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const observer = new MutationObserver(() => {
+      setThemeName(root.dataset.theme ?? "");
+    });
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -217,7 +249,7 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
     };
     const handleError = () => {
       setPlaying(false);
-      setPlayError("STREAM ERR");
+      setPlayError("播放失败");
       console.error(
         PLAYER_LOG_PREFIX,
         "audio error event",
@@ -252,9 +284,32 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
   }, []);
 
   useEffect(() => {
-    drawWaveform();
+    const rootStyles = window.getComputedStyle(document.documentElement);
+    const palette: WaveformPalette = {
+      accent: rootStyles.getPropertyValue("--accent").trim() || "#9f3566",
+      info: rootStyles.getPropertyValue("--info").trim() || "#24758a",
+    };
+    drawWaveform(palette);
     return () => window.cancelAnimationFrame(rafRef.current);
-  }, [playing, selected?.url]);
+  }, [playing, reduceMotion, selected?.url, themeName]);
+
+  useEffect(() => () => {
+    window.cancelAnimationFrame(rafRef.current);
+    try {
+      sourceRef.current?.disconnect();
+      analyserRef.current?.disconnect();
+    } catch {
+      // The browser may already have disconnected the graph during media teardown.
+    }
+    const context = contextRef.current;
+    if (context && context.state !== "closed") {
+      void context.close();
+    }
+    sourceRef.current = null;
+    analyserRef.current = null;
+    contextRef.current = null;
+    dataRef.current = null;
+  }, []);
 
   useImperativeHandle(ref, () => ({
     playTrack,
@@ -395,7 +450,9 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
       resumeAfterSeekRef.current = false;
     }
     setPlayError("");
-    void probeTrackURL(target.url);
+    if (import.meta.env.DEV) {
+      void probeTrackURL(target.url);
+    }
     try {
       logPlayer("calling audio.play()", buildAudioDebugPayload(audio));
       await audio.play();
@@ -406,7 +463,7 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
       }
     } catch (error) {
       setPlaying(false);
-      setPlayError("PLAY BLOCKED");
+      setPlayError("播放被浏览器阻止");
       if (shouldSelect) {
         onSelect(target.path);
       }
@@ -451,7 +508,7 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
     }
   }
 
-  function drawWaveform() {
+  function drawWaveform(palette: WaveformPalette) {
     const canvas = canvasRef.current;
     if (!canvas) {
       return;
@@ -463,8 +520,6 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
     const width = canvas.width;
     const height = canvas.height;
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = "rgba(5, 8, 7, 0.24)";
-    ctx.fillRect(0, 0, width, height);
 
     const analyser = analyserRef.current;
     const data = dataRef.current;
@@ -477,12 +532,13 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
     for (let index = 0; index < bars.length; index += 1) {
       const raw = playing ? bars[index] : Math.max(18, bars[index] * 0.35);
       const barHeight = Math.max(4, (raw / 255) * (height - 12));
-      ctx.fillStyle = index % 5 === 0 ? "#ff3d7f" : "#7cffb2";
-      ctx.shadowColor = ctx.fillStyle;
-      ctx.shadowBlur = 8;
+      ctx.fillStyle = index % 5 === 0 ? palette.accent : palette.info;
+      ctx.shadowBlur = 0;
       ctx.fillRect(index * step + 2, height - barHeight - 4, Math.max(2, step - 4), barHeight);
     }
-    rafRef.current = window.requestAnimationFrame(drawWaveform);
+    if (playing && !reduceMotion) {
+      rafRef.current = window.requestAnimationFrame(() => drawWaveform(palette));
+    }
   }
 
   function selectRelative(offset: number) {
@@ -534,7 +590,7 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
     if (!subtitle) {
       return (
         <div className="deck-screen p-4 text-sm text-[color:var(--text-mute)]">
-          当前音轨未匹配到字幕文件。
+          当前音轨没有匹配的字幕文件。
         </div>
       );
     }
@@ -565,7 +621,7 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
   function renderPlaylistPanel() {
     return (
       <div className="space-y-3">
-        <div className="deck-decal">PLAYLIST</div>
+        <div className="text-xs font-semibold text-[color:var(--text-mute)]">播放列表</div>
         <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
           {tracks.map((track, index) => (
             <button
@@ -586,7 +642,7 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
             </button>
           ))}
         </div>
-        <div className="deck-decal">SUBTITLE {subtitles.length}</div>
+        <div className="text-xs font-semibold text-[color:var(--text-mute)]">字幕文件 {subtitles.length}</div>
         {subtitlesVisible ? renderSubtitlePanel() : null}
       </div>
     );
@@ -622,44 +678,44 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={playError ? "halt" : playing ? "live" : "warn"}>
-              {playError || (playing ? "REC" : "PAUSE")}
+              {playError || (playing ? "播放中" : "已暂停")}
             </Badge>
             <Badge variant="decal">{mediaId}</Badge>
           </div>
           <h3 className="console-title mt-3 line-clamp-2 text-2xl font-black text-[color:var(--text-display)]">
             {selected?.name || title}
           </h3>
-          <div className="console-mono mt-1 text-[10px] uppercase tracking-[0.16em] text-[color:var(--text-mute)]">
-            TRACK {String(selectedIndex + 1).padStart(2, "0")} / {String(tracks.length).padStart(2, "0")}
+          <div className="console-mono mt-1 text-[10px] text-[color:var(--text-mute)]">
+            音轨 {String(selectedIndex + 1).padStart(2, "0")} / {String(tracks.length).padStart(2, "0")}
           </div>
         </div>
         {coverUrl ? (
-          <div className="audio-panel-cover deck-screen h-20 w-20 shrink-0">
-            <img src={coverUrl} alt="" className="h-full w-full object-cover opacity-80" />
+          <div className="audio-panel-cover h-20 w-20 shrink-0">
+            <img src={coverUrl} alt={`${title} 封面`} className="h-full w-full object-cover" />
           </div>
         ) : null}
       </div>
 
       <div className="deck-screen mt-4 p-3">
-        <canvas ref={canvasRef} width={640} height={128} className="h-28 w-full" />
+        <canvas ref={canvasRef} width={640} height={128} className="h-28 w-full" role="img" aria-label="音频频谱" />
       </div>
 
       {renderSeekControl()}
 
       <div className="mt-4 grid gap-3 lg:grid-cols-[auto_1fr_auto] lg:items-center">
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" size="sm" onClick={() => selectRelative(-1)} disabled={tracks.length === 0}>
+          <Button variant="secondary" size="sm" onClick={() => selectRelative(-1)} disabled={tracks.length === 0} aria-label="上一音轨" title="上一音轨">
             <SkipBack className="h-4 w-4" weight="duotone" />
           </Button>
           <Button onClick={togglePlayback} disabled={!selected}>
             {playing ? <Pause className="h-4 w-4" weight="duotone" /> : <Play className="h-4 w-4" weight="duotone" />}
-            {playing ? "Pause" : "Play"}
+            {playing ? "暂停" : "播放"}
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => selectRelative(1)} disabled={tracks.length === 0}>
+          <Button variant="secondary" size="sm" onClick={() => selectRelative(1)} disabled={tracks.length === 0} aria-label="下一音轨" title="下一音轨">
             <SkipForward className="h-4 w-4" weight="duotone" />
           </Button>
-          <Button variant={loop ? "primary" : "secondary"} size="sm" onClick={() => setLoop((value) => !value)}>
-            Loop
+          <Button variant={loop ? "primary" : "secondary"} size="sm" onClick={() => setLoop((value) => !value)} aria-pressed={loop}>
+            循环
           </Button>
           <Button
             variant={subtitle && subtitlesVisible ? "primary" : "secondary"}
@@ -674,31 +730,24 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
           </Button>
         </div>
 
-        <div className="deck-plate flex items-center gap-3 px-3 py-2">
+        <label className="deck-plate audio-volume flex items-center gap-3 px-3 py-2">
           <SpeakerHigh className="h-4 w-4 text-[color:var(--telltale-amber)]" weight="duotone" />
-          <div className="flex flex-1 gap-1">
-            {Array.from({ length: 10 }).map((_, index) => {
-              const active = index < Math.round(volume * 10);
-              return (
-                <button
-                  key={index}
-                  type="button"
-                  className={cn(
-                    "h-4 flex-1 border border-[color:var(--chassis-edge)]",
-                    active ? "bg-[color:var(--phosphor-primary)] shadow-[var(--glow-phosphor)]" : "bg-[color:var(--screen-void)]",
-                  )}
-                  onClick={() => setVolume((index + 1) / 10)}
-                  aria-label={`Volume ${index + 1}`}
-                />
-              );
-            })}
-          </div>
-        </div>
+          <span className="sr-only">音量</span>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={volume}
+            aria-label="音量"
+            onChange={(event) => setVolume(Number(event.currentTarget.value))}
+          />
+        </label>
 
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={subtitle ? "signal" : "mute"}>
             <Subtitles className="mr-1 h-3 w-3" weight="duotone" />
-            {subtitle ? (subtitlesVisible ? "CC ON" : "CC HIDDEN") : "CC OFF"}
+            {subtitle ? (subtitlesVisible ? "字幕开启" : "字幕隐藏") : "无字幕"}
           </Badge>
           <span className="console-readout text-sm">
             {formatTime(time)} / {formatTime(duration)}
@@ -722,27 +771,27 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
       ) : null}
       <div className="deck-chassis audio-dock-bar p-3" data-live={playing ? "true" : undefined}>
         {coverUrl ? (
-          <div className="audio-panel-cover deck-screen h-14 w-14 shrink-0">
-            <img src={coverUrl} alt="" className="h-full w-full object-cover opacity-85" />
+          <div className="audio-panel-cover h-14 w-14 shrink-0">
+            <img src={coverUrl} alt={`${title} 封面`} className="h-full w-full object-cover" />
           </div>
         ) : null}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={playError ? "halt" : playing ? "live" : "warn"}>
-              {playError || (playing ? "REC" : "PAUSE")}
+              {playError || (playing ? "播放中" : "已暂停")}
             </Badge>
-            <Badge variant={subtitle ? "signal" : "mute"}>{subtitle ? "CC" : "NO CC"}</Badge>
+            <Badge variant={subtitle ? "signal" : "mute"}>{subtitle ? "字幕" : "无字幕"}</Badge>
           </div>
           <div className="mt-1 truncate text-sm font-bold text-[color:var(--text-display)]">
             {selected?.name || title}
           </div>
         </div>
-        <div className="hidden min-w-[14rem] flex-1 md:block">{renderSeekControl(true)}</div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={() => selectRelative(-1)} disabled={tracks.length === 0}>
+        <div className="audio-dock-timeline hidden min-w-[14rem] flex-1 md:block">{renderSeekControl(true)}</div>
+        <div className="audio-dock-controls">
+          <Button variant="secondary" size="sm" onClick={() => selectRelative(-1)} disabled={tracks.length === 0} aria-label="上一音轨" title="上一音轨">
             <SkipBack className="h-4 w-4" weight="duotone" />
           </Button>
-          <Button size="sm" onClick={togglePlayback} disabled={!selected}>
+          <Button size="sm" onClick={togglePlayback} disabled={!selected} aria-label={playing ? "暂停" : "播放"} title={playing ? "暂停" : "播放"}>
             {playing ? <Pause className="h-4 w-4" weight="duotone" /> : <Play className="h-4 w-4" weight="duotone" />}
           </Button>
           <Button
@@ -756,7 +805,7 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
           >
             <Subtitles className="h-4 w-4" weight={subtitle && subtitlesVisible ? "fill" : "regular"} />
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => selectRelative(1)} disabled={tracks.length === 0}>
+          <Button variant="secondary" size="sm" onClick={() => selectRelative(1)} disabled={tracks.length === 0} aria-label="下一音轨" title="下一音轨">
             <SkipForward className="h-4 w-4" weight="duotone" />
           </Button>
           <Button
@@ -764,6 +813,8 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
             size="sm"
             onClick={() => setDockExpanded((value) => !value)}
             aria-expanded={dockExpanded}
+            aria-label={dockExpanded ? "收起播放器" : "展开播放器"}
+            title={dockExpanded ? "收起播放器" : "展开播放器"}
           >
             {dockExpanded ? (
               <CaretDown className="h-4 w-4" weight="bold" />
@@ -771,6 +822,17 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
               <CaretUp className="h-4 w-4" weight="bold" />
             )}
           </Button>
+          {onClose ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              aria-label="关闭播放器"
+              title="关闭播放器"
+            >
+              <X className="h-4 w-4" weight="bold" />
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -797,6 +859,12 @@ function formatTime(value: number) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+function getReducedMotionPreference() {
+  return typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 function clampTime(value: number, duration: number) {
   if (!Number.isFinite(value) || !Number.isFinite(duration) || duration <= 0) {
     return 0;
@@ -809,6 +877,9 @@ function isNativeSubtitleFile(file: LibraryFile) {
 }
 
 function logPlayer(message: string, details?: unknown) {
+  if (!import.meta.env.DEV) {
+    return;
+  }
   console.info(PLAYER_LOG_PREFIX, message, details ?? "");
 }
 

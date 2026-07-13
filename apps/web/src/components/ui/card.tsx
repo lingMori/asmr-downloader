@@ -1,8 +1,7 @@
 import type { HTMLAttributes } from "react";
-import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-type CardProps = HTMLMotionProps<"div"> & {
+type CardProps = HTMLAttributes<HTMLDivElement> & {
   interactive?: boolean;
   foil?: boolean;
   surface?: "chassis" | "screen";
@@ -17,20 +16,13 @@ export function Card({
 }: CardProps) {
   const Surface = surface === "screen" ? "deck-screen" : "deck-chassis";
   return (
-    <motion.div
-      whileHover={
-        interactive
-          ? {
-              filter: "brightness(1.06)",
-            }
-          : undefined
-      }
-      transition={{ duration: 0.12, ease: [0.6, 0, 0.4, 1] }}
-      data-live={foil ? "soft" : undefined}
+    <div
+      data-accented={foil ? "true" : undefined}
       className={cn(
-        "group relative overflow-hidden",
+        "group relative",
         Surface,
-        interactive && "cursor-pointer",
+        interactive &&
+          "cursor-pointer transition-[background-color,border-color] duration-150 hover:border-[color:var(--interactive-border)] hover:bg-[color:var(--surface-elevated)]",
         className,
       )}
       {...props}
@@ -50,14 +42,14 @@ export function CardContent({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("relative z-10 p-3.5", className)} {...props} />;
+  return <div className={cn("relative p-3", className)} {...props} />;
 }
 
 export function CardHeader({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("relative z-10 p-3.5 pb-0", className)} {...props} />;
+  return <div className={cn("relative p-3 pb-0", className)} {...props} />;
 }
 
 export function CardTitle({
@@ -67,7 +59,7 @@ export function CardTitle({
   return (
     <h3
       className={cn(
-        "console-title text-sm font-bold uppercase text-[color:var(--text-display)]",
+        "console-title text-sm font-bold text-[color:var(--text-display)]",
         className,
       )}
       {...props}

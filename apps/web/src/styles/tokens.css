@@ -1,0 +1,115 @@
+:root {
+  color-scheme: light;
+
+  --font-sans: "Avenir Next", "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-display: "Avenir Next Condensed", "SF Pro Display", "Segoe UI", "PingFang SC", sans-serif;
+  --font-mono: "SFMono-Regular", "Cascadia Code", "Roboto Mono", "Noto Sans Mono CJK SC", monospace;
+
+  --radius-panel: 8px;
+  --radius-control: 6px;
+  --radius-media: 4px;
+
+  --surface-page: #f2f2f5;
+  --surface-section: #fbfbfd;
+  --surface-elevated: #f6f5f8;
+  --surface-row: #ecebf0;
+  --surface-overlay: rgb(251 251 253 / 0.96);
+  --surface-inset: #e6e4ea;
+
+  --border: #d7d3dc;
+  --border-strong: #bdb6c4;
+  --border-subtle: #e5e2e9;
+
+  --text-primary: #28242d;
+  --text-secondary: #57515d;
+  --text-tertiary: #6d6772;
+  --text-inverse: #f9f5f8;
+
+  --accent: #9f3566;
+  --accent-strong: #84264f;
+  --accent-soft: rgb(159 53 102 / 0.11);
+  --on-accent: #fff9fc;
+  --success: #367652;
+  --success-soft: rgb(54 118 82 / 0.11);
+  --warning: #875512;
+  --warning-soft: rgb(135 85 18 / 0.12);
+  --danger: #ad3e4c;
+  --danger-soft: rgb(173 62 76 / 0.11);
+  --info: #206f83;
+  --info-soft: rgb(32 111 131 / 0.11);
+
+  --interactive-bg: rgb(40 36 45 / 0.035);
+  --interactive-bg-strong: rgb(159 53 102 / 0.08);
+  --interactive-border: #aaa2b1;
+  --focus-ring: #9f3566;
+
+  --shadow-overlay: 0 18px 48px rgb(40 30 45 / 0.18);
+  --shadow-dock: 0 -12px 36px rgb(40 30 45 / 0.13);
+
+  /* Compatibility aliases while route components migrate away from CRT naming. */
+  --chassis-base: var(--surface-section);
+  --chassis-raise: var(--surface-elevated);
+  --chassis-edge: var(--border);
+  --screen-void: var(--surface-row);
+  --panel-border: var(--border);
+  --text-display: var(--text-primary);
+  --text-body: var(--text-secondary);
+  --text-mute: var(--text-tertiary);
+  --text-muted: var(--text-tertiary);
+  --tape-pink: var(--accent);
+  --tape-pink-trail: var(--accent-soft);
+  --phosphor-primary: var(--success);
+  --phosphor-mid: var(--success);
+  --phosphor-trail: var(--success-soft);
+  --telltale-amber: var(--warning);
+  --telltale-red: var(--danger);
+  --telltale-cyan: var(--info);
+  --glow-tape: 0 0 0 1px rgb(159 53 102 / 0.24);
+  --glow-phosphor: 0 0 0 1px rgb(54 118 82 / 0.22);
+  --glow-amber: 0 0 0 1px rgb(154 101 29 / 0.22);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --surface-page: #151419;
+  --surface-section: #1d1b22;
+  --surface-elevated: #24212a;
+  --surface-row: #19171e;
+  --surface-overlay: rgb(29 27 34 / 0.96);
+  --surface-inset: #121116;
+
+  --border: #39343f;
+  --border-strong: #514959;
+  --border-subtle: #2d2933;
+
+  --text-primary: #f0ecf2;
+  --text-secondary: #c6bec9;
+  --text-tertiary: #928a98;
+  --text-inverse: #24151c;
+
+  --accent: #dc82aa;
+  --accent-strong: #e891b8;
+  --accent-soft: rgb(220 130 170 / 0.13);
+  --on-accent: #27141d;
+  --success: #72ad8a;
+  --success-soft: rgb(114 173 138 / 0.12);
+  --warning: #d0a05b;
+  --warning-soft: rgb(208 160 91 / 0.12);
+  --danger: #d8737d;
+  --danger-soft: rgb(216 115 125 / 0.12);
+  --info: #68afbd;
+  --info-soft: rgb(104 175 189 / 0.12);
+
+  --interactive-bg: rgb(240 236 242 / 0.035);
+  --interactive-bg-strong: rgb(213 111 157 / 0.09);
+  --interactive-border: #665d6d;
+  --focus-ring: #e891b8;
+
+  --shadow-overlay: 0 20px 56px rgb(5 4 7 / 0.52);
+  --shadow-dock: 0 -14px 42px rgb(5 4 7 / 0.36);
+
+  --glow-tape: 0 0 0 1px rgb(220 130 170 / 0.27);
+  --glow-phosphor: 0 0 0 1px rgb(114 173 138 / 0.22);
+  --glow-amber: 0 0 0 1px rgb(208 160 91 / 0.22);
+}

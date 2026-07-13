@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { type Variants } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export const staggerContainer: Variants = {
@@ -37,18 +36,13 @@ export function PageHeader({
   meta?: ReactNode;
 }) {
   return (
-    <div className="deck-chassis beam-border flex flex-col gap-3 p-3 md:flex-row md:items-center md:justify-between">
-      <div className="space-y-2">
-        <span className="deck-decal">{kicker}</span>
-        <h1 className="console-title text-[2rem] font-black leading-none text-[color:var(--text-display)] md:text-[2.45rem]">
-          {title}
-        </h1>
-        <p className="max-w-3xl text-sm leading-5 text-[color:var(--text-body)] md:text-[15px]">
-          {description}
-        </p>
+    <header className="page-heading" aria-label={kicker}>
+      <div className="page-heading-copy">
+        <h1>{title}</h1>
+        <p>{description}</p>
       </div>
-      {meta ? <div className="w-full shrink-0 md:w-auto">{meta}</div> : null}
-    </div>
+      {meta ? <div className="page-heading-meta w-full md:w-auto">{meta}</div> : null}
+    </header>
   );
 }
 
@@ -67,26 +61,14 @@ export function StatCard({
   className?: string;
 }) {
   return (
-    <Card interactive className={cn("min-h-[7rem]", className)}>
-      <CardContent className="flex h-full flex-col justify-between gap-3 p-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="deck-decal">{label}</div>
-          {icon ? (
-            <div className="deck-plate flex h-8 w-8 items-center justify-center text-[color:var(--telltale-amber)]">
-              {icon}
-            </div>
-          ) : null}
-        </div>
-        <div className="deck-screen p-3">
-          <div className="console-readout text-3xl font-bold leading-none">
-            {value}
-          </div>
-          {hint ? (
-            <div className="mt-2 text-xs leading-5 text-[color:var(--text-body)]">{hint}</div>
-          ) : null}
-        </div>
-      </CardContent>
-    </Card>
+    <div className={cn("metric-block", className)}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="metric-label">{label}</div>
+        {icon ? <div className="text-[color:var(--accent)]">{icon}</div> : null}
+      </div>
+      <div className="metric-value">{value}</div>
+      {hint ? <div className="metric-hint">{hint}</div> : null}
+    </div>
   );
 }
 
@@ -102,10 +84,10 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn("deck-screen flex flex-col items-center justify-center gap-2 p-5 text-center", className)}>
-      <div className="deck-decal">{symbol}</div>
-      <div className="mt-1 text-base font-semibold text-[color:var(--text-display)]">{title}</div>
-      <p className="max-w-md text-sm leading-5 text-[color:var(--text-body)]">{description}</p>
+    <div className={cn("empty-state", className)}>
+      <div className="text-xs font-semibold text-[color:var(--accent)]">{symbol}</div>
+      <div className="mt-2 text-base font-semibold text-[color:var(--text-display)]">{title}</div>
+      <p className="mt-1 max-w-md text-sm leading-5 text-[color:var(--text-body)]">{description}</p>
     </div>
   );
 }
@@ -129,11 +111,11 @@ export function RouteFeedback({
         : "text-[color:var(--telltale-amber)]";
 
   return (
-    <div className="deck-screen mx-auto flex min-h-[12rem] max-w-3xl flex-col justify-center gap-3 p-4">
-      <div className="deck-decal w-fit">
+    <div className="route-feedback mx-auto flex min-h-[10rem] flex-col justify-center gap-3">
+      <div className="text-xs font-semibold text-[color:var(--text-mute)]">
         {tone === "halt" ? "ERROR" : tone === "signal" ? "READY" : "STATUS"}
       </div>
-      <div className={`console-title text-2xl font-black leading-none ${toneClass}`}>
+      <div className={`console-title text-xl font-bold leading-tight ${toneClass}`}>
         {title}
       </div>
       <p className="max-w-2xl text-sm leading-6 text-[color:var(--text-body)]">
@@ -153,10 +135,9 @@ export function BufferingLine({
 }) {
   const filled = Math.max(0, Math.min(10, Math.round(percent / 10)));
   return (
-    <div className={cn("deck-screen tbc-line p-3 text-xs", className)}>
-      加载中 [{Array.from({ length: 10 }).map((_, index) => (
-        <span key={index}>{index < filled ? "▓" : "░"}</span>
-      ))}] {percent}%
+    <div className={cn("buffering-line flex items-center px-3 text-xs", className)} role="status">
+      <span className="relative z-10">正在加载 {percent}%</span>
+      <span className="sr-only">{filled} / 10</span>
     </div>
   );
 }
@@ -189,11 +170,17 @@ export function ProgressTrack({
         <div className="console-readout text-base font-bold">{percent}%</div>
       </div>
       <div className="mascot-progress">
-        <div className="tape-reel" data-running={running ? "true" : undefined} />
-        <div className="tape-track" data-running={running ? "true" : undefined}>
+        <div
+          className="tape-track"
+          data-running={running ? "true" : undefined}
+          role="progressbar"
+          aria-label={label}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percent}
+        >
           <div className="tape-track__fill" style={{ width: `${percent}%` }} />
         </div>
-        <div className="tape-reel" data-running={running ? "true" : undefined} />
       </div>
     </div>
   );

@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
-import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash } from "@phosphor-icons/react";
+import { BracketsCurly, Gauge, HardDrives, Plug, Plus, Trash } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ActionReviewDialog, DeckDialog, type ReviewRow } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { PageHeader, RouteFeedback, fadeUpItem, staggerContainer } from "@/components/ui/sweet";
+import { PageHeader, RouteFeedback } from "@/components/ui/sweet";
 import { apiClient, type AuthStatus, type ConfigResponse } from "@/lib/api";
 
 type SaveIntent = "settings" | "login";
@@ -22,6 +20,13 @@ type ConnectionDraft = {
   apiUrl: string;
   proxyUrl: string;
 };
+
+const settingsSections = [
+  { id: "connection", label: "连接", description: "账号与远端 API", icon: Plug },
+  { id: "storage", label: "存储", description: "目录与媒体格式", icon: HardDrives },
+  { id: "performance", label: "性能", description: "并发与请求节奏", icon: Gauge },
+  { id: "advanced", label: "高级请求头", description: "HTTP 请求标头", icon: BracketsCurly },
+] as const;
 
 export function Settings() {
   const queryClient = useQueryClient();
@@ -45,7 +50,7 @@ export function Settings() {
 
   useEffect(() => {
     if (configQuery.data) {
-      setForm(toEditableConfig(configQuery.data));
+      setForm((previous) => previous ?? toEditableConfig(configQuery.data));
     }
   }, [configQuery.data]);
 
@@ -182,329 +187,307 @@ export function Settings() {
   }
 
   return (
-    <motion.section
-      className="space-y-4"
-      variants={staggerContainer}
-      initial="hidden"
-      animate="show"
-    >
-      <motion.div variants={fadeUpItem}>
-        <PageHeader
-          kicker="设置"
-          title="设置"
-          description="管理账号连接、下载目录、媒体偏好、限流和请求头。"
-          meta={
-            <div className="deck-screen space-y-3 p-4">
-              <Badge variant="warn">配置中心</Badge>
-              <div className="text-sm text-[color:var(--text-body)]">
-                修改会持久化到 `.asmroner-data/config.toml`
-              </div>
-              {form.auth ? (
-                <Badge variant={authBadgeVariant(form.auth.state)}>
-                  {authLabel(form.auth.state)}: {form.auth.message}
-                </Badge>
+    <section className="space-y-4">
+      <PageHeader
+        kicker="设置"
+        title="设置"
+        description="管理账号连接、下载目录、媒体偏好、限流和请求头。"
+        meta={
+          <div className="flex flex-col items-start gap-2 md:items-end">
+            {form.auth ? (
+              <Badge variant={authBadgeVariant(form.auth.state)}>
+                {authLabel(form.auth.state)}
+              </Badge>
+            ) : null}
+            <span className="console-mono text-xs text-[color:var(--text-mute)]">
+              配置写入 .asmroner-data/config.toml
+            </span>
+          </div>
+        }
+      />
+
+      <div className="grid items-start gap-4 lg:grid-cols-[13rem_minmax(0,1fr)]">
+        <aside className="deck-chassis p-2 lg:sticky lg:top-24">
+          <nav
+            className="grid grid-cols-2 gap-1 lg:grid-cols-1"
+            aria-label="设置分区"
+          >
+            {settingsSections.map((section) => {
+              const Icon = section.icon;
+              const selected = activeSection === section.id;
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  aria-pressed={selected}
+                  className={`flex min-w-0 items-start gap-2.5 border px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--tape-pink)] ${
+                    selected
+                      ? "border-[color:var(--tape-pink)] bg-[color:var(--surface-elevated)] text-[color:var(--text-display)]"
+                      : "border-transparent text-[color:var(--text-body)] hover:border-[color:var(--chassis-edge)] hover:bg-[color:var(--surface-elevated)]"
+                  }`}
+                  onClick={() => setActiveSection(section.id)}
+                >
+                  <Icon className="mt-0.5 h-4 w-4 shrink-0" weight={selected ? "fill" : "regular"} />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold">{section.label}</span>
+                    <span className="mt-0.5 hidden text-xs text-[color:var(--text-mute)] lg:block">
+                      {section.description}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="mt-2 border-t border-[color:var(--chassis-edge)] px-2 pt-3">
+            <Badge variant={validationErrors.length > 0 ? "halt" : dirty ? "warn" : "signal"}>
+              {validationErrors.length > 0
+                ? `${validationErrors.length} 项待修正`
+                : dirty
+                  ? "有未保存修改"
+                  : "设置已保存"}
+            </Badge>
+          </div>
+        </aside>
+
+        <div className="min-w-0">
+          <div
+            id={`settings-panel-${activeSection}`}
+            role="region"
+            aria-label={`${settingsSections.find((section) => section.id === activeSection)?.label ?? "当前"}设置`}
+          >
+            {activeSection === "connection" ? (
+              <FormSection
+                title="账号连接"
+                hint="连接 ASMR.one API。后端会自动检查登录是否有效，只有失效时才需要重新登录。"
+              >
+                <AuthStatusPanel
+                  auth={form.auth}
+                  account={form.user.account}
+                  apiUrl={form.downloader.api_url || ""}
+                  checking={authLiveQuery.isFetching}
+                  lastCheckedAt={lastAuthCheckedAt}
+                />
+                <div className="flex flex-wrap justify-end gap-2">
+                  {form.auth?.state === "error" ? (
+                    <Button
+                      busy={authLoginMutation.isPending}
+                      onClick={() => authLoginMutation.mutate()}
+                      disabled={isAuthActionBusy}
+                    >
+                      重新登录
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant="secondary"
+                    onClick={openConnectionEditor}
+                    disabled={isAuthActionBusy}
+                  >
+                    编辑连接信息
+                  </Button>
+                </div>
+              </FormSection>
+            ) : null}
+
+            {activeSection === "storage" ? (
+              <FormSection
+                title="存储与媒体"
+                hint="设置文件落地位置、目标容量与音频格式偏好。"
+              >
+                <LabeledField label="同步目录">
+                  <Input
+                    value={form.downloader.sync_data_folder}
+                    aria-label="同步目录"
+                    onChange={(event) =>
+                      setForm((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              downloader: {
+                                ...prev.downloader,
+                                sync_data_folder: event.target.value,
+                              },
+                            }
+                          : prev,
+                      )
+                    }
+                  />
+                </LabeledField>
+                <LabeledField label="优先音频格式">
+                  <Select
+                    value={form.downloader.prefer_media}
+                    aria-label="优先音频格式"
+                    onChange={(event) =>
+                      setForm((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              downloader: {
+                                ...prev.downloader,
+                                prefer_media: event.target.value,
+                              },
+                            }
+                          : prev,
+                      )
+                    }
+                  >
+                    <option value="all">保留全部格式</option>
+                    <option value="mp3">仅 MP3</option>
+                    <option value="wav">仅 WAV</option>
+                    <option value="flac">仅 FLAC</option>
+                    <option value="mp3&gt;wav&gt;flac">MP3 优先，其次 WAV / FLAC</option>
+                    <option value="flac&gt;wav&gt;mp3">FLAC 优先，其次 WAV / MP3</option>
+                  </Select>
+                </LabeledField>
+                <SizeField
+                  value={form.downloader.sync_wanted_size || ""}
+                  onChange={(value) => updateDownloader(setForm, "sync_wanted_size", value)}
+                />
+              </FormSection>
+            ) : null}
+
+            {activeSection === "performance" ? (
+              <FormSection
+                title="并发与限流"
+                hint="控制后台并发、重试和请求节奏。数值越高并不一定越稳定。"
+              >
+                <div className="grid gap-4 md:grid-cols-2">
+                  <NumberField
+                    label="最大并发数"
+                    value={form.downloader.max_workers ?? 0}
+                    onChange={(value) => updateDownloader(setForm, "max_workers", value)}
+                  />
+                  <NumberField
+                    label="最大重试次数"
+                    value={form.downloader.max_retries ?? 0}
+                    onChange={(value) => updateDownloader(setForm, "max_retries", value)}
+                  />
+                  <FloatField
+                    label="同步 QPS"
+                    value={form.limit.sync_qps}
+                    onChange={(value) =>
+                      setForm((prev) =>
+                        prev
+                          ? { ...prev, limit: { ...prev.limit, sync_qps: value } }
+                          : prev,
+                      )
+                    }
+                  />
+                  <FloatField
+                    label="下载 QPS"
+                    value={form.limit.download_qps}
+                    onChange={(value) =>
+                      setForm((prev) =>
+                        prev
+                          ? { ...prev, limit: { ...prev.limit, download_qps: value } }
+                          : prev,
+                      )
+                    }
+                  />
+                  <NumberField
+                    label="同步抖动最小值"
+                    value={form.limit.sync_jitter_min ?? 0}
+                    onChange={(value) =>
+                      setForm((prev) =>
+                        prev
+                          ? { ...prev, limit: { ...prev.limit, sync_jitter_min: value } }
+                          : prev,
+                      )
+                    }
+                  />
+                  <NumberField
+                    label="同步抖动最大值"
+                    value={form.limit.sync_jitter_max ?? 0}
+                    onChange={(value) =>
+                      setForm((prev) =>
+                        prev
+                          ? { ...prev, limit: { ...prev.limit, sync_jitter_max: value } }
+                          : prev,
+                      )
+                    }
+                  />
+                  <NumberField
+                    label="下载抖动最小值"
+                    value={form.limit.download_jitter_min ?? 0}
+                    onChange={(value) =>
+                      setForm((prev) =>
+                        prev
+                          ? { ...prev, limit: { ...prev.limit, download_jitter_min: value } }
+                          : prev,
+                      )
+                    }
+                  />
+                  <NumberField
+                    label="下载抖动最大值"
+                    value={form.limit.download_jitter_max ?? 0}
+                    onChange={(value) =>
+                      setForm((prev) =>
+                        prev
+                          ? { ...prev, limit: { ...prev.limit, download_jitter_max: value } }
+                          : prev,
+                      )
+                    }
+                  />
+                </div>
+              </FormSection>
+            ) : null}
+
+            {activeSection === "advanced" ? (
+              <FormSection
+                title="高级请求头"
+                hint="仅在远端接口要求特定浏览器请求头时修改。空值会使用后端默认值。"
+              >
+                <HeaderFields
+                  value={form.downloader.http ?? {}}
+                  onChange={(http) => updateDownloader(setForm, "http", http)}
+                />
+              </FormSection>
+            ) : null}
+          </div>
+
+          <div
+            className={`settings-save-bar z-20 mt-4 flex flex-wrap items-center justify-between gap-3 border p-3 md:sticky ${
+              dirty
+                ? "border-[color:var(--tape-pink)] bg-[color:var(--surface-elevated)]"
+                : "border-[color:var(--chassis-edge)] bg-[color:var(--surface-section)]"
+            }`}
+          >
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <Badge variant={validationErrors.length > 0 ? "halt" : dirty ? "warn" : "signal"}>
+                {validationErrors.length > 0
+                  ? `${validationErrors.length} 项需要修正`
+                  : dirty
+                    ? "有未保存修改"
+                    : "设置已保存"}
+              </Badge>
+              {validationErrors[0] ? (
+                <span className="text-sm text-[color:var(--text-body)]">{validationErrors[0]}</span>
               ) : null}
             </div>
-          }
-        />
-      </motion.div>
-
-      <motion.div variants={fadeUpItem} className="deck-plate flex flex-wrap gap-2 p-2" role="tablist" aria-label="设置分区">
-        {([
-          ["connection", "连接"],
-          ["storage", "存储"],
-          ["performance", "性能"],
-          ["advanced", "高级请求头"],
-        ] as const).map(([section, label]) => (
-          <Button
-            key={section}
-            type="button"
-            variant={activeSection === section ? "primary" : "secondary"}
-            size="sm"
-            role="tab"
-            aria-selected={activeSection === section}
-            onClick={() => setActiveSection(section)}
-          >
-            {label}
-          </Button>
-        ))}
-      </motion.div>
-
-      <motion.div variants={fadeUpItem} className="grid gap-4">
-        {activeSection === "connection" ? (
-        <FormSection
-          title="账号连接"
-          hint="连接 ASMR.one API。后端会自动检查登录是否有效，只有失效时才需要重新登录。"
-          badges={
-            <>
-              <Badge variant="decal">ASMR.one</Badge>
-              <Badge variant="live">连接状态</Badge>
-              {form.auth ? (
-                <Badge variant={authBadgeVariant(form.auth.state)}>
-                  {authLabel(form.auth.state)}
-                </Badge>
-              ) : null}
-            </>
-          }
-        >
-          <AuthStatusPanel
-            auth={form.auth}
-            account={form.user.account}
-            apiUrl={form.downloader.api_url || ""}
-            checking={authLiveQuery.isFetching}
-            lastCheckedAt={lastAuthCheckedAt}
-          />
-          <div className="grid gap-2">
-            {form.auth?.state === "error" ? (
+            <div className="flex flex-wrap gap-2">
               <Button
-                busy={authLoginMutation.isPending}
-                onClick={() => authLoginMutation.mutate()}
-                disabled={isAuthActionBusy}
+                variant={dirty ? "primary" : "secondary"}
+                busy={saveMutation.isPending}
+                onClick={() => saveMutation.mutate({ payload: form, intent: "settings" })}
+                disabled={isAuthActionBusy || !dirty || validationErrors.length > 0}
               >
-                重新登录
+                保存全部设置
               </Button>
-            ) : null}
-            <Button
-              variant="secondary"
-              className="w-full"
-              onClick={openConnectionEditor}
-              disabled={isAuthActionBusy}
-            >
-              编辑连接信息
-            </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  if (configQuery.data) {
+                    setForm(toEditableConfig(configQuery.data));
+                  }
+                }}
+                disabled={isAuthActionBusy || !dirty}
+              >
+                放弃未保存修改
+              </Button>
+            </div>
           </div>
-        </FormSection>
-        ) : null}
-
-        {activeSection === "storage" ? (
-        <FormSection
-          title="存储与媒体"
-          hint="设置文件落地位置、目标容量与音频格式偏好。"
-          badges={
-            <>
-              <Badge variant="signal">本地目录</Badge>
-              <Badge variant="warn">下载</Badge>
-            </>
-          }
-        >
-          <LabeledField label="同步目录">
-            <Input
-              value={form.downloader.sync_data_folder}
-              onChange={(event) =>
-                setForm((prev) =>
-                  prev
-                    ? {
-                        ...prev,
-                        downloader: {
-                          ...prev.downloader,
-                          sync_data_folder: event.target.value,
-                        },
-                      }
-                    : prev,
-                )
-              }
-            />
-          </LabeledField>
-          <LabeledField label="优先音频格式">
-            <Select
-              value={form.downloader.prefer_media}
-              onChange={(event) =>
-                setForm((prev) =>
-                  prev
-                    ? {
-                        ...prev,
-                        downloader: {
-                          ...prev.downloader,
-                          prefer_media: event.target.value,
-                        },
-                      }
-                    : prev,
-                )
-              }
-            >
-              <option value="all">保留全部格式</option>
-              <option value="mp3">仅 MP3</option>
-              <option value="wav">仅 WAV</option>
-              <option value="flac">仅 FLAC</option>
-              <option value="mp3&gt;wav&gt;flac">MP3 优先，其次 WAV / FLAC</option>
-              <option value="flac&gt;wav&gt;mp3">FLAC 优先，其次 WAV / MP3</option>
-            </Select>
-          </LabeledField>
-          <SizeField
-            value={form.downloader.sync_wanted_size || ""}
-            onChange={(value) => updateDownloader(setForm, "sync_wanted_size", value)}
-          />
-        </FormSection>
-        ) : null}
-
-        {activeSection === "performance" ? (
-        <FormSection
-          title="并发与限流"
-          hint="控制后台并发、重试和请求节奏。数值越高并不一定越稳定。"
-          badges={
-            <>
-              <Badge variant="warn">限流</Badge>
-              <Badge variant="signal">节奏</Badge>
-            </>
-          }
-        >
-          <div className="grid gap-4 md:grid-cols-2">
-            <NumberField
-              label="最大并发数"
-              value={form.downloader.max_workers ?? 0}
-              onChange={(value) => updateDownloader(setForm, "max_workers", value)}
-            />
-            <NumberField
-              label="最大重试次数"
-              value={form.downloader.max_retries ?? 0}
-              onChange={(value) => updateDownloader(setForm, "max_retries", value)}
-            />
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-          <FloatField
-            label="同步 QPS"
-            value={form.limit.sync_qps}
-            onChange={(value) =>
-              setForm((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      limit: {
-                        ...prev.limit,
-                        sync_qps: value,
-                      },
-                    }
-                  : prev,
-              )
-            }
-          />
-          <FloatField
-            label="下载 QPS"
-            value={form.limit.download_qps}
-            onChange={(value) =>
-              setForm((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      limit: {
-                        ...prev.limit,
-                        download_qps: value,
-                      },
-                    }
-                  : prev,
-              )
-            }
-          />
-          <NumberField
-            label="同步抖动最小值"
-            value={form.limit.sync_jitter_min ?? 0}
-            onChange={(value) =>
-              setForm((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      limit: {
-                        ...prev.limit,
-                        sync_jitter_min: value,
-                      },
-                    }
-                  : prev,
-              )
-            }
-          />
-          <NumberField
-            label="同步抖动最大值"
-            value={form.limit.sync_jitter_max ?? 0}
-            onChange={(value) =>
-              setForm((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      limit: {
-                        ...prev.limit,
-                        sync_jitter_max: value,
-                      },
-                    }
-                  : prev,
-              )
-            }
-          />
-          <NumberField
-            label="下载抖动最小值"
-            value={form.limit.download_jitter_min ?? 0}
-            onChange={(value) =>
-              setForm((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      limit: {
-                        ...prev.limit,
-                        download_jitter_min: value,
-                      },
-                    }
-                  : prev,
-              )
-            }
-          />
-          <NumberField
-            label="下载抖动最大值"
-            value={form.limit.download_jitter_max ?? 0}
-            onChange={(value) =>
-              setForm((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      limit: {
-                        ...prev.limit,
-                        download_jitter_max: value,
-                      },
-                    }
-                  : prev,
-              )
-            }
-          />
-          </div>
-        </FormSection>
-        ) : null}
-
-        {activeSection === "advanced" ? (
-          <FormSection title="高级请求头" hint="仅在远端接口要求特定浏览器请求头时修改。空值会使用后端默认值。">
-            <HeaderFields
-              value={form.downloader.http ?? {}}
-              onChange={(http) => updateDownloader(setForm, "http", http)}
-            />
-          </FormSection>
-        ) : null}
-      </motion.div>
-
-      <motion.div variants={fadeUpItem} className="deck-plate z-20 flex flex-wrap items-center justify-between gap-3 p-3 shadow-lg md:sticky md:bottom-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={validationErrors.length > 0 ? "halt" : dirty ? "warn" : "signal"}>
-            {validationErrors.length > 0 ? `${validationErrors.length} 项需要修正` : dirty ? "有未保存修改" : "设置已保存"}
-          </Badge>
-          {validationErrors[0] ? <span className="text-sm text-[color:var(--text-body)]">{validationErrors[0]}</span> : null}
         </div>
-        <div className="flex flex-wrap gap-2">
-        <Button
-          busy={saveMutation.isPending}
-          onClick={() => saveMutation.mutate({ payload: form, intent: "settings" })}
-          disabled={isAuthActionBusy || !dirty || validationErrors.length > 0}
-        >
-          保存全部设置
-        </Button>
-        <Button
-          variant="secondary"
-          onClick={() => {
-            if (configQuery.data) {
-              setForm(toEditableConfig(configQuery.data));
-            }
-          }}
-          disabled={isAuthActionBusy || !dirty}
-        >
-          放弃未保存修改
-        </Button>
-        </div>
-      </motion.div>
+      </div>
 
       <ConnectionEditorDialog
         draft={connectionDraft}
@@ -518,6 +501,7 @@ export function Settings() {
         onReview={() => {
           if (connectionDraft) {
             setReviewConnectionDraft(connectionDraft);
+            setConnectionDraft(null);
           }
         }}
       />
@@ -525,6 +509,7 @@ export function Settings() {
         open={Boolean(reviewConnectionDraft)}
         onOpenChange={(open) => {
           if (!open && !saveMutation.isPending) {
+            setConnectionDraft(reviewConnectionDraft);
             setReviewConnectionDraft(null);
           }
         }}
@@ -540,7 +525,7 @@ export function Settings() {
         busy={saveMutation.isPending}
         onConfirm={confirmConnectionSave}
       />
-    </motion.section>
+    </section>
   );
 }
 
@@ -653,13 +638,14 @@ function ConnectionEditorDialog({
       }
     >
       <div className="space-y-4">
-        <div className="deck-screen p-4 text-sm leading-6 text-[color:var(--text-body)]">
+        <div className="border border-[color:var(--chassis-edge)] bg-[color:var(--surface-elevated)] p-4 text-sm leading-6 text-[color:var(--text-body)]">
           编辑连接信息不会立刻生效。下一步会先展示复核面板，确认后才保存并重新登录。
         </div>
         <LabeledField label="ASMR.one 账号">
           <Input
             autoComplete="username"
             placeholder="输入 ASMR.one 账号"
+            aria-label="ASMR.one 账号"
             value={draft.account}
             onChange={(event) =>
               onDraftChange({ ...draft, account: event.target.value })
@@ -671,6 +657,7 @@ function ConnectionEditorDialog({
             type="password"
             autoComplete="new-password"
             placeholder="保持空白则不修改已保存密码"
+            aria-label="ASMR.one 新密码"
             value={draft.password}
             onChange={(event) =>
               onDraftChange({ ...draft, password: event.target.value })
@@ -680,6 +667,7 @@ function ConnectionEditorDialog({
         <LabeledField label="远端 API 地址">
           <Input
             placeholder="https://api.asmr.one"
+            aria-label="远端 API 地址"
             value={draft.apiUrl}
             onChange={(event) =>
               onDraftChange({ ...draft, apiUrl: event.target.value })
@@ -689,6 +677,7 @@ function ConnectionEditorDialog({
         <LabeledField label="代理地址">
           <Input
             placeholder="可选，例如 http://127.0.0.1:7890"
+            aria-label="代理地址"
             value={draft.proxyUrl}
             onChange={(event) =>
               onDraftChange({ ...draft, proxyUrl: event.target.value })
@@ -716,11 +705,11 @@ function AuthStatusPanel({
   const state = auth?.state ?? "unknown";
 
   return (
-    <div className="deck-screen space-y-4 p-4">
+    <div className="space-y-4 border border-[color:var(--chassis-edge)] bg-[color:var(--surface-elevated)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="deck-decal">当前连接</div>
-          <div className="console-title mt-3 text-xl font-black text-[color:var(--text-display)]">
+          <div className="text-xs font-medium text-[color:var(--text-mute)]">当前连接</div>
+          <div className="mt-1 text-lg font-semibold text-[color:var(--text-display)]">
             {authHeadline(state)}
           </div>
         </div>
@@ -864,9 +853,14 @@ function SizeField({ value, onChange }: { value: string; onChange: (value: strin
           type="number"
           min={1}
           value={amount}
+          aria-label="目标容量数值"
           onChange={(event) => onChange(`${event.target.value}${unit}`)}
         />
-        <Select value={unit} onChange={(event) => onChange(`${amount || "0"}${event.target.value}`)}>
+        <Select
+          value={unit}
+          aria-label="目标容量单位"
+          onChange={(event) => onChange(`${amount || "0"}${event.target.value}`)}
+        >
           <option value="MB">MB</option>
           <option value="GB">GB</option>
           <option value="TB">TB</option>
@@ -898,7 +892,11 @@ function HeaderFields({ value, onChange }: { value: HTTPConfig; onChange: (value
       <div className="grid gap-4 lg:grid-cols-2">
         {standardFields.map(([field, label]) => (
           <LabeledField key={field} label={label}>
-            <Input value={value[field] ?? ""} onChange={(event) => onChange({ ...value, [field]: event.target.value })} />
+            <Input
+              value={value[field] ?? ""}
+              aria-label={label}
+              onChange={(event) => onChange({ ...value, [field]: event.target.value })}
+            />
           </LabeledField>
         ))}
       </div>
@@ -913,15 +911,26 @@ function HeaderFields({ value, onChange }: { value: HTTPConfig; onChange: (value
           </Button>
         </div>
         {extras.map(([name, fieldValue], index) => (
-          <div key={`${name}-${index}`} className="grid gap-2 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_44px]">
-            <Input value={name} placeholder="请求头名称" onChange={(event) => updateExtra(index, event.target.value, fieldValue)} />
-            <Input value={fieldValue} placeholder="请求头值" onChange={(event) => updateExtra(index, name, event.target.value)} />
+          <div key={index} className="grid gap-2 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_44px]">
+            <Input
+              value={name}
+              placeholder="请求头名称"
+              aria-label={`附加请求头 ${index + 1} 名称`}
+              onChange={(event) => updateExtra(index, event.target.value, fieldValue)}
+            />
+            <Input
+              value={fieldValue}
+              placeholder="请求头值"
+              aria-label={`附加请求头 ${index + 1} 值`}
+              onChange={(event) => updateExtra(index, name, event.target.value)}
+            />
             <Button
               type="button"
               variant="danger"
               size="sm"
               className="h-11 w-11 px-0"
               title="删除请求头"
+              aria-label="删除请求头"
               onClick={() => onChange({ ...value, extra: Object.fromEntries(extras.filter((_, entryIndex) => entryIndex !== index)) })}
             >
               <Trash className="h-4 w-4" />
@@ -936,25 +945,20 @@ function HeaderFields({ value, onChange }: { value: HTTPConfig; onChange: (value
 function FormSection({
   title,
   hint,
-  badges,
   children,
 }: {
   title: string;
   hint: string;
-  badges?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <Card foil className="h-full">
-      <CardHeader className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle>{title}</CardTitle>
-          <div className="flex flex-wrap gap-2">{badges}</div>
-        </div>
+    <section className="deck-chassis overflow-hidden">
+      <header className="space-y-2 border-b border-[color:var(--chassis-edge)] p-4">
+        <h2 className="text-base font-semibold text-[color:var(--text-display)]">{title}</h2>
         <p className="text-sm leading-6 text-[color:var(--text-body)]">{hint}</p>
-      </CardHeader>
-      <CardContent className="space-y-4">{children}</CardContent>
-    </Card>
+      </header>
+      <div className="space-y-4 p-4">{children}</div>
+    </section>
   );
 }
 
@@ -967,7 +971,7 @@ function LabeledField({
 }) {
   return (
     <div className="space-y-2">
-      <div className="deck-decal">{label}</div>
+      <div className="text-sm font-medium text-[color:var(--text-display)]">{label}</div>
       {children}
     </div>
   );
@@ -984,16 +988,12 @@ function NumberField({
 }) {
   return (
     <LabeledField label={label}>
-      <div className="grid gap-2 sm:grid-cols-[6rem_1fr]">
-        <div className="deck-screen flex items-center justify-center px-3">
-          <span className="console-readout text-lg">{value}</span>
-        </div>
-        <Input
-          type="number"
-          value={String(value)}
-          onChange={(event) => onChange(Number(event.target.value) || 0)}
-        />
-      </div>
+      <Input
+        type="number"
+        value={String(value)}
+        aria-label={label}
+        onChange={(event) => onChange(Number(event.target.value) || 0)}
+      />
     </LabeledField>
   );
 }
@@ -1009,17 +1009,13 @@ function FloatField({
 }) {
   return (
     <LabeledField label={label}>
-      <div className="grid gap-2 sm:grid-cols-[6rem_1fr]">
-        <div className="deck-screen flex items-center justify-center px-3">
-          <span className="console-readout text-lg">{value}</span>
-        </div>
-        <Input
-          type="number"
-          step="0.1"
-          value={String(value)}
-          onChange={(event) => onChange(Number(event.target.value) || 0)}
-        />
-      </div>
+      <Input
+        type="number"
+        step="0.1"
+        value={String(value)}
+        aria-label={label}
+        onChange={(event) => onChange(Number(event.target.value) || 0)}
+      />
     </LabeledField>
   );
 }
