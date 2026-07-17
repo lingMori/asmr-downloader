@@ -295,6 +295,14 @@ func (m *EngineManager) AuthLogin() error {
 	m.JWTToken = "Bearer " + token
 	m.AuthState = "success"
 	m.AuthMessage = "登录成功"
+	// 登录成功后保存上游返回的推荐系统UUID
+	if userInfo, ok := result["user"].(map[string]interface{}); ok {
+		if recommenderUUID, ok := userInfo["recommenderUuid"].(string); ok && strings.TrimSpace(recommenderUUID) != "" {
+			if err := saveRecommenderUUID(recommenderUUID); err != nil {
+				logger.Logger().Error("save recommender uuid failed: " + err.Error())
+			}
+		}
+	}
 	return nil
 }
 

@@ -34,13 +34,22 @@ var AsmrApiPath = struct {
 	LoginPath    string `json:"login_path"`
 	SearchPath   string `json:"search_path"`
 	HotPath      string `json:"hot_path"`
+	// 推荐系统路径
+	PopularPath   string `json:"popular_path"`
+	RecommendPath string `json:"recommend_path"`
+	NeighborsPath string `json:"neighbors_path"`
+	FeedbackPath  string `json:"feedback_path"`
 	// 同步元数据路径
 	SyncMetaPath string `json:"sync_meta_path"`
 }{
-	WorkinfoPath: "/api/work/",
-	TracksPath:   "/api/tracks/",
-	LoginPath:    "/api/auth/me",
-	SearchPath:   "/api/search/",
-	SyncMetaPath: "/api/works?order=release&sort=desc&page=1&pageSize=1",
-	HotPath:      "/api/recommender/popular",
+	WorkinfoPath:  "/api/work/",
+	TracksPath:    "/api/tracks/",
+	LoginPath:     "/api/auth/me",
+	SearchPath:    "/api/search/",
+	SyncMetaPath:  "/api/works?order=release&sort=desc&page=1&pageSize=1",
+	HotPath:       "/api/recommender/popular",
+	PopularPath:   "/api/recommender/popular",
+	RecommendPath: "/api/recommender/recommend-for-user",
+	NeighborsPath: "/api/recommender/item-neighbors",
+	FeedbackPath:  "/api/recommender/feedback",
 }

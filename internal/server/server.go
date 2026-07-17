@@ -27,21 +27,23 @@ import (
 
 // Server wraps the HTTP engine and app configuration.
 type Server struct {
-	engine        *gin.Engine
-	config        *model.Config
-	cfgProvider   *model.ConfigProvider
-	db            *gorm.DB
-	taskStore     *store.TaskStore
-	taskSvc       *services.TaskService
-	searchSvc     *services.SearchService
-	downloadSvc   *services.DownloadService
-	syncSvc       *services.SyncService
-	discoverSvc   *services.DiscoverService
-	librarySvc    *services.LibraryService
-	workStatusSvc *services.WorkStatusService
-	systemHandler *handlers.SystemHandler
-	enManager     *engine.EngineManager
-	eventHub      *events.Hub
+	engine         *gin.Engine
+	config         *model.Config
+	cfgProvider    *model.ConfigProvider
+	db             *gorm.DB
+	taskStore      *store.TaskStore
+	taskSvc        *services.TaskService
+	searchSvc      *services.SearchService
+	downloadSvc    *services.DownloadService
+	syncSvc        *services.SyncService
+	discoverSvc    *services.DiscoverService
+	recommenderSvc *services.RecommenderService
+	playbackSvc    *services.PlaybackService
+	librarySvc     *services.LibraryService
+	workStatusSvc  *services.WorkStatusService
+	systemHandler  *handlers.SystemHandler
+	enManager      *engine.EngineManager
+	eventHub       *events.Hub
 }
 
 // New creates a server instance after ensuring configuration and database are ready.
@@ -87,25 +89,29 @@ func New() (*Server, error) {
 	searchSvc := services.NewSearchService(engManager, downloadSvc)
 	syncSvc := services.NewSyncService(db, taskStore, engManager, hub, cfgProvider)
 	discoverSvc := services.NewDiscoverService(db, engManager)
+	recommenderSvc := services.NewRecommenderService(db, engManager)
+	playbackSvc := services.NewPlaybackService(db)
 	librarySvc := services.NewLibraryService(cfgProvider)
 	workStatusSvc := services.NewWorkStatusService(db, taskStore, librarySvc)
 
 	srv := &Server{
-		engine:        router,
-		config:        cfg,
-		cfgProvider:   cfgProvider,
-		db:            db,
-		taskStore:     taskStore,
-		taskSvc:       taskSvc,
-		searchSvc:     searchSvc,
-		downloadSvc:   downloadSvc,
-		syncSvc:       syncSvc,
-		discoverSvc:   discoverSvc,
-		librarySvc:    librarySvc,
-		workStatusSvc: workStatusSvc,
-		systemHandler: handlers.NewSystemHandler(cfg),
-		enManager:     engManager,
-		eventHub:      hub,
+		engine:         router,
+		config:         cfg,
+		cfgProvider:    cfgProvider,
+		db:             db,
+		taskStore:      taskStore,
+		taskSvc:        taskSvc,
+		searchSvc:      searchSvc,
+		downloadSvc:    downloadSvc,
+		syncSvc:        syncSvc,
+		discoverSvc:    discoverSvc,
+		recommenderSvc: recommenderSvc,
+		playbackSvc:    playbackSvc,
+		librarySvc:     librarySvc,
+		workStatusSvc:  workStatusSvc,
+		systemHandler:  handlers.NewSystemHandler(cfg),
+		enManager:      engManager,
+		eventHub:       hub,
 	}
 	srv.updateAuthStatus(engManager)
 	srv.registerRoutes()
@@ -148,6 +154,8 @@ func (s *Server) registerRoutes() {
 	s.registerSystemRoutes(api)
 	s.registerSearchRoutes(api)
 	s.registerDiscoverRoutes(api)
+	s.registerRecommenderRoutes(api)
+	s.registerPlaybackRoutes(api)
 	s.registerLibraryRoutes(api)
 	s.registerDownloadRoutes(api)
 	s.registerSyncRoutes(api)
@@ -190,6 +198,9 @@ func (s *Server) applyConfig(cfg *model.Config) error {
 	}
 	if s.discoverSvc != nil {
 		s.discoverSvc.SetEngine(engManager)
+	}
+	if s.recommenderSvc != nil {
+		s.recommenderSvc.SetEngine(engManager)
 	}
 	return nil
 }

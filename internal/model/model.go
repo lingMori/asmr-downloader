@@ -30,6 +30,19 @@ type MetadataWork struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// PlayProgress 播放进度
+type PlayProgress struct {
+	ID         int       `gorm:"primaryKey" json:"-"`
+	SourceID   string    `gorm:"uniqueIndex:idx_play_progress_source" json:"source_id"`
+	WorkTitle  string    `json:"work_title"`
+	CoverURL   string    `json:"cover_url"`
+	TrackPath  string    `json:"track_path"`
+	TrackTitle string    `json:"track_title"`
+	Position   float64   `json:"position"`
+	Duration   float64   `json:"duration"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
 // WorkSyncInfo 工作同步信息
 type WorkSyncInfo struct {
 	ID             int    `gorm:"primaryKey"`
