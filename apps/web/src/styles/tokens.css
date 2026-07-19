@@ -1,50 +1,58 @@
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 
-  --font-sans: "Avenir Next", "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --font-display: "Avenir Next Condensed", "SF Pro Display", "Segoe UI", "PingFang SC", sans-serif;
+  --font-sans: "Zen Maru Gothic", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-display: "Zen Maru Gothic", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-mono: "SFMono-Regular", "Cascadia Code", "Roboto Mono", "Noto Sans Mono CJK SC", monospace;
 
-  --radius-panel: 8px;
-  --radius-control: 6px;
-  --radius-media: 4px;
+  --radius-panel: 16px;
+  --radius-control: 10px;
+  --radius-media: 12px;
+  --radius-pill: 999px;
 
-  --surface-page: #f2f2f5;
-  --surface-section: #fbfbfd;
-  --surface-elevated: #f6f5f8;
-  --surface-row: #ecebf0;
-  --surface-overlay: rgb(251 251 253 / 0.96);
-  --surface-inset: #e6e4ea;
+  /* Yoru night-radio backdrop: deep violet three-stop gradient. */
+  --page-gradient: linear-gradient(160deg, #1c1528 0%, #221a33 55%, #261a2f 100%);
 
-  --border: #d7d3dc;
-  --border-strong: #bdb6c4;
-  --border-subtle: #e5e2e9;
+  --surface-page: #1c1528;
+  --surface-section: rgb(24 18 36 / 0.82);
+  --surface-elevated: rgb(255 255 255 / 0.07);
+  --surface-row: rgb(255 255 255 / 0.035);
+  --surface-overlay: rgb(24 18 36 / 0.94);
+  --surface-inset: rgb(24 18 36 / 0.6);
 
-  --text-primary: #28242d;
-  --text-secondary: #57515d;
-  --text-tertiary: #6d6772;
-  --text-inverse: #f9f5f8;
+  --border: rgb(205 188 245 / 0.14);
+  --border-strong: rgb(205 188 245 / 0.32);
+  --border-subtle: rgb(205 188 245 / 0.07);
 
-  --accent: #9f3566;
-  --accent-strong: #84264f;
-  --accent-soft: rgb(159 53 102 / 0.11);
-  --on-accent: #fff9fc;
-  --success: #367652;
-  --success-soft: rgb(54 118 82 / 0.11);
-  --warning: #875512;
-  --warning-soft: rgb(135 85 18 / 0.12);
-  --danger: #ad3e4c;
-  --danger-soft: rgb(173 62 76 / 0.11);
-  --info: #206f83;
-  --info-soft: rgb(32 111 131 / 0.11);
+  --text-primary: #efeaf6;
+  --text-secondary: #9a8fb5;
+  --text-tertiary: #7d7398;
+  --text-inverse: #2a1830;
 
-  --interactive-bg: rgb(40 36 45 / 0.035);
-  --interactive-bg-strong: rgb(159 53 102 / 0.08);
-  --interactive-border: #aaa2b1;
-  --focus-ring: #9f3566;
+  --accent: #cdbcf5;
+  --accent-pink: #f5bcd4;
+  --accent-strong: #d9ccf9;
+  --accent-soft: rgb(205 188 245 / 0.13);
+  --accent-pink-soft: rgb(245 188 212 / 0.13);
+  --accent-gradient: linear-gradient(135deg, var(--accent), var(--accent-pink));
+  --on-accent: #2a1830;
+  --on-accent-pink: #3a2032;
+  --success: #8fd0a8;
+  --success-soft: rgb(143 208 168 / 0.12);
+  --warning: #d0a05b;
+  --warning-soft: rgb(208 160 91 / 0.12);
+  --danger: #d8737d;
+  --danger-soft: rgb(216 115 125 / 0.12);
+  --info: #68afbd;
+  --info-soft: rgb(104 175 189 / 0.12);
 
-  --shadow-overlay: 0 18px 48px rgb(40 30 45 / 0.18);
-  --shadow-dock: 0 -12px 36px rgb(40 30 45 / 0.13);
+  --interactive-bg: rgb(255 255 255 / 0.045);
+  --interactive-bg-strong: rgb(205 188 245 / 0.2);
+  --interactive-border: rgb(205 188 245 / 0.45);
+  --focus-ring: #cdbcf5;
+
+  --shadow-overlay: 0 20px 56px rgb(4 3 9 / 0.55);
+  --shadow-dock: 0 12px 32px rgb(4 3 9 / 0.35);
 
   /* Compatibility aliases while route components migrate away from CRT naming. */
   --chassis-base: var(--surface-section);
@@ -64,52 +72,54 @@
   --telltale-amber: var(--warning);
   --telltale-red: var(--danger);
   --telltale-cyan: var(--info);
-  --glow-tape: 0 0 0 1px rgb(159 53 102 / 0.24);
-  --glow-phosphor: 0 0 0 1px rgb(54 118 82 / 0.22);
-  --glow-amber: 0 0 0 1px rgb(154 101 29 / 0.22);
+  --glow-tape: 0 0 0 1px rgb(205 188 245 / 0.28);
+  --glow-phosphor: 0 0 0 1px rgb(143 208 168 / 0.22);
+  --glow-amber: 0 0 0 1px rgb(208 160 91 / 0.22);
 }
 
-:root[data-theme="dark"] {
-  color-scheme: dark;
+:root[data-theme="light"] {
+  color-scheme: light;
 
-  --surface-page: #151419;
-  --surface-section: #1d1b22;
-  --surface-elevated: #24212a;
-  --surface-row: #19171e;
-  --surface-overlay: rgb(29 27 34 / 0.96);
-  --surface-inset: #121116;
+  --page-gradient: linear-gradient(160deg, #f5eefb 0%, #f8f1f7 55%, #fdf4ef 100%);
 
-  --border: #39343f;
-  --border-strong: #514959;
-  --border-subtle: #2d2933;
+  --surface-page: #f5eefb;
+  --surface-section: rgb(255 255 255 / 0.82);
+  --surface-elevated: rgb(124 96 180 / 0.1);
+  --surface-row: rgb(124 96 180 / 0.05);
+  --surface-overlay: rgb(255 255 255 / 0.94);
+  --surface-inset: rgb(255 255 255 / 0.7);
 
-  --text-primary: #f0ecf2;
-  --text-secondary: #c6bec9;
-  --text-tertiary: #928a98;
-  --text-inverse: #24151c;
+  --border: rgb(124 96 180 / 0.16);
+  --border-strong: rgb(124 96 180 / 0.34);
+  --border-subtle: rgb(124 96 180 / 0.09);
 
-  --accent: #dc82aa;
-  --accent-strong: #e891b8;
-  --accent-soft: rgb(220 130 170 / 0.13);
-  --on-accent: #27141d;
-  --success: #72ad8a;
-  --success-soft: rgb(114 173 138 / 0.12);
-  --warning: #d0a05b;
-  --warning-soft: rgb(208 160 91 / 0.12);
-  --danger: #d8737d;
-  --danger-soft: rgb(216 115 125 / 0.12);
-  --info: #68afbd;
-  --info-soft: rgb(104 175 189 / 0.12);
+  --text-primary: #38294e;
+  --text-secondary: #7d6f9c;
+  --text-tertiary: #a195bd;
+  --text-inverse: #2a1830;
 
-  --interactive-bg: rgb(240 236 242 / 0.035);
-  --interactive-bg-strong: rgb(213 111 157 / 0.09);
-  --interactive-border: #665d6d;
-  --focus-ring: #e891b8;
+  /* Accent hues (lavender/pink) intentionally match the dark theme. */
+  --accent-strong: #b7a2ec;
+  --accent-soft: rgb(124 96 180 / 0.12);
+  --accent-pink-soft: rgb(214 122 166 / 0.14);
+  --success: #3f9e68;
+  --success-soft: rgb(63 158 104 / 0.12);
+  --warning: #875512;
+  --warning-soft: rgb(135 85 18 / 0.12);
+  --danger: #ad3e4c;
+  --danger-soft: rgb(173 62 76 / 0.11);
+  --info: #206f83;
+  --info-soft: rgb(32 111 131 / 0.11);
 
-  --shadow-overlay: 0 20px 56px rgb(5 4 7 / 0.52);
-  --shadow-dock: 0 -14px 42px rgb(5 4 7 / 0.36);
+  --interactive-bg: rgb(124 96 180 / 0.06);
+  --interactive-bg-strong: rgb(124 96 180 / 0.16);
+  --interactive-border: rgb(124 96 180 / 0.4);
+  --focus-ring: #8d6fc7;
 
-  --glow-tape: 0 0 0 1px rgb(220 130 170 / 0.27);
-  --glow-phosphor: 0 0 0 1px rgb(114 173 138 / 0.22);
-  --glow-amber: 0 0 0 1px rgb(208 160 91 / 0.22);
+  --shadow-overlay: 0 18px 48px rgb(90 60 130 / 0.16);
+  --shadow-dock: 0 12px 32px rgb(90 60 130 / 0.14);
+
+  --glow-tape: 0 0 0 1px rgb(124 96 180 / 0.25);
+  --glow-phosphor: 0 0 0 1px rgb(63 158 104 / 0.2);
+  --glow-amber: 0 0 0 1px rgb(135 85 18 / 0.2);
 }

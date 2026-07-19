@@ -1,58 +1,51 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import {
-  AirTrafficControl,
-  Archive,
-  Broadcast,
-  Database,
-  GearSix,
-  Gauge,
-  Headphones,
-} from "@phosphor-icons/react";
+import { Desktop, ListChecks, Moon, Sun } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
-import { DeckStatusBar } from "@/components/DeckStatusBar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeckDialog } from "@/components/ui/dialog";
 import { apiClient } from "@/lib/api";
-import { cn } from "@/lib/utils";
 
-type NavTo =
-  | "/"
-  | "/discover"
-  | "/queue"
-  | "/library"
-  | "/sync"
-  | "/settings";
+type NavTo = "/library" | "/discover" | "/online" | "/transfer" | "/settings";
 
 const navItems = [
-  { to: "/", label: "总览", icon: Gauge, hint: "任务、同步、本地库" },
-  { to: "/discover", label: "搜索", icon: AirTrafficControl, hint: "查找远端作品" },
-  { to: "/queue", label: "任务", icon: Database, hint: "进度、失败、重试" },
-  { to: "/library", label: "媒体库", icon: Archive, hint: "已下载作品与播放" },
-  { to: "/sync", label: "同步", icon: Broadcast, hint: "刷新清单与批量下载" },
-  { to: "/settings", label: "设置", icon: GearSix, hint: "账号、目录、代理" },
+  { to: "/library", label: "媒体库", kana: "らいぶらり" },
+  { to: "/discover", label: "发现", kana: "たんさく" },
+  { to: "/online", label: "在线", kana: "おんらいん" },
+  { to: "/transfer", label: "传输", kana: "でんそう" },
+  { to: "/settings", label: "设置", kana: "せってい" },
 ] satisfies Array<{
   to: NavTo;
   label: string;
-  icon: Icon;
-  hint: string;
+  kana: string;
 }>;
 
 type ThemeMode = "light" | "dark" | "system";
 type ServiceState = "online" | "checking" | "offline";
 
 const THEME_STORAGE_KEY = "asmroner-command-theme";
-const SIDEBAR_STORAGE_KEY = "asmroner-command-sidebar-collapsed";
+/** Retired sidebar preference from the previous console layout; cleaned up on boot. */
+const LEGACY_SIDEBAR_STORAGE_KEY = "asmroner-command-sidebar-collapsed";
+
+const nextThemeMode: Record<ThemeMode, ThemeMode> = {
+  dark: "light",
+  light: "system",
+  system: "dark",
+};
+
+const themeModeMeta: Record<ThemeMode, { label: string; icon: Icon }> = {
+  dark: { label: "深色", icon: Moon },
+  light: { label: "浅色", icon: Sun },
+  system: { label: "跟随系统", icon: Desktop },
+};
 
 export function Layout({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const activeNav = resolveNav(pathname);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => getInitialThemeMode());
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => getInitialSidebarState());
   const [taskPanelOpen, setTaskPanelOpen] = useState(false);
-  const showSidebarDetails = !sidebarCollapsed;
 
   const healthQuery = useQuery({
     queryKey: ["system", "health"],
@@ -97,11 +90,10 @@ export function Layout({ children }: { children: ReactNode }) {
   }, [themeMode]);
 
   useEffect(() => {
-    window.localStorage.setItem(
-      SIDEBAR_STORAGE_KEY,
-      sidebarCollapsed ? "true" : "false",
-    );
-  }, [sidebarCollapsed]);
+    window.localStorage.removeItem(LEGACY_SIDEBAR_STORAGE_KEY);
+  }, []);
+
+  const ThemeIcon = themeModeMeta[themeMode].icon;
 
   return (
     <div className="console-shell">
@@ -111,88 +103,86 @@ export function Layout({ children }: { children: ReactNode }) {
       >
         跳到主要内容
       </a>
-      <div className="mx-auto flex min-h-[100dvh] max-w-[1680px] gap-3 px-3 py-3 lg:px-4 lg:py-4">
-        <aside
-          className="app-sidebar hidden transition-[width] duration-200 lg:block"
-          data-collapsed={sidebarCollapsed ? "true" : undefined}
-        >
-          <div className="deck-chassis sticky top-4 flex h-[calc(100dvh-2rem)] flex-col p-2">
-            <div className={cn("flex min-h-16 items-center gap-3 px-2", !showSidebarDetails && "justify-center px-0")}>
-              <Headphones className="h-6 w-6 shrink-0 text-[color:var(--accent)]" weight="duotone" />
-              {showSidebarDetails ? (
-                <div className="min-w-0">
-                  <div className="console-title truncate text-xl font-bold text-[color:var(--text-display)]">
-                    ASMRoner
-                  </div>
-                  <div className="mt-0.5 truncate text-xs text-[color:var(--text-mute)]">
-                    YORU 夜间工作台
-                  </div>
-                </div>
-              ) : null}
-            </div>
 
-            <nav className="mt-2 grid gap-1" aria-label="主导航">
-              {navItems.map((item) => (
-                <PrimaryNavLink
-                  key={item.to}
-                  item={item}
-                  active={activeNav.to === item.to}
-                  showDetails={showSidebarDetails}
-                />
-              ))}
-            </nav>
-
-            {showSidebarDetails ? (
-              <div className="mt-auto border-t border-[color:var(--border)] px-2 py-3 text-xs leading-5 text-[color:var(--text-mute)]">
-                本地运行。媒体与任务数据保留在当前服务中。
+      <header className="app-header">
+        <div className="mx-auto flex max-w-[1680px] flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:px-6">
+          <Link to="/library" search={{ q: "", id: "", page: 1 }} className="flex items-center gap-2.5 justify-self-start" aria-label="ASMRoner 首页">
+            <div className="mascot-avatar" aria-hidden="true" />
+            <div className="leading-tight">
+              <div className="console-title text-[17px] font-black text-[color:var(--text-display)]">
+                ASMRoner
               </div>
-            ) : null}
-          </div>
-        </aside>
+              <div className="mt-0.5 text-[9.5px] text-[color:var(--text-mute)]">
+                よる · 夜间电台
+              </div>
+            </div>
+          </Link>
 
-        <div className="min-w-0 flex-1">
-          <nav className="mobile-primary-nav lg:hidden" aria-label="主导航">
+          <nav
+            className="pill-nav order-3 w-full justify-self-center overflow-x-auto lg:order-none lg:w-auto"
+            aria-label="主导航"
+          >
             {navItems.map((item) => (
-              <PrimaryNavLink
+              <PillNavLink
                 key={item.to}
                 item={item}
                 active={activeNav.to === item.to}
-                showDetails
-                compact
+                badgeCount={item.to === "/transfer" ? activeTasks.length : 0}
               />
             ))}
           </nav>
 
-          <DeckStatusBar
-            activeLabel={activeNav.label}
-            activeHint={activeNav.hint}
-            serviceState={serviceState}
-            sidebarCollapsed={sidebarCollapsed}
-            onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
-            themeMode={themeMode}
-            onThemeModeChange={setThemeMode}
-            activeTaskCount={activeTasks.length}
-            onOpenTasks={() => setTaskPanelOpen(true)}
-          />
-
-          {serviceState === "offline" ? (
-            <div role="alert" className="mb-3 flex flex-wrap items-center justify-between gap-3 border-l-2 border-[color:var(--telltale-red)] bg-[color:var(--danger-soft)] px-4 py-3 text-sm text-[color:var(--text-body)]">
-              <span>本地 API 无法连接。搜索、同步和任务操作暂不可用。</span>
-              <div className="flex gap-2">
-                <Button variant="secondary" size="sm" onClick={() => void healthQuery.refetch()}>
-                  重新连接
-                </Button>
-                <Link to="/settings" className="deck-button-secondary inline-flex min-h-9 items-center border px-3 text-xs font-semibold">
-                  检查设置
-                </Link>
-              </div>
-            </div>
-          ) : null}
-
-          <main id="main-content" tabIndex={-1} className="crt-route">
-            <div className="mx-auto max-w-[1420px]">{children}</div>
-          </main>
+          <div className="ml-auto flex items-center gap-2.5 justify-self-end lg:ml-0">
+            <span className="service-light hidden sm:inline-flex" data-state={serviceState}>
+              <span className="service-light-dot" aria-hidden="true" />
+              {serviceState === "online"
+                ? "本地服务在线"
+                : serviceState === "checking"
+                  ? "连接中…"
+                  : "服务离线"}
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setTaskPanelOpen(true)}
+              aria-label={`进行中的任务 ${activeTasks.length}`}
+            >
+              <ListChecks className="h-4 w-4" weight="duotone" />
+              <span className="hidden sm:inline">进行中</span>
+              <span className="console-mono">{activeTasks.length}</span>
+            </Button>
+            <button
+              type="button"
+              className="theme-cycle"
+              onClick={() => setThemeMode(nextThemeMode[themeMode])}
+              aria-label={`主题：${themeModeMeta[themeMode].label}，点击切换`}
+              title={`主题：${themeModeMeta[themeMode].label}`}
+            >
+              <ThemeIcon className="h-4 w-4" weight={themeMode === "system" ? "regular" : "fill"} />
+            </button>
+          </div>
         </div>
+      </header>
+
+      <div className="mx-auto w-full max-w-[1420px] px-3 py-4 lg:px-4">
+        {serviceState === "offline" ? (
+          <div role="alert" className="mb-3 flex flex-wrap items-center justify-between gap-3 border-l-2 border-[color:var(--telltale-red)] bg-[color:var(--danger-soft)] px-4 py-3 text-sm text-[color:var(--text-body)]">
+            <span>本地 API 无法连接。搜索、同步和任务操作暂不可用。</span>
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm" onClick={() => void healthQuery.refetch()}>
+                重新连接
+              </Button>
+              <Link to="/settings" className="deck-button-secondary inline-flex min-h-9 items-center border px-3 text-xs font-semibold">
+                检查设置
+              </Link>
+            </div>
+          </div>
+        ) : null}
+
+        <main id="main-content" tabIndex={-1} className="crt-route">
+          {children}
+        </main>
       </div>
 
       <DeckDialog
@@ -243,35 +233,30 @@ export function Layout({ children }: { children: ReactNode }) {
   );
 }
 
-function PrimaryNavLink({
+function PillNavLink({
   item,
   active,
-  showDetails,
-  compact = false,
+  badgeCount,
 }: {
   item: (typeof navItems)[number];
   active: boolean;
-  showDetails: boolean;
-  compact?: boolean;
+  badgeCount: number;
 }) {
-  const Icon = item.icon;
   return (
     <Link
       to={item.to}
       title={item.label}
       aria-label={item.label}
       aria-current={active ? "page" : undefined}
-      className="primary-nav-link"
+      className="pill-nav-link"
       data-active={active ? "true" : undefined}
     >
-      <Icon className="h-[1.125rem] w-[1.125rem] shrink-0" weight={active ? "fill" : "regular"} />
-      {showDetails ? (
-        <div className={cn("min-w-0", compact && "text-center")}>
-          <div className="whitespace-nowrap text-sm font-semibold leading-tight">{item.label}</div>
-          {!compact ? (
-            <div className="mt-0.5 truncate text-xs text-[color:var(--text-mute)]">{item.hint}</div>
-          ) : null}
-        </div>
+      <span>{item.label}</span>
+      <span className="pill-nav-kana">{item.kana}</span>
+      {badgeCount > 0 ? (
+        <span className="sticker pill-nav-badge" data-angle="3">
+          {badgeCount}件
+        </span>
       ) : null}
     </Link>
   );
@@ -279,10 +264,10 @@ function PrimaryNavLink({
 
 function resolveNav(pathname: string) {
   if (pathname.startsWith("/discover")) return navItems[1];
-  if (pathname.startsWith("/queue")) return navItems[2];
-  if (pathname.startsWith("/library")) return navItems[3];
-  if (pathname.startsWith("/sync")) return navItems[4];
-  if (pathname.startsWith("/settings")) return navItems[5];
+  if (pathname.startsWith("/online")) return navItems[2];
+  if (pathname.startsWith("/transfer")) return navItems[3];
+  if (pathname.startsWith("/queue") || pathname.startsWith("/sync")) return navItems[3];
+  if (pathname.startsWith("/settings")) return navItems[4];
   return navItems[0];
 }
 
@@ -297,12 +282,4 @@ function getInitialThemeMode(): ThemeMode {
   }
 
   return "system";
-}
-
-function getInitialSidebarState() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
 }

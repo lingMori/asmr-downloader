@@ -9,8 +9,11 @@ import {
   type CSSProperties,
 } from "react";
 import {
+  ArrowClockwise,
   CaretDown,
   CaretUp,
+  DownloadSimple,
+  MusicNote,
   Pause,
   Play,
   SkipBack,
@@ -19,13 +22,18 @@ import {
   Subtitles,
   X,
 } from "@phosphor-icons/react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { LibraryFile } from "@/lib/api";
+import { apiClient, type LibraryFile } from "@/lib/api";
+import { globalFeedbackTracker } from "@/lib/feedback";
 import { decodeSubtitleBuffer, parseSubtitleText } from "@/lib/subtitles";
 import { cn } from "@/lib/utils";
 
 const PLAYER_LOG_PREFIX = "[ASMRoner Player]";
+const PROGRESS_SAVE_INTERVAL_MS = 10_000;
+const PROGRESS_SAVE_THROTTLE_MS = 2_000;
+const PROGRESS_MIN_POSITION_SECONDS = 5;
 
 type WaveformPalette = {
   accent: string;
@@ -47,6 +55,10 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
   title: string;
   mediaId: string;
   coverUrl?: string;
+  /** RJ source id for remote stream sessions; enables feedback + progress sync. */
+  sourceId?: string;
+  /** Resume position in seconds, applied once metadata is available. */
+  startPosition?: number;
   onEnded?: () => void;
   onClose?: () => void;
 }>(function AudioDeck({
@@ -59,6 +71,8 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
   title,
   mediaId,
   coverUrl,
+  sourceId,
+  startPosition,
   onEnded,
   onClose,
 }, ref) {
@@ -72,6 +86,14 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
   const seekingRef = useRef(false);
   const seekDraftRef = useRef(0);
   const resumeAfterSeekRef = useRef(false);
+  const pendingStartPositionRef = useRef<number | null>(null);
+  const lastProgressSaveRef = useRef(0);
+  // Mutable mirrors of the latest render values for timers/unmount handlers.
+  const sourceIdRef = useRef(sourceId);
+  const titleRef = useRef(title);
+  const coverUrlRef = useRef(coverUrl);
+  const selectedRef = useRef<LibraryFile | undefined>(undefined);
+  const playingRef = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(false);
   const [volume, setVolume] = useState(0.75);
@@ -86,6 +108,7 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
   const [loadedSubtitleUrl, setLoadedSubtitleUrl] = useState("");
   const [subtitleLoading, setSubtitleLoading] = useState(false);
   const [subtitleError, setSubtitleError] = useState("");
+  const [downloadState, setDownloadState] = useState<"idle" | "pending" | "done">("idle");
   const [reduceMotion, setReduceMotion] = useState(getReducedMotionPreference);
   const [themeName, setThemeName] = useState(() =>
     typeof document !== "undefined" ? document.documentElement.dataset.theme ?? "" : "",
@@ -110,6 +133,18 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
     () => subtitleCues.find((cue) => time >= cue.start && time < cue.end),
     [subtitleCues, time],
   );
+
+  useEffect(() => {
+    sourceIdRef.current = sourceId;
+    titleRef.current = title;
+    coverUrlRef.current = coverUrl;
+    selectedRef.current = selected;
+    playingRef.current = playing;
+  });
+
+  useEffect(() => {
+    setDownloadState("idle");
+  }, [sourceId]);
 
   useEffect(() => {
     if (typeof window.matchMedia !== "function") {
@@ -218,17 +253,29 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
       if (!seekingRef.current) {
         setTime(audio.currentTime || 0);
       }
+      if (sourceIdRef.current) {
+        globalFeedbackTracker.tick(
+          sourceIdRef.current,
+          audio.currentTime || 0,
+          Number.isFinite(audio.duration) ? audio.duration : 0,
+        );
+      }
     };
     const handleDuration = () => {
       setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
+      applyPendingStartPosition();
       logPlayer("audio metadata/duration updated", buildAudioDebugPayload(audio));
     };
     const handlePlay = () => {
       setPlaying(true);
+      if (sourceIdRef.current) {
+        globalFeedbackTracker.start(sourceIdRef.current);
+      }
       logPlayer("audio play event", buildAudioDebugPayload(audio));
     };
     const handlePause = () => {
       setPlaying(false);
+      persistProgress("pause");
       logPlayer("audio pause event", buildAudioDebugPayload(audio));
     };
     const handleLoadStart = () => {
@@ -249,7 +296,8 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
     };
     const handleError = () => {
       setPlaying(false);
-      setPlayError("播放失败");
+      setPlayError("加载失败");
+      toast.error("音轨加载失败，可尝试重新播放或下载后收听");
       console.error(
         PLAYER_LOG_PREFIX,
         "audio error event",
@@ -286,8 +334,8 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
   useEffect(() => {
     const rootStyles = window.getComputedStyle(document.documentElement);
     const palette: WaveformPalette = {
-      accent: rootStyles.getPropertyValue("--accent").trim() || "#9f3566",
-      info: rootStyles.getPropertyValue("--info").trim() || "#24758a",
+      accent: rootStyles.getPropertyValue("--accent").trim() || "#cdbcf5",
+      info: rootStyles.getPropertyValue("--info").trim() || "#68afbd",
     };
     drawWaveform(palette);
     return () => window.cancelAnimationFrame(rafRef.current);
@@ -311,10 +359,119 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
     dataRef.current = null;
   }, []);
 
+  // Apply a pending resume position once (and whenever) metadata is ready.
+  useEffect(() => {
+    if (startPosition && startPosition > 0) {
+      pendingStartPositionRef.current = startPosition;
+      applyPendingStartPosition();
+    }
+  }, [startPosition, selected?.url]);
+
+  // Periodic progress sync while playing.
+  useEffect(() => {
+    if (!sourceId) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      if (playingRef.current) {
+        persistProgress("interval");
+      }
+    }, PROGRESS_SAVE_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [sourceId]);
+
+  // Final progress flush when the session unmounts (dock closed).
+  useEffect(() => () => persistProgress("close"), []);
+
   useImperativeHandle(ref, () => ({
     playTrack,
     pause: () => audioRef.current?.pause(),
   }));
+
+  function applyPendingStartPosition() {
+    const target = pendingStartPositionRef.current;
+    if (target == null) {
+      return;
+    }
+    const audio = audioRef.current;
+    if (!audio) {
+      return;
+    }
+    const dur = Number.isFinite(audio.duration) ? audio.duration : 0;
+    if (dur <= 0) {
+      return;
+    }
+    const clamped = clampTime(target, Math.max(0, dur - 3));
+    try {
+      audio.currentTime = clamped;
+      setTime(clamped);
+    } catch (error) {
+      console.warn(PLAYER_LOG_PREFIX, "resume seek failed", { error, clamped });
+    }
+    pendingStartPositionRef.current = null;
+  }
+
+  function persistProgress(reason: "interval" | "pause" | "switch" | "close") {
+    const currentSourceId = sourceIdRef.current;
+    if (!currentSourceId) {
+      return;
+    }
+    const audio = audioRef.current;
+    const track = selectedRef.current;
+    if (!audio || !track) {
+      return;
+    }
+    const position = audio.currentTime || 0;
+    if (!Number.isFinite(position) || position <= PROGRESS_MIN_POSITION_SECONDS) {
+      return;
+    }
+    const now = Date.now();
+    if (reason !== "close" && now - lastProgressSaveRef.current < PROGRESS_SAVE_THROTTLE_MS) {
+      return;
+    }
+    lastProgressSaveRef.current = now;
+    void apiClient
+      .savePlaybackProgress({
+        source_id: currentSourceId,
+        work_title: titleRef.current,
+        cover_url: coverUrlRef.current ?? "",
+        track_path: track.path,
+        track_title: track.name,
+        position,
+        duration: Number.isFinite(audio.duration) ? audio.duration : 0,
+        updated_at: new Date().toISOString(),
+      })
+      .catch((error) => {
+        console.debug(PLAYER_LOG_PREFIX, "progress save failed", { reason, error });
+      });
+  }
+
+  function retryTrack() {
+    const audio = audioRef.current;
+    if (!audio || !selected) {
+      return;
+    }
+    audio.removeAttribute("src");
+    void playTrack(selected.path);
+  }
+
+  function downloadThisWork() {
+    const currentSourceId = sourceIdRef.current;
+    if (!currentSourceId || downloadState !== "idle") {
+      return;
+    }
+    setDownloadState("pending");
+    apiClient
+      .createDownload({ mode: "single", ids: [currentSourceId] })
+      .then((res) => {
+        setDownloadState("done");
+        toast.success(`已加入下载队列，任务 #${res.task_id}`);
+      })
+      .catch((error) => {
+        setDownloadState("idle");
+        toast.error(String(error));
+      });
+  }
 
   function beginSeek() {
     if (!canSeek) {
@@ -439,6 +596,7 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
         to: target.url,
         targetPath: target.path,
       });
+      persistProgress("switch");
       audio.src = target.url;
       audio.load();
       setTime(0);
@@ -492,19 +650,26 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
       return;
     }
     logPlayer("creating analyser", buildAudioDebugPayload(audio));
-    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
-    const context = new AudioContextCtor();
-    const analyser = context.createAnalyser();
-    analyser.fftSize = 128;
-    sourceRef.current = context.createMediaElementSource(audio);
-    sourceRef.current.connect(analyser);
-    analyser.connect(context.destination);
-    analyserRef.current = analyser;
-    contextRef.current = context;
-    dataRef.current = new Uint8Array(analyser.frequencyBinCount);
-    if (context.state === "suspended") {
-      logPlayer("resuming new AudioContext", { state: context.state });
-      await context.resume();
+    try {
+      const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextCtor) {
+        return;
+      }
+      const context = new AudioContextCtor();
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 128;
+      sourceRef.current = context.createMediaElementSource(audio);
+      sourceRef.current.connect(analyser);
+      analyser.connect(context.destination);
+      analyserRef.current = analyser;
+      contextRef.current = context;
+      dataRef.current = new Uint8Array(analyser.frequencyBinCount);
+      if (context.state === "suspended") {
+        logPlayer("resuming new AudioContext", { state: context.state });
+        await context.resume();
+      }
+    } catch (error) {
+      console.warn(PLAYER_LOG_PREFIX, "ensureAnalyser failed", { error });
     }
   }
 
@@ -586,6 +751,28 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
     );
   }
 
+  function renderSubtitleCard() {
+    return (
+      <div className="subtitle-card">
+        <div className="console-mono text-[9px] font-semibold text-[color:var(--accent)]">
+          字幕 · SUBTITLE{subtitles.length > 1 ? ` · 共 ${subtitles.length} 轨` : ""}
+        </div>
+        <div className="mt-1.5 min-h-[3rem] text-xs leading-6 text-[color:var(--text-body)]">
+          {subtitleLoading ? "字幕加载中..." : null}
+          {subtitleError ? subtitleError : null}
+          {!subtitleLoading && !subtitleError ? (
+            activeSubtitle?.text ||
+            (subtitle
+              ? subtitleCues.length > 0
+                ? "当前时间没有字幕。"
+                : "无法识别字幕时间轴。"
+              : "当前音轨没有匹配的字幕文件。")
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
   function renderSubtitlePanel() {
     if (!subtitle) {
       return (
@@ -618,36 +805,6 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
     );
   }
 
-  function renderPlaylistPanel() {
-    return (
-      <div className="space-y-3">
-        <div className="text-xs font-semibold text-[color:var(--text-mute)]">播放列表</div>
-        <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
-          {tracks.map((track, index) => (
-            <button
-              key={track.path}
-              type="button"
-              className={cn(
-                "deck-plate flex w-full items-center gap-3 px-3 py-2 text-left text-xs transition",
-                selectedPath === track.path
-                  ? "border-[color:var(--tape-pink)] text-[color:var(--text-display)] shadow-[var(--glow-tape)]"
-                  : "text-[color:var(--text-body)] hover:border-[color:var(--telltale-amber)]",
-              )}
-              onClick={() => void playTrack(track.path)}
-            >
-              <Badge variant={selectedPath === track.path ? "live" : "mute"}>
-                {String(index + 1).padStart(2, "0")}
-              </Badge>
-              <span className="min-w-0 flex-1 truncate">{track.name}</span>
-            </button>
-          ))}
-        </div>
-        <div className="text-xs font-semibold text-[color:var(--text-mute)]">字幕文件 {subtitles.length}</div>
-        {subtitlesVisible ? renderSubtitlePanel() : null}
-      </div>
-    );
-  }
-
   const audioElement = createElement(
     "audio",
     {
@@ -668,6 +825,77 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
           default: true,
         })
       : null,
+  );
+
+  const transportButtons = (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="w-9 px-0"
+        onClick={() => selectRelative(-1)}
+        disabled={tracks.length === 0}
+        aria-label="上一音轨"
+        title="上一音轨"
+      >
+        <SkipBack className="h-4 w-4" weight="fill" />
+      </Button>
+      <button
+        type="button"
+        className="play-fab"
+        onClick={togglePlayback}
+        disabled={!selected}
+        aria-label={playing ? "暂停" : "播放"}
+        title={playing ? "暂停" : "播放"}
+      >
+        {playing ? (
+          <Pause className="h-4 w-4" weight="fill" />
+        ) : (
+          <Play className="h-4 w-4" weight="fill" />
+        )}
+      </button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="w-9 px-0"
+        onClick={() => selectRelative(1)}
+        disabled={tracks.length === 0}
+        aria-label="下一音轨"
+        title="下一音轨"
+      >
+        <SkipForward className="h-4 w-4" weight="fill" />
+      </Button>
+    </>
+  );
+
+  const subtitleToggleButton = (
+    <Button
+      variant={subtitle && subtitlesVisible ? "primary" : "secondary"}
+      size="sm"
+      onClick={() => setSubtitlesVisible((value) => !value)}
+      disabled={!subtitle}
+      aria-label={subtitlesVisible ? "隐藏字幕" : "显示字幕"}
+      aria-pressed={Boolean(subtitle && subtitlesVisible)}
+      title={subtitlesVisible ? "隐藏字幕" : "显示字幕"}
+    >
+      <Subtitles className="h-4 w-4" weight={subtitle && subtitlesVisible ? "fill" : "regular"} />
+    </Button>
+  );
+
+  const volumeControl = (
+    <label className="deck-plate audio-volume flex items-center gap-3 px-3 py-2">
+      <SpeakerHigh className="h-4 w-4 text-[color:var(--telltale-amber)]" weight="duotone" />
+      <span className="sr-only">音量</span>
+      <input
+        type="range"
+        min="0"
+        max="1"
+        step="0.05"
+        value={volume}
+        aria-label="音量"
+        onChange={(event) => setVolume(Number(event.currentTarget.value))}
+      />
+    </label>
   );
 
   const deckBody = (
@@ -717,32 +945,10 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
           <Button variant={loop ? "primary" : "secondary"} size="sm" onClick={() => setLoop((value) => !value)} aria-pressed={loop}>
             循环
           </Button>
-          <Button
-            variant={subtitle && subtitlesVisible ? "primary" : "secondary"}
-            size="sm"
-            onClick={() => setSubtitlesVisible((value) => !value)}
-            disabled={!subtitle}
-            aria-label={subtitlesVisible ? "隐藏字幕" : "显示字幕"}
-            aria-pressed={Boolean(subtitle && subtitlesVisible)}
-            title={subtitlesVisible ? "隐藏字幕" : "显示字幕"}
-          >
-            <Subtitles className="h-4 w-4" weight={subtitle && subtitlesVisible ? "fill" : "regular"} />
-          </Button>
+          {subtitleToggleButton}
         </div>
 
-        <label className="deck-plate audio-volume flex items-center gap-3 px-3 py-2">
-          <SpeakerHigh className="h-4 w-4 text-[color:var(--telltale-amber)]" weight="duotone" />
-          <span className="sr-only">音量</span>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.05"
-            value={volume}
-            aria-label="音量"
-            onChange={(event) => setVolume(Number(event.currentTarget.value))}
-          />
-        </label>
+        {volumeControl}
 
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={subtitle ? "signal" : "mute"}>
@@ -764,50 +970,157 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
 
   return (
     <div className="audio-dock-shell" data-expanded={dockExpanded ? "true" : "false"}>
+      {audioElement}
       {subtitlesVisible && activeSubtitle ? (
         <div className="yoru-floating-subtitle" aria-live="polite" aria-atomic="true">
           <div className="yoru-floating-subtitle-text">{activeSubtitle.text}</div>
         </div>
       ) : null}
-      <div className="deck-chassis audio-dock-bar p-3" data-live={playing ? "true" : undefined}>
+
+      {dockExpanded ? (
+        <>
+          <button
+            type="button"
+            className="audio-player-backdrop"
+            aria-label="收起播放器"
+            onClick={() => setDockExpanded(false)}
+          />
+          <div className="audio-player-expanded" role="dialog" aria-label="播放器详情">
+            <button
+              type="button"
+              className="audio-player-close"
+              onClick={() => setDockExpanded(false)}
+              aria-label="关闭播放器详情"
+              title="收起播放器"
+            >
+              <X className="h-3.5 w-3.5" weight="bold" />
+            </button>
+
+            <div className="flex min-w-0 flex-col gap-2.5">
+              <div className="audio-panel-cover aspect-square w-full">
+                {coverUrl ? (
+                  <img src={coverUrl} alt={`${title} 封面`} className="h-full w-full object-cover" />
+                ) : null}
+              </div>
+              {renderSubtitleCard()}
+            </div>
+
+            <div className="flex min-w-0 flex-col">
+              <div className="flex flex-wrap items-center gap-2 pr-8">
+                <span className="sticker" data-angle="-2">NOW PLAYING · 再生中</span>
+                {sourceId ? <span className="stream-badge">在线串流 · 未下载</span> : null}
+              </div>
+              <h3 className="console-title mt-2.5 line-clamp-2 text-xl font-black text-[color:var(--text-display)]">
+                {title}
+              </h3>
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-[color:var(--text-mute)]">
+                <span className="console-mono text-[color:var(--accent)]">{mediaId}</span>
+                <span>· 共 {tracks.length} 曲目</span>
+                <span className="console-readout">· {formatTime(time)} / {formatTime(duration)}</span>
+              </div>
+
+              {renderSeekControl()}
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {transportButtons}
+                <Button
+                  variant={loop ? "primary" : "secondary"}
+                  size="sm"
+                  onClick={() => setLoop((value) => !value)}
+                  aria-pressed={loop}
+                >
+                  循环
+                </Button>
+                {subtitleToggleButton}
+                {volumeControl}
+              </div>
+
+              <hr className="dashed-divider my-3" />
+
+              <div className="min-h-0 flex-1 overflow-y-auto pr-1" style={{ maxHeight: "14rem" }}>
+                <div className="flex flex-col gap-1">
+                  {tracks.map((track, index) => (
+                    <button
+                      key={track.path}
+                      type="button"
+                      className="expanded-track-row"
+                      data-active={selectedPath === track.path ? "true" : undefined}
+                      onClick={() => void playTrack(track.path)}
+                    >
+                      <span className="console-mono w-6 flex-none text-[10px] text-[color:var(--accent)]">
+                        {selectedPath === track.path && playing
+                          ? "♪"
+                          : String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-xs font-semibold">
+                        {track.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {sourceId ? (
+                <div className="mt-3 flex items-center gap-2.5 rounded-xl border-2 border-dashed border-[color:var(--border-strong)] px-3 py-2.5 text-xs text-[color:var(--text-mute)]">
+                  <MusicNote className="h-3.5 w-3.5 flex-none text-[color:var(--accent-pink)]" weight="fill" />
+                  <span className="min-w-0">正在串流播放，喜欢的话可以收进媒体库。</span>
+                  <button
+                    type="button"
+                    className="gradient-pill-button ml-auto"
+                    onClick={downloadThisWork}
+                    disabled={downloadState !== "idle"}
+                  >
+                    <DownloadSimple className="h-3.5 w-3.5" weight="bold" />
+                    {downloadState === "done"
+                      ? "已入队 ✓"
+                      : downloadState === "pending"
+                        ? "入队中…"
+                        : "下载本作"}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </>
+      ) : null}
+
+      <div className="deck-chassis audio-dock-bar p-2.5" data-live={playing ? "true" : undefined}>
         {coverUrl ? (
-          <div className="audio-panel-cover h-14 w-14 shrink-0">
+          <div className="audio-panel-cover h-11 w-11 shrink-0">
             <img src={coverUrl} alt={`${title} 封面`} className="h-full w-full object-cover" />
           </div>
         ) : null}
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={playError ? "halt" : playing ? "live" : "warn"}>
-              {playError || (playing ? "播放中" : "已暂停")}
-            </Badge>
-            <Badge variant={subtitle ? "signal" : "mute"}>{subtitle ? "字幕" : "无字幕"}</Badge>
-          </div>
-          <div className="mt-1 truncate text-sm font-bold text-[color:var(--text-display)]">
+        <div className="min-w-0">
+          <div className="truncate text-[13px] font-bold text-[color:var(--text-display)]">
             {selected?.name || title}
           </div>
+          <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[color:var(--text-mute)]">
+            {sourceId ? <span className="stream-badge">在线</span> : null}
+            <span className="truncate">
+              {playError || (playing ? "いま再生中…" : "一時停止中")} · {title}
+            </span>
+          </div>
         </div>
-        <div className="audio-dock-timeline hidden min-w-[14rem] flex-1 md:block">{renderSeekControl(true)}</div>
-        <div className="audio-dock-controls">
-          <Button variant="secondary" size="sm" onClick={() => selectRelative(-1)} disabled={tracks.length === 0} aria-label="上一音轨" title="上一音轨">
-            <SkipBack className="h-4 w-4" weight="duotone" />
-          </Button>
-          <Button size="sm" onClick={togglePlayback} disabled={!selected} aria-label={playing ? "暂停" : "播放"} title={playing ? "暂停" : "播放"}>
-            {playing ? <Pause className="h-4 w-4" weight="duotone" /> : <Play className="h-4 w-4" weight="duotone" />}
-          </Button>
-          <Button
-            variant={subtitle && subtitlesVisible ? "primary" : "secondary"}
-            size="sm"
-            onClick={() => setSubtitlesVisible((value) => !value)}
-            disabled={!subtitle}
-            aria-label={subtitlesVisible ? "隐藏字幕" : "显示字幕"}
-            aria-pressed={Boolean(subtitle && subtitlesVisible)}
-            title={subtitlesVisible ? "隐藏字幕" : "显示字幕"}
-          >
-            <Subtitles className="h-4 w-4" weight={subtitle && subtitlesVisible ? "fill" : "regular"} />
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => selectRelative(1)} disabled={tracks.length === 0} aria-label="下一音轨" title="下一音轨">
-            <SkipForward className="h-4 w-4" weight="duotone" />
-          </Button>
+        <div className="audio-dock-controls">{transportButtons}</div>
+        {!dockExpanded ? (
+          <div className="audio-dock-timeline hidden min-w-[14rem] md:block">
+            {renderSeekControl(true)}
+          </div>
+        ) : null}
+        <div className="audio-dock-actions">
+          {playError ? (
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={retryTrack}
+              aria-label="重试"
+              title="重试"
+            >
+              <ArrowClockwise className="h-4 w-4" weight="bold" />
+              重试
+            </Button>
+          ) : null}
+          {subtitleToggleButton}
           <Button
             variant="secondary"
             size="sm"
@@ -821,6 +1134,7 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
             ) : (
               <CaretUp className="h-4 w-4" weight="bold" />
             )}
+            <span className="hidden md:inline">{dockExpanded ? "收起" : "展开"}</span>
           </Button>
           {onClose ? (
             <Button
@@ -833,13 +1147,6 @@ export const AudioDeck = forwardRef<AudioDeckHandle, {
               <X className="h-4 w-4" weight="bold" />
             </Button>
           ) : null}
-        </div>
-      </div>
-
-      <div className={cn("audio-dock-panel", !dockExpanded && "audio-dock-panel-collapsed")}>
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
-          {deckBody}
-          <div className="deck-chassis p-4">{renderPlaylistPanel()}</div>
         </div>
       </div>
     </div>

@@ -9,13 +9,24 @@ export type PlaybackSession = {
   title: string;
   mediaId: string;
   coverUrl?: string;
+  /**
+   * RJ source id for remote (discover stream) sessions. Enables listening
+   * feedback milestones, playback-progress persistence, and the stream
+   * download shortcut in the expanded player.
+   */
+  sourceId?: string;
+};
+
+export type PlayOptions = {
+  /** Resume position in seconds; applied after metadata loads. */
+  startPosition?: number;
 };
 
 type PlayerContextValue = {
   activeMediaId?: string;
   selectedPath: string;
-  play: (session: PlaybackSession, path?: string) => void;
-  load: (session: PlaybackSession, path?: string) => void;
+  play: (session: PlaybackSession, path?: string, opts?: PlayOptions) => void;
+  load: (session: PlaybackSession, path?: string, opts?: PlayOptions) => void;
 };
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -23,13 +34,20 @@ const PlayerContext = createContext<PlayerContextValue | null>(null);
 export function GlobalPlayerProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<PlaybackSession | null>(null);
   const [selectedPath, setSelectedPath] = useState("");
+  const [startPosition, setStartPosition] = useState(0);
   const [playRequest, setPlayRequest] = useState(0);
   const deckRef = useRef<AudioDeckHandle | null>(null);
 
-  const setPlayback = (nextSession: PlaybackSession, path: string | undefined, autoplay: boolean) => {
+  const setPlayback = (
+    nextSession: PlaybackSession,
+    path: string | undefined,
+    autoplay: boolean,
+    opts?: PlayOptions,
+  ) => {
     const nextPath = path || nextSession.tracks[0]?.path || "";
     setSession(nextSession);
     setSelectedPath(nextPath);
+    setStartPosition(Math.max(0, opts?.startPosition ?? 0));
     if (autoplay && nextPath) setPlayRequest((value) => value + 1);
   };
 
@@ -50,8 +68,8 @@ export function GlobalPlayerProvider({ children }: { children: ReactNode }) {
   const contextValue = useMemo<PlayerContextValue>(() => ({
     activeMediaId: session?.mediaId,
     selectedPath,
-    play: (nextSession, path) => setPlayback(nextSession, path, true),
-    load: (nextSession, path) => setPlayback(nextSession, path, false),
+    play: (nextSession, path, opts) => setPlayback(nextSession, path, true, opts),
+    load: (nextSession, path, opts) => setPlayback(nextSession, path, false, opts),
   }), [selectedPath, session?.mediaId]);
 
   return (
@@ -69,10 +87,13 @@ export function GlobalPlayerProvider({ children }: { children: ReactNode }) {
           title={session.title}
           mediaId={session.mediaId}
           coverUrl={session.coverUrl}
+          sourceId={session.sourceId}
+          startPosition={startPosition}
           onClose={() => {
             deckRef.current?.pause();
             setSession(null);
             setSelectedPath("");
+            setStartPosition(0);
             setPlayRequest(0);
           }}
           onEnded={() => {

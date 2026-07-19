@@ -4,6 +4,7 @@ import {
   createRoute,
   createRouter,
   lazyRouteComponent,
+  redirect,
 } from "@tanstack/react-router";
 import { Layout } from "../components/Layout";
 import { validateDiscoverSearch } from "./discoverSearch";
@@ -25,10 +26,12 @@ const rootRoute = createRootRoute({
   ),
 });
 
-const dashboardRoute = createRoute({
+const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: lazyRouteComponent(() => import("./screens/Dashboard"), "Dashboard"),
+  beforeLoad: () => {
+    throw redirect({ to: "/library", search: { q: "", id: "", page: 1 } });
+  },
 });
 
 const discoverRoute = createRoute({
@@ -58,6 +61,18 @@ const libraryRoute = createRoute({
   component: lazyRouteComponent(() => import("./screens/Library"), "Library"),
 });
 
+const onlineRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/online",
+  component: lazyRouteComponent(() => import("./screens/Online"), "Online"),
+});
+
+const transferRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/transfer",
+  component: lazyRouteComponent(() => import("./screens/Transfer"), "Transfer"),
+});
+
 const syncRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/sync",
@@ -71,11 +86,13 @@ const settingsRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
-  dashboardRoute,
+  indexRoute,
   discoverRoute,
   discoverDetailRoute,
   queueRoute,
   libraryRoute,
+  onlineRoute,
+  transferRoute,
   syncRoute,
   settingsRoute,
 ]);

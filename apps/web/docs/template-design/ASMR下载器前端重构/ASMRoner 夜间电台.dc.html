@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Zen Maru Gothic','PingFang SC','Microsoft YaHei',sans-serif;
+--bg1:#1c1528;--bg2:#221a33;--bg3:#261a2f;--panel:rgba(24,18,36,.82);--panelSolid:#221c33;
+--card:rgba(255,255,255,.035);--cardHover:rgba(255,255,255,.07);--field:rgba(24,18,36,.6);
+--line:rgba(205,188,245,.14);--lineStrong:rgba(205,188,245,.32);
+--ink:#efeaf6;--mut:#9a8fb5;--dim:#7d7398;--lav:#cdbcf5;--pink:#f5bcd4;
+--accentInk:#2a1830;--pinkInk:#3a2032;--ok:#8fd0a8;--navBg:rgba(255,255,255,.045);--navOn:rgba(205,188,245,.2);}
+body[data-theme="light"]{--bg1:#f5eefb;--bg2:#f8f1f7;--bg3:#fdf4ef;--panel:rgba(255,255,255,.82);--panelSolid:#ffffff;
+--card:rgba(124,96,180,.05);--cardHover:rgba(124,96,180,.1);--field:rgba(255,255,255,.7);
+--line:rgba(124,96,180,.16);--lineStrong:rgba(124,96,180,.34);--ink:#38294e;--mut:#7d6f9c;--dim:#a195bd;
+--ok:#3f9e68;--navBg:rgba(124,96,180,.06);--navOn:rgba(124,96,180,.16);}
+a{color:var(--lav);text-decoration:none}a:hover{color:var(--pink)}
+input{font-family:inherit}
+@keyframes eqbar{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:rgba(150,130,190,.25);border-radius:99px}::-webkit-scrollbar-track{background:transparent}
+</style>
+</helmet>
+<div style="height:100vh;display:flex;flex-direction:column;overflow:hidden;background:linear-gradient(160deg,var(--bg1) 0%,var(--bg2) 55%,var(--bg3) 100%);color:var(--ink);font-size:13.5px">
+
+<header style="flex:none;display:flex;align-items:center;gap:22px;padding:16px 28px 10px">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div><div style="font-weight:900;font-size:17px;line-height:1.1">ASMRoner</div><div style="font-size:9.5px;color:var(--mut)">よる · 夜间电台</div></div>
+  </div>
+  <nav style="display:flex;gap:4px;background:var(--navBg);border:1.5px solid var(--line);border-radius:999px;padding:4px">
+    <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="4">
+      <div onClick="{{ n.go }}" style-hover="background:rgba(150,130,190,.14)" style="position:relative;cursor:pointer;padding:7px 18px;border-radius:999px;background:{{ n.bg }};color:{{ n.color }};font-weight:{{ n.weight }};font-size:12.5px;display:flex;flex-direction:column;align-items:center;line-height:1.2;user-select:none;transition:background .15s">
+        {{ n.label }}<span style="font-size:8px;color:{{ n.kanaColor }}">{{ n.kana }}</span>
+        <sc-if value="{{ n.badge }}" hint-placeholder-val="{{ false }}">
+          <span style="position:absolute;top:-7px;right:-6px;background:var(--pink);color:var(--pinkInk);font-weight:700;font-size:9px;padding:1px 7px;border-radius:999px;transform:rotate(3deg)">{{ n.badgeN }}件</span>
+        </sc-if>
+      </div>
+    </sc-for>
+  </nav>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+    <span style="display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--mut)"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok)"></span>本地服务在线 <span style="font:500 10px ui-monospace,monospace;color:var(--dim)">:8080</span></span>
+    <span onClick="{{ toggleTheme }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;width:32px;height:32px;border-radius:50%;background:var(--navBg);border:1.5px solid var(--line);display:inline-flex;align-items:center;justify-content:center;color:var(--lav);font-size:13px;user-select:none">{{ themeIcon }}</span>
+  </div>
+</header>
+
+<!-- ─── 媒体库 ─── -->
+<sc-if value="{{ isLib }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="媒体库" style="flex:1;min-height:0;overflow:auto;padding:10px 28px 16px">
+  <div style="max-width:1280px;margin:0 auto">
+    <div style="display:flex;gap:22px;background:linear-gradient(120deg,rgba(205,188,245,.14),rgba(245,188,212,.08) 70%);border:1.5px solid var(--lineStrong);border-radius:20px;padding:20px;position:relative">
+      <span style="position:absolute;top:-10px;left:24px;background:var(--pink);color:var(--pinkInk);font-weight:700;font-size:10px;padding:3px 12px;border-radius:999px;transform:rotate(-2deg)">继续收听 · つづき</span>
+      <div style="width:160px;aspect-ratio:1;flex:none;border-radius:14px;background:{{ np.cover }};display:flex;align-items:center;justify-content:center;font:500 10px ui-monospace,monospace;color:{{ np.ink }};box-shadow:0 16px 40px rgba(0,0,0,.35)">封面 · COVER</div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center">
+        <div style="font-weight:900;font-size:24px;line-height:1.3">{{ np.title }}</div>
+        <div style="margin-top:5px;font-size:13px;color:var(--mut)"><span style="font:600 11px ui-monospace,monospace;color:var(--lav)">{{ np.rj }}</span> · CV {{ np.cv }} · {{ trackLabel }} · {{ posTime }}</div>
+        <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+          <span onClick="{{ heroPlay }}" style-hover="transform:translateY(-1px)" style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--lav),var(--pink));color:var(--accentInk);font-weight:700;font-size:13px;border-radius:999px;padding:10px 22px;box-shadow:0 8px 24px rgba(160,130,220,.3);transition:transform .15s;user-select:none">{{ heroBtn }}</span>
+          <span onClick="{{ toggleExpand }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;display:inline-flex;align-items:center;border:1.5px solid var(--lineStrong);color:var(--ink);font-size:12.5px;border-radius:999px;padding:9px 18px;user-select:none">曲目列表</span>
+          <div style="flex:1;max-width:260px;height:5px;border-radius:99px;background:rgba(150,130,190,.18)"><div style="width:{{ posPct }};height:100%;border-radius:99px;background:linear-gradient(90deg,var(--lav),var(--pink))"></div></div>
+          <span style="font:500 10px ui-monospace,monospace;color:var(--mut)">{{ posPctLabel }}</span>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:20px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+      <h2 style="margin:0;font-weight:900;font-size:16px">本地作品</h2>
+      <span style="font-size:9px;color:var(--dim)">らいぶらり</span>
+      <div style="margin-left:12px;display:flex;gap:6px">
+        <sc-for list="{{ libTabs }}" as="t" hint-placeholder-count="3">
+          <span onClick="{{ t.pick }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;padding:4px 13px;border-radius:999px;background:{{ t.bg }};border:1.5px solid {{ t.border }};color:{{ t.color }};font-size:11px;user-select:none">{{ t.label }}</span>
+        </sc-for>
+      </div>
+      <span style="margin-left:auto;font-size:11.5px;color:var(--mut)">{{ libStat }}</span>
+    </div>
+    <div style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:16px">
+      <sc-for list="{{ libWorks }}" as="w" hint-placeholder-count="12">
+        <div onClick="{{ w.play }}" style-hover="transform:translateY(-3px)" style="cursor:pointer;position:relative;transition:transform .2s">
+          <sc-if value="{{ w.sub }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:-7px;right:6px;z-index:1;background:{{ w.stBg }};color:{{ w.stColor }};font-weight:700;font-size:8.5px;padding:2px 8px;border-radius:999px;transform:{{ w.stRot }}">字幕あり</span>
+          </sc-if>
+          <sc-if value="{{ w.now }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:-7px;left:6px;z-index:1;background:var(--lav);color:var(--accentInk);font-weight:700;font-size:8.5px;padding:2px 8px;border-radius:999px;transform:rotate(-2deg)">♪ 再生中</span>
+          </sc-if>
+          <div style="aspect-ratio:1;border-radius:12px;background:{{ w.cover }};border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font:500 9px ui-monospace,monospace;color:{{ w.ink }}">COVER</div>
+          <div style="margin-top:7px;font-weight:700;font-size:12px;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{ w.title }}</div>
+          <div style="margin-top:2px;font-size:10.5px;color:var(--mut);display:flex;align-items:center;gap:5px"><span>{{ w.cv }} · {{ w.dur }}</span><sc-if value="{{ w.fav }}" hint-placeholder-val="{{ false }}"><span style="color:var(--pink)">♡</span></sc-if></div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ─── 发现 ─── -->
+<sc-if value="{{ isDisc }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="发现" style="flex:1;min-height:0;display:flex;flex-direction:column;padding:10px 28px 0">
+  <div style="width:100%;max-width:1280px;margin:0 auto;display:flex;flex-direction:column;flex:1;min-height:0">
+    <div style="flex:none;display:flex;align-items:center;gap:8px;background:var(--field);border:1.5px solid var(--lineStrong);border-radius:16px;padding:9px 12px 9px 18px">
+      <span style="width:11px;height:11px;border:2px solid var(--lav);border-radius:50%;flex:none"></span>
+      <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="关键词、RJ 号,或直接贴 $ 高级查询表达式" style="flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--ink);font-size:13.5px">
+      <span style="background:{{ modeCondBg }};color:{{ modeCondColor }};font-weight:700;font-size:9.5px;padding:3px 10px;border-radius:999px;flex:none">条件搜索</span>
+      <span style="background:{{ modeDslBg }};color:{{ modeDslColor }};font-weight:700;font-size:9.5px;padding:3px 10px;border-radius:999px;flex:none;transform:rotate(2deg)">高级语法 $</span>
+      <span onClick="{{ toggleFilters }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;border:1.5px solid {{ filterBtnBorder }};color:{{ filterBtnColor }};font-size:11.5px;border-radius:999px;padding:6px 14px;flex:none;user-select:none">筛选 {{ filterCaret }}</span>
+      <span onClick="{{ toggleTools }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;border:1.5px solid {{ toolsBtnBorder }};color:{{ toolsBtnColor }};font-size:11.5px;border-radius:999px;padding:6px 14px;flex:none;user-select:none">工具 {{ toolsCaret }}</span>
+      <span onClick="{{ resetSearch }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;border:1.5px solid var(--line);color:var(--mut);font-size:11.5px;border-radius:999px;padding:6px 14px;flex:none;user-select:none">重置</span>
+    </div>
+    <div style="flex:none;margin-top:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <sc-if value="{{ noActive }}" hint-placeholder-val="{{ true }}"><span style="padding:4px 12px;border-radius:999px;border:1.5px dashed var(--line);color:var(--dim);font-size:11px">还没有激活筛选条件 — 条件实时应用到结果</span></sc-if>
+      <sc-for list="{{ activeChips }}" as="c" hint-placeholder-count="0">
+        <span onClick="{{ c.remove }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;padding:4px 12px;border-radius:999px;background:var(--navOn);border:1.5px solid var(--lineStrong);color:var(--ink);font-size:11px;user-select:none">{{ c.label }} ×</span>
+      </sc-for>
+      <span style="margin-left:auto;font-size:11.5px;color:var(--mut)">{{ discStat }}</span>
+    </div>
+    <sc-if value="{{ showFilters }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:none;margin-top:12px;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:16px 18px 14px;position:relative">
+      <span style="position:absolute;top:-9px;left:18px;background:var(--lav);color:var(--accentInk);font-weight:700;font-size:9.5px;padding:2px 11px;border-radius:999px;transform:rotate(-2deg)">筛选条件 · しぼりこみ</span>
+      <div style="display:grid;grid-template-columns:1.25fr 1fr 1.15fr;gap:16px;margin-top:4px">
+        <div>
+          <div style="font-weight:700;font-size:11.5px;margin-bottom:6px">标签 <span style="font-size:9.5px;color:var(--dim);font-weight:500">逗号分隔多个值</span></div>
+          <input value="{{ fltTags }}" onChange="{{ onFltTags }}" placeholder="例如: 耳语, 催眠, 治愈" style="width:100%;box-sizing:border-box;background:var(--field);border:1.5px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--ink);font-size:12px;outline:none">
+          <sc-if value="{{ hasTagChips }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:7px;display:flex;gap:5px;flex-wrap:wrap">
+            <sc-for list="{{ tagChips }}" as="tc" hint-placeholder-count="0">
+              <span onClick="{{ tc.remove }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;padding:3px 10px;border-radius:999px;background:var(--navOn);border:1.5px solid var(--lineStrong);color:var(--lav);font-size:10.5px;user-select:none">#{{ tc.name }} ×</span>
+            </sc-for>
+          </div>
+          </sc-if>
+          <span onClick="{{ toggleSubOnly }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;margin-top:10px;display:inline-flex;align-items:center;gap:6px;padding:5px 13px;border-radius:999px;background:{{ subOnlyBg }};border:1.5px solid {{ subOnlyBorder }};color:{{ subOnlyColor }};font-size:11px;user-select:none">仅字幕作品 {{ subOnlyMark }}</span>
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:11.5px;margin-bottom:6px">社团</div>
+          <input value="{{ fltCircle }}" onChange="{{ onFltCircle }}" placeholder="例如: 雨音シアター" style="width:100%;box-sizing:border-box;background:var(--field);border:1.5px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--ink);font-size:12px;outline:none">
+          <div style="margin-top:10px;font-weight:700;font-size:11.5px;margin-bottom:6px">声优</div>
+          <input value="{{ fltVa }}" onChange="{{ onFltVa }}" placeholder="例如: 篝火ほたる" style="width:100%;box-sizing:border-box;background:var(--field);border:1.5px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--ink);font-size:12px;outline:none">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="font-weight:700;font-size:11.5px;margin-bottom:6px">排序字段</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap">
+              <sc-for list="{{ orderOpts }}" as="o" hint-placeholder-count="5">
+                <span onClick="{{ o.pick }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;padding:4px 11px;border-radius:999px;background:{{ o.bg }};border:1.5px solid {{ o.border }};color:{{ o.color }};font-size:10.5px;user-select:none">{{ o.label }}</span>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;gap:18px">
+            <div>
+              <div style="font-weight:700;font-size:11.5px;margin-bottom:6px">顺序</div>
+              <div style="display:flex;gap:5px">
+                <sc-for list="{{ sortOpts }}" as="o" hint-placeholder-count="2">
+                  <span onClick="{{ o.pick }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;padding:4px 11px;border-radius:999px;background:{{ o.bg }};border:1.5px solid {{ o.border }};color:{{ o.color }};font-size:10.5px;user-select:none">{{ o.label }}</span>
+                </sc-for>
+              </div>
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:11.5px;margin-bottom:6px">每页数量</div>
+              <div style="display:flex;gap:5px">
+                <sc-for list="{{ countOpts }}" as="o" hint-placeholder-count="3">
+                  <span onClick="{{ o.pick }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;padding:4px 11px;border-radius:999px;background:{{ o.bg }};border:1.5px solid {{ o.border }};color:{{ o.color }};font-size:10.5px;user-select:none">{{ o.label }}</span>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+    <sc-if value="{{ showTools }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:none;margin-top:12px;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:16px 18px 14px;position:relative">
+      <span style="position:absolute;top:-9px;left:18px;background:var(--pink);color:var(--pinkInk);font-weight:700;font-size:9.5px;padding:2px 11px;border-radius:999px;transform:rotate(2deg)">结果操作 · つーる</span>
+      <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-top:4px">
+        <div style="flex:1;min-width:220px">
+          <div style="font-weight:700;font-size:11.5px;margin-bottom:6px">输出目录 <span style="font-size:9.5px;color:var(--dim);font-weight:500">留空使用设置中的存储路径</span></div>
+          <input value="{{ outputDirVal }}" onChange="{{ onOutputDir }}" placeholder="/Volumes/ASMR/Library" style="width:100%;box-sizing:border-box;background:var(--field);border:1.5px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--ink);font:500 11.5px ui-monospace,monospace;outline:none">
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:11.5px;margin-bottom:6px">下载范围</div>
+          <div style="display:flex;gap:5px">
+            <sc-for list="{{ scopeOpts }}" as="o" hint-placeholder-count="2">
+              <span onClick="{{ o.pick }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;padding:6px 13px;border-radius:999px;background:{{ o.bg }};border:1.5px solid {{ o.border }};color:{{ o.color }};font-size:11px;user-select:none">{{ o.label }}</span>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <span onClick="{{ openReview }}" style-hover="transform:translateY(-1px)" style="cursor:pointer;display:inline-flex;background:linear-gradient(135deg,var(--lav),var(--pink));color:var(--accentInk);font-weight:700;font-size:11.5px;border-radius:999px;padding:8px 18px;transition:transform .15s;user-select:none">↓ 复核下载范围</span>
+          <span onClick="{{ exportCsv }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;display:inline-flex;border:1.5px solid var(--line);color:var(--mut);font-size:11.5px;border-radius:999px;padding:8px 16px;user-select:none">导出 CSV</span>
+          <span onClick="{{ exportJson }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;display:inline-flex;border:1.5px solid var(--line);color:var(--mut);font-size:11.5px;border-radius:999px;padding:8px 16px;user-select:none">导出 JSON</span>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+    <div style="flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 288px;gap:16px;margin-top:12px">
+      <div style="min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px;padding-bottom:8px">
+        <sc-for list="{{ discRows }}" as="r" hint-placeholder-count="6">
+          <div onClick="{{ r.open }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;display:flex;align-items:center;gap:14px;background:{{ r.bg }};border:1.5px solid {{ r.border }};border-radius:14px;padding:10px 14px;transition:border-color .15s">
+            <span onClick="{{ r.toggle }}" style="cursor:{{ r.cursor }};width:17px;height:17px;border-radius:5px;background:{{ r.ckBg }};border:1.5px solid {{ r.ckBorder }};color:var(--accentInk);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:none;user-select:none">{{ r.check }}</span>
+            <div style="width:52px;height:52px;border-radius:9px;background:{{ r.cover }};flex:none;display:flex;align-items:center;justify-content:center;font:500 7px ui-monospace,monospace;color:{{ r.ink }}">封面</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font:700 10px ui-monospace,monospace;color:var(--lav)">{{ r.rj }}</span>
+                <sc-if value="{{ r.sub }}" hint-placeholder-val="{{ false }}"><span style="background:{{ r.stBg }};color:{{ r.stColor }};font-weight:700;font-size:8.5px;padding:1px 7px;border-radius:999px;transform:{{ r.stRot }};display:inline-block">字幕あり</span></sc-if>
+                <sc-if value="{{ r.owned }}" hint-placeholder-val="{{ false }}"><span style="border:1.5px solid var(--lineStrong);color:var(--mut);font-size:8.5px;padding:1px 7px;border-radius:999px">已在库 ✓</span></sc-if>
+              </div>
+              <div style="margin-top:2px;font-weight:700;font-size:13.5px;color:{{ r.titleColor }}">{{ r.title }}</div>
+              <div style="margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--dim)">
+                <span>CV {{ r.cv }} · {{ r.circle }} · {{ r.date }}</span>
+                <sc-for list="{{ r.tagChips }}" as="tg" hint-placeholder-count="2">
+                  <span onClick="{{ tg.pick }}" style-hover="border-color:var(--lineStrong);color:var(--lav)" style="cursor:pointer;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--mut);font-size:9.5px;user-select:none">#{{ tg.name }}</span>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;gap:16px;font:500 10.5px ui-monospace,monospace;color:{{ r.metaColor }};flex:none"><span>★ {{ r.rate }}</span><span>DL {{ r.dl }}</span></div>
+            <span onClick="{{ r.play }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;display:inline-flex;background:{{ r.playBg }};border:1.5px solid {{ r.playBorder }};color:{{ r.playColor }};font-size:11.5px;border-radius:999px;padding:6px 14px;flex:none;user-select:none">{{ r.playLabel }}</span>
+            <span onClick="{{ r.act }}" style-hover="border-color:var(--lineStrong)" style="cursor:{{ r.actCursor }};display:inline-flex;background:{{ r.actBg }};border:1.5px solid {{ r.actBorder }};color:{{ r.actColor }};font-size:11.5px;border-radius:999px;padding:6px 14px;flex:none;user-select:none">{{ r.actLabel }}</span>
+          </div>
+        </sc-for>
+        <div style="flex:none;display:flex;align-items:center;gap:8px;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:8px 14px;font-size:11.5px;color:var(--mut)">
+          <span>{{ pageLabel }}</span>
+          <span onClick="{{ prevPage }}" style-hover="border-color:var(--lineStrong)" style="margin-left:auto;cursor:pointer;border:1.5px solid var(--line);color:{{ prevColor }};font-size:11px;border-radius:999px;padding:4px 13px;user-select:none">← 上一页</span>
+          <span onClick="{{ nextPage }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;border:1.5px solid var(--line);color:{{ nextColor }};font-size:11px;border-radius:999px;padding:4px 13px;user-select:none">下一页 →</span>
+        </div>
+      </div>
+      <div style="min-height:0;overflow:auto;display:flex;flex-direction:column;gap:14px;padding:2px 2px 8px">
+        <div style="background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px;position:relative;flex:none">
+          <span style="position:absolute;top:-9px;left:16px;background:var(--lav);color:var(--accentInk);font-weight:700;font-size:9px;padding:2px 10px;border-radius:999px;transform:rotate(-2deg)">作品详情 · しょうさい</span>
+          <sc-if value="{{ detailOff }}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top:4px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px 10px;color:var(--dim);font-size:11.5px;text-align:center;line-height:1.7"><span style="font-size:18px;color:var(--mut)">☾</span>点击左侧结果行,这里会显示详情、音轨试听与下载入口。</div>
+          </sc-if>
+          <sc-if value="{{ detailOn }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:4px;display:flex;flex-direction:column;gap:10px">
+              <div style="aspect-ratio:16/10;border-radius:10px;background:{{ det.cover }};border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font:500 9px ui-monospace,monospace;color:{{ det.ink }}">封面 · COVER</div>
+              <div>
+                <div style="display:flex;align-items:center;gap:7px"><span style="font:700 10px ui-monospace,monospace;color:var(--lav)">{{ det.rj }}</span>
+                  <sc-if value="{{ detSub }}" hint-placeholder-val="{{ false }}"><span style="background:var(--pink);color:var(--pinkInk);font-weight:700;font-size:8.5px;padding:1px 7px;border-radius:999px;transform:rotate(-2deg);display:inline-block">字幕あり</span></sc-if>
+                </div>
+                <div style="margin-top:4px;font-weight:900;font-size:14px;line-height:1.45">{{ det.title }}</div>
+                <div style="margin-top:2px;font-size:11px;color:var(--mut)">{{ det.circle }} · CV {{ det.cv }}</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                <sc-for list="{{ detMetrics }}" as="dm" hint-placeholder-count="4">
+                  <div style="background:var(--field);border:1.5px solid var(--line);border-radius:9px;padding:7px 10px"><div style="font-size:9px;color:var(--dim)">{{ dm.k }}</div><div style="margin-top:2px;font:700 11.5px ui-monospace,monospace;color:var(--ink)">{{ dm.v }}</div></div>
+                </sc-for>
+              </div>
+              <div>
+                <div style="font-weight:700;font-size:11px;margin-bottom:5px;color:var(--mut)">音轨试听 · ためしぎき</div>
+                <div style="display:flex;flex-direction:column;gap:3px">
+                  <sc-for list="{{ detTracks }}" as="tk" hint-placeholder-count="3">
+                    <div onClick="{{ tk.pick }}" style-hover="background:var(--cardHover)" style="cursor:pointer;display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:8px;background:{{ tk.bg }};user-select:none">
+                      <span style="font:700 9.5px ui-monospace,monospace;color:{{ tk.numColor }};width:16px;flex:none">{{ tk.icon }}</span>
+                      <span style="flex:1;min-width:0;font-weight:{{ tk.weight }};font-size:11px;color:{{ tk.color }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tk.name }}</span>
+                      <span style="font:500 9.5px ui-monospace,monospace;color:var(--dim);flex:none">{{ tk.d }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <span onClick="{{ detAct }}" style-hover="transform:translateY(-1px)" style="cursor:{{ detActCursor }};display:inline-flex;justify-content:center;background:linear-gradient(135deg,var(--lav),var(--pink));color:var(--accentInk);font-weight:700;font-size:12px;border-radius:999px;padding:8px 18px;transition:transform .15s;user-select:none">{{ detActLabel }}</span>
+            </div>
+          </sc-if>
+        </div>
+        <sc-for list="{{ facetCards }}" as="fc" hint-placeholder-count="3">
+          <div style="background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px 14px 12px;position:relative;flex:none">
+            <span style="position:absolute;top:-9px;left:16px;background:{{ fc.tagBg }};color:{{ fc.tagInk }};font-weight:700;font-size:9px;padding:2px 10px;border-radius:999px;transform:{{ fc.rot }}">{{ fc.title }}</span>
+            <div style="margin-top:4px;display:flex;gap:5px;flex-wrap:wrap">
+              <sc-for list="{{ fc.items }}" as="fi" hint-placeholder-count="4">
+                <span onClick="{{ fi.pick }}" style-hover="border-color:var(--lineStrong);color:var(--lav)" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;padding:3px 10px;border-radius:999px;border:1.5px solid var(--line);color:var(--mut);font-size:10.5px;user-select:none">{{ fi.name }} <span style="color:var(--dim)">{{ fi.n }}</span></span>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ─── 在线 ─── -->
+<sc-if value="{{ isOnline }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="在线" style="flex:1;min-height:0;overflow:auto;padding:10px 28px 16px">
+  <div style="max-width:1280px;margin:0 auto">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <h2 style="margin:0;font-weight:900;font-size:16px">在线曲库</h2>
+      <span style="font-size:9px;color:var(--dim)">おんらいん</span>
+      <span style="border:1.5px dashed rgba(245,188,212,.5);color:var(--pink);font-weight:700;font-size:9px;padding:2px 10px;border-radius:999px;transform:rotate(-2deg)">asmr.one 直连 · 免下载即听</span>
+      <div style="margin-left:12px;display:flex;gap:6px">
+        <sc-for list="{{ onlineSorts }}" as="o" hint-placeholder-count="3">
+          <span onClick="{{ o.pick }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;padding:4px 13px;border-radius:999px;background:{{ o.bg }};border:1.5px solid {{ o.border }};color:{{ o.color }};font-size:11px;user-select:none">{{ o.label }}</span>
+        </sc-for>
+        <span onClick="{{ onlineSubFlip }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;padding:4px 13px;border-radius:999px;background:{{ onlineSubBg }};border:1.5px solid {{ onlineSubBorder }};color:{{ onlineSubColor }};font-size:11px;user-select:none">仅字幕 {{ onlineSubMark }}</span>
+      </div>
+      <span style="margin-left:auto;font-size:11.5px;color:var(--mut)">{{ onlineStat }}</span>
+    </div>
+    <div style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:16px">
+      <sc-for list="{{ onlineCards }}" as="w" hint-placeholder-count="9">
+        <div onClick="{{ w.play }}" style-hover="transform:translateY(-3px)" style="cursor:pointer;position:relative;transition:transform .2s">
+          <sc-if value="{{ w.sub }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:-7px;right:6px;z-index:1;background:{{ w.stBg }};color:{{ w.stColor }};font-weight:700;font-size:8.5px;padding:2px 8px;border-radius:999px;transform:{{ w.stRot }}">字幕あり</span>
+          </sc-if>
+          <div style="aspect-ratio:4/3;border-radius:12px;background:{{ w.cover }};border:1.5px solid {{ w.border }};position:relative;display:flex;align-items:center;justify-content:center;font:500 9px ui-monospace,monospace;color:{{ w.ink }}">COVER
+            <span style="position:absolute;right:8px;bottom:8px;width:32px;height:32px;border-radius:50%;background:{{ w.pBg }};color:{{ w.pInk }};display:inline-flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 4px 14px rgba(0,0,0,.35)">{{ w.pIcon }}</span>
+            <span style="position:absolute;left:8px;bottom:8px;background:rgba(16,10,26,.7);color:var(--lav);font:600 9px ui-monospace,monospace;padding:2px 8px;border-radius:999px;backdrop-filter:blur(4px)">★ {{ w.rate }}</span>
+          </div>
+          <div style="margin-top:7px;font-weight:700;font-size:12px;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{ w.title }}</div>
+          <div style="margin-top:2px;font-size:10.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ w.cv }} · {{ w.circle }}</div>
+          <div style="margin-top:5px;display:flex;align-items:center;gap:6px">
+            <span style="font:500 9.5px ui-monospace,monospace;color:var(--dim)">DL {{ w.dl }}</span>
+            <span onClick="{{ w.act }}" style-hover="border-color:var(--lineStrong)" style="margin-left:auto;cursor:{{ w.actCursor }};display:inline-flex;border:1.5px solid {{ w.actBorder }};color:{{ w.actColor }};font-size:9.5px;border-radius:999px;padding:2px 10px;user-select:none">{{ w.actLabel }}</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="margin-top:16px;display:flex;align-items:center;gap:8px;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:8px 14px;font-size:11.5px;color:var(--mut)">
+      <span>{{ onlinePageLabel }}</span>
+      <span onClick="{{ onlinePrev }}" style-hover="border-color:var(--lineStrong)" style="margin-left:auto;cursor:pointer;border:1.5px solid var(--line);color:{{ onlinePrevColor }};font-size:11px;border-radius:999px;padding:4px 13px;user-select:none">← 上一页</span>
+      <span onClick="{{ onlineNext }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;border:1.5px solid var(--line);color:{{ onlineNextColor }};font-size:11px;border-radius:999px;padding:4px 13px;user-select:none">下一页 →</span>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ─── 传输 ─── -->
+<sc-if value="{{ isTrans }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="传输" style="flex:1;min-height:0;overflow:auto;padding:10px 28px 16px">
+  <div style="max-width:1280px;margin:0 auto;display:grid;grid-template-columns:1.55fr 1fr;gap:18px;align-items:start">
+    <div style="background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:18px 18px 14px;position:relative">
+      <span style="position:absolute;top:-10px;left:20px;background:var(--pink);color:var(--pinkInk);font-weight:700;font-size:10px;padding:3px 12px;border-radius:999px;transform:rotate(-2deg)">下载队列 · きゅー</span>
+      <div style="display:flex;align-items:baseline;gap:10px;margin:4px 0 12px">
+        <h2 style="margin:0;font-weight:900;font-size:15px">任务</h2>
+        <span style="font-size:11px;color:var(--mut)">{{ queueStat }}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <sc-for list="{{ taskRows }}" as="t" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:12px;background:var(--field);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px">
+            <div style="width:44px;height:44px;border-radius:8px;background:{{ t.cover }};flex:none"></div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px"><span style="font:700 9.5px ui-monospace,monospace;color:var(--lav)">{{ t.id }}</span><span style="background:{{ t.chipBg }};color:{{ t.chipColor }};font-weight:700;font-size:8.5px;padding:1px 8px;border-radius:999px">{{ t.stLabel }}</span></div>
+              <div style="margin-top:2px;font-weight:700;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.title }}</div>
+              <div style="margin-top:6px;display:flex;align-items:center;gap:10px">
+                <div style="flex:1;height:4px;border-radius:99px;background:rgba(150,130,190,.18)"><div style="width:{{ t.pw }};height:100%;border-radius:99px;background:linear-gradient(90deg,var(--lav),var(--pink));transition:width .8s linear"></div></div>
+                <span style="font:500 10px ui-monospace,monospace;color:var(--mut);flex:none">{{ t.pct }} · {{ t.size }} · {{ t.speed }}</span>
+              </div>
+            </div>
+            <span onClick="{{ t.toggle }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;display:inline-flex;border:1.5px solid var(--line);color:var(--ink);font-size:11px;border-radius:999px;padding:6px 13px;flex:none;user-select:none">{{ t.btn }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="margin-top:12px;display:flex;align-items:center;gap:10px;border:2px dashed var(--line);border-radius:12px;padding:10px 14px;color:var(--mut);font-size:11.5px"><span style="color:var(--pink);font-size:13px">♪</span>去「发现」检索并批量加入队列,完成后会自动匹配字幕。</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div style="background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:18px;position:relative">
+        <span style="position:absolute;top:-10px;left:20px;background:var(--lav);color:var(--accentInk);font-weight:700;font-size:10px;padding:3px 12px;border-radius:999px;transform:rotate(2deg)">同步 · どうき</span>
+        <div style="display:flex;align-items:baseline;gap:10px;margin:4px 0 12px">
+          <h2 style="margin:0;font-weight:900;font-size:15px">同步目标</h2>
+          <span style-hover="color:var(--pink)" style="margin-left:auto;cursor:pointer;font-size:11px;color:var(--lav);user-select:none">立即全部同步 →</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ syncRows }}" as="sy" hint-placeholder-count="3">
+            <div style="background:var(--field);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px">
+              <div style="display:flex;align-items:center;gap:8px"><span style="font-weight:700;font-size:12.5px">{{ sy.name }}</span><span style="margin-left:auto;background:{{ sy.chipBg }};color:{{ sy.chipColor }};font-weight:700;font-size:8.5px;padding:1px 8px;border-radius:999px">{{ sy.st }}</span></div>
+              <div style="margin-top:3px;font:500 10px ui-monospace,monospace;color:var(--dim)">{{ sy.path }}</div>
+              <sc-if value="{{ sy.hasP }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:8px;height:4px;border-radius:99px;background:rgba(150,130,190,.18)"><div style="width:{{ sy.pw }};height:100%;border-radius:99px;background:linear-gradient(90deg,var(--lav),var(--pink))"></div></div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:18px">
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px"><h2 style="margin:0;font-weight:900;font-size:15px">最近完成</h2><span style="font-size:9px;color:var(--dim)">かんりょう</span></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ doneRows }}" as="d" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:10px;font-size:12px">
+              <span style="width:6px;height:6px;border-radius:50%;background:var(--ok);flex:none"></span>
+              <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700">{{ d.title }}</span>
+              <span style="background:{{ d.chipBg }};color:{{ d.chipColor }};font-weight:700;font-size:8.5px;padding:1px 8px;border-radius:999px;flex:none">{{ d.sub }}</span>
+              <span style="font:500 10px ui-monospace,monospace;color:var(--dim);flex:none">{{ d.t }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ─── 设置 ─── -->
+<sc-if value="{{ isSet }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="设置" style="flex:1;min-height:0;overflow:auto;padding:10px 28px 16px">
+  <div style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(2,1fr);gap:18px;align-items:start">
+    <div style="background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:18px;position:relative">
+      <span style="position:absolute;top:-10px;left:20px;background:var(--pink);color:var(--pinkInk);font-weight:700;font-size:10px;padding:3px 12px;border-radius:999px;transform:rotate(-2deg)">下载 · だうんろーど</span>
+      <div style="margin-top:6px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="flex:1"><div style="font-weight:700;font-size:12.5px">并发任务数</div><div style="font-size:10.5px;color:var(--dim)">同时进行的下载任务上限</div></div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span onClick="{{ concurDown }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;width:26px;height:26px;border:1.5px solid var(--line);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--mut);user-select:none">−</span>
+            <span style="font:700 14px ui-monospace,monospace;color:var(--lav);min-width:16px;text-align:center">{{ concur }}</span>
+            <span onClick="{{ concurUp }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;width:26px;height:26px;border:1.5px solid var(--line);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--mut);user-select:none">＋</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="flex:1"><div style="font-weight:700;font-size:12.5px">存储路径</div><div style="margin-top:3px;font:500 10.5px ui-monospace,monospace;color:var(--dim);background:var(--field);border:1.5px solid var(--line);border-radius:8px;padding:6px 10px;display:inline-block">{{ path }}</div></div>
+          <span style-hover="border-color:var(--lineStrong)" style="cursor:pointer;border:1.5px solid var(--line);color:var(--mut);font-size:11px;border-radius:999px;padding:6px 14px;user-select:none">更改…</span>
+        </div>
+        <sc-for list="{{ dlToggles }}" as="tg" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="flex:1"><div style="font-weight:700;font-size:12.5px">{{ tg.label }}</div><div style="font-size:10.5px;color:var(--dim)">{{ tg.desc }}</div></div>
+            <span onClick="{{ tg.flip }}" style="cursor:pointer;width:40px;height:22px;border-radius:999px;background:{{ tg.bg }};display:flex;align-items:center;justify-content:{{ tg.j }};padding:2px;box-sizing:border-box;flex:none;transition:background .15s"><span style="width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3)"></span></span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:18px;position:relative">
+      <span style="position:absolute;top:-10px;left:20px;background:var(--lav);color:var(--accentInk);font-weight:700;font-size:10px;padding:3px 12px;border-radius:999px;transform:rotate(2deg)">数据源 · みらー</span>
+      <div style="margin-top:6px;display:flex;flex-direction:column;gap:14px">
+        <div>
+          <div style="font-weight:700;font-size:12.5px;margin-bottom:8px">API 镜像</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <sc-for list="{{ mirrors }}" as="m" hint-placeholder-count="3">
+              <span onClick="{{ m.pick }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;padding:6px 14px;border-radius:999px;background:{{ m.bg }};border:1.5px solid {{ m.border }};color:{{ m.color }};font-size:11.5px;user-select:none">{{ m.id }} <span style="font:500 9.5px ui-monospace,monospace;color:{{ m.latColor }}">{{ m.lat }}</span></span>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--mut)"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok)"></span>连接正常 · 上次检查 2 分钟前<span style-hover="color:var(--pink)" style="margin-left:auto;cursor:pointer;color:var(--lav);user-select:none">重新测速 →</span></div>
+        <div style="display:flex;align-items:center;gap:10px;border:2px dashed var(--line);border-radius:12px;padding:10px 14px;color:var(--mut);font-size:11px"><span style="color:var(--pink)">♪</span>镜像仅代理检索与元数据,音频文件直连源站下载。</div>
+      </div>
+    </div>
+    <div style="background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:18px;position:relative">
+      <span style="position:absolute;top:-10px;left:20px;background:var(--pink);color:var(--pinkInk);font-weight:700;font-size:10px;padding:3px 12px;border-radius:999px;transform:rotate(2deg)">外观 · がいかん</span>
+      <div style="margin-top:6px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="flex:1"><div style="font-weight:700;font-size:12.5px">主题</div><div style="font-size:10.5px;color:var(--dim)">夜间为默认;日间适合白天整理媒体库</div></div>
+          <div style="display:flex;gap:6px">
+            <sc-for list="{{ themeOpts }}" as="th" hint-placeholder-count="2">
+              <span onClick="{{ th.pick }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;padding:5px 13px;border-radius:999px;background:{{ th.bg }};border:1.5px solid {{ th.border }};color:{{ th.color }};font-size:11px;user-select:none">{{ th.label }}</span>
+            </sc-for>
+          </div>
+        </div>
+        <sc-for list="{{ appearToggles }}" as="tg" hint-placeholder-count="2">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="flex:1"><div style="font-weight:700;font-size:12.5px">{{ tg.label }}</div><div style="font-size:10.5px;color:var(--dim)">{{ tg.desc }}</div></div>
+            <span onClick="{{ tg.flip }}" style="cursor:pointer;width:40px;height:22px;border-radius:999px;background:{{ tg.bg }};display:flex;align-items:center;justify-content:{{ tg.j }};padding:2px;box-sizing:border-box;flex:none;transition:background .15s"><span style="width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3)"></span></span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:18px;position:relative">
+      <span style="position:absolute;top:-10px;left:20px;background:var(--lav);color:var(--accentInk);font-weight:700;font-size:10px;padding:3px 12px;border-radius:999px;transform:rotate(-2deg)">关于 · あばうと</span>
+      <div style="margin-top:6px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="font-weight:900;font-size:15px">ASMRoner v2.0</span><span style="background:var(--navOn);color:var(--lav);font-weight:700;font-size:9px;padding:2px 9px;border-radius:999px;transform:rotate(-2deg);display:inline-block">代号「夜 · YORU」</span></div>
+        <div style="font-size:11.5px;color:var(--mut)">后端 API v1 · 本地服务 :8080 · 前端 React + Vite</div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <span style-hover="border-color:var(--lineStrong)" style="cursor:pointer;border:1.5px solid var(--line);color:var(--ink);font-size:11.5px;border-radius:999px;padding:6px 16px;user-select:none">检查更新</span>
+          <a href="https://github.com/lingMori/asmr-downloader" target="_blank" style="border:1.5px solid var(--line);font-size:11.5px;border-radius:999px;padding:6px 16px;display:inline-flex">GitHub 仓库 →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- 批量入队栏 -->
+<sc-if value="{{ showBatch }}" hint-placeholder-val="{{ false }}">
+<div style="flex:none;margin:10px auto 0;width:min(1280px,calc(100% - 56px));display:flex;align-items:center;gap:14px;padding:11px 18px;background:var(--panel);border:1.5px solid rgba(245,188,212,.45);border-radius:16px;backdrop-filter:blur(12px);box-shadow:0 12px 32px rgba(0,0,0,.3)">
+  <span style="background:var(--pink);color:var(--pinkInk);font-weight:700;font-size:10px;padding:3px 12px;border-radius:999px;transform:rotate(-2deg);flex:none">已选 {{ selCount }} 件</span>
+  <span style="font-size:12px;color:var(--mut)">{{ batchText }}</span>
+  <span onClick="{{ clearSel }}" style-hover="border-color:var(--lineStrong)" style="margin-left:auto;cursor:pointer;display:inline-flex;color:var(--mut);font-size:12px;border:1.5px solid var(--line);border-radius:999px;padding:7px 16px;user-select:none">清空选择</span>
+  <span onClick="{{ enqueueSel }}" style-hover="transform:translateY(-1px)" style="cursor:pointer;display:inline-flex;background:linear-gradient(135deg,var(--lav),var(--pink));color:var(--accentInk);font-weight:700;font-size:12.5px;border-radius:999px;padding:8px 22px;box-shadow:0 8px 24px rgba(160,130,220,.25);transition:transform .15s;user-select:none">↓ 批量加入传输队列</span>
+</div>
+</sc-if>
+
+<!-- 展开播放器 -->
+<sc-if value="{{ expanded }}" hint-placeholder-val="{{ false }}">
+<div style="display:contents">
+  <div onClick="{{ collapse }}" style="position:fixed;inset:0;background:rgba(10,6,18,.45);backdrop-filter:blur(2px);z-index:40"></div>
+  <div data-screen-label="播放器展开" style="position:fixed;left:50%;transform:translateX(-50%);bottom:96px;width:min(860px,calc(100vw - 56px));z-index:41;background:var(--panelSolid);border:1.5px solid var(--lineStrong);border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.5);padding:22px;display:flex;gap:22px">
+    <span onClick="{{ collapse }}" style-hover="border-color:var(--lineStrong)" style="position:absolute;top:14px;right:14px;cursor:pointer;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--line);display:inline-flex;align-items:center;justify-content:center;color:var(--mut);font-size:12px;user-select:none">✕</span>
+    <div style="width:190px;flex:none;display:flex;flex-direction:column;gap:10px">
+      <div style="aspect-ratio:1;border-radius:14px;background:{{ np.cover }};display:flex;align-items:center;justify-content:center;font:500 10px ui-monospace,monospace;color:{{ np.ink }};box-shadow:0 16px 40px rgba(0,0,0,.4)">封面 · COVER</div>
+      <div style="border:2px dashed var(--line);border-radius:12px;padding:9px 12px">
+        <div style="font:600 8.5px ui-monospace,monospace;color:var(--lav);letter-spacing:.12em">字幕 · SUBTITLE</div>
+        <div style="margin-top:5px;font-size:11.5px;line-height:1.6;color:var(--mut)">「……今夜は、ここまで。ゆっくり休んでね」</div>
+      </div>
+    </div>
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+      <div style="display:flex;gap:6px;align-items:center;align-self:flex-start"><span style="background:var(--pink);color:var(--pinkInk);font-weight:700;font-size:9.5px;padding:2px 10px;border-radius:999px;transform:rotate(-2deg)">NOW PLAYING · 再生中</span><sc-if value="{{ npStream }}" hint-placeholder-val="{{ false }}"><span style="border:1.5px dashed rgba(245,188,212,.55);color:var(--pink);font-weight:700;font-size:9px;padding:2px 9px;border-radius:999px">在线串流 · 未下载</span></sc-if></div>
+      <div style="margin-top:8px;font-weight:900;font-size:20px;line-height:1.3">{{ np.title }}</div>
+      <div style="margin-top:3px;font-size:12px;color:var(--mut)"><span style="font:600 10.5px ui-monospace,monospace;color:var(--lav)">{{ np.rj }}</span> · CV {{ np.cv }} · 共 4 曲目</div>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:4px;min-height:0;overflow:auto">
+        <sc-for list="{{ trackRows }}" as="tk" hint-placeholder-count="4">
+          <div onClick="{{ tk.pick }}" style-hover="background:var(--cardHover)" style="cursor:pointer;display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:10px;background:{{ tk.bg }};user-select:none">
+            <span style="font:700 10px ui-monospace,monospace;color:{{ tk.numColor }};width:18px;flex:none">{{ tk.icon }}</span>
+            <span style="flex:1;min-width:0;font-weight:{{ tk.weight }};font-size:12.5px;color:{{ tk.color }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tk.name }}</span>
+            <span style="font:500 10px ui-monospace,monospace;color:var(--dim);flex:none">{{ tk.d }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <sc-if value="{{ npStream }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:12px;display:flex;align-items:center;gap:10px;border:2px dashed var(--line);border-radius:12px;padding:9px 12px;font-size:11px;color:var(--mut)"><span style="color:var(--pink)">♪</span>正在串流播放,喜欢的话可以收进媒体库。<span onClick="{{ streamDl }}" style-hover="transform:translateY(-1px)" style="margin-left:auto;cursor:{{ streamDlCursor }};display:inline-flex;background:linear-gradient(135deg,var(--lav),var(--pink));color:var(--accentInk);font-weight:700;font-size:11px;border-radius:999px;padding:6px 14px;transition:transform .15s;user-select:none;flex:none">{{ streamDlLabel }}</span></div>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- 下载复核对话框 -->
+<sc-if value="{{ reviewOpen }}" hint-placeholder-val="{{ false }}">
+<div style="display:contents">
+  <div onClick="{{ closeReview }}" style="position:fixed;inset:0;background:rgba(10,6,18,.5);backdrop-filter:blur(2px);z-index:50"></div>
+  <div data-screen-label="下载复核" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,calc(100vw - 56px));z-index:51;background:var(--panelSolid);border:1.5px solid var(--lineStrong);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.5);padding:22px">
+    <span style="background:var(--pink);color:var(--pinkInk);font-weight:700;font-size:9.5px;padding:2px 10px;border-radius:999px;transform:rotate(-2deg);display:inline-block">下载复核 · かくにん</span>
+    <div style="margin-top:10px;font-weight:900;font-size:16px">确认创建下载任务</div>
+    <div style="margin-top:4px;font-size:11.5px;color:var(--mut);line-height:1.6">只会下载下方明确列出的范围,任务创建后可在「传输」中暂停或取消。</div>
+    <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
+      <sc-for list="{{ reviewRows }}" as="rr" hint-placeholder-count="3">
+        <div style="display:flex;gap:10px;background:var(--field);border:1.5px solid var(--line);border-radius:10px;padding:8px 12px;font-size:11.5px"><span style="color:var(--dim);flex:none;width:60px">{{ rr.k }}</span><span style="font-weight:700;min-width:0">{{ rr.v }}</span></div>
+      </sc-for>
+    </div>
+    <sc-if value="{{ reviewWarn }}" hint-placeholder-val="{{ false }}">
+      <div style="margin-top:10px;display:flex;gap:8px;border:1.5px dashed rgba(245,188,212,.5);border-radius:10px;padding:8px 12px;color:var(--pink);font-size:11px;line-height:1.6">⚠ 该操作可能产生较大的网络流量与磁盘占用。</div>
+    </sc-if>
+    <div style="margin-top:18px;display:flex;justify-content:flex-end;gap:8px">
+      <span onClick="{{ closeReview }}" style-hover="border-color:var(--lineStrong)" style="cursor:pointer;display:inline-flex;border:1.5px solid var(--line);color:var(--mut);font-size:12px;border-radius:999px;padding:8px 18px;user-select:none">取消</span>
+      <span onClick="{{ confirmReview }}" style-hover="transform:translateY(-1px)" style="cursor:pointer;display:inline-flex;background:linear-gradient(135deg,var(--lav),var(--pink));color:var(--accentInk);font-weight:700;font-size:12px;border-radius:999px;padding:8px 20px;transition:transform .15s;user-select:none">创建下载任务</span>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- 迷你播放条 -->
+<footer style="flex:none;margin:12px auto 14px;width:min(1280px,calc(100% - 56px));display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--panel);border:1.5px solid var(--lineStrong);border-radius:16px;backdrop-filter:blur(12px);box-shadow:0 12px 32px rgba(0,0,0,.3)">
+  <div style="width:42px;height:42px;border-radius:10px;background:{{ np.cover }};flex:none;border:1.5px solid var(--lineStrong)"></div>
+  <div style="min-width:0;width:235px;flex:none"><div style="font-weight:700;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ np.title }} · {{ trackLabel }}</div><div style="font-size:10.5px;color:var(--mut);margin-top:1px;display:flex;align-items:center;gap:5px"><sc-if value="{{ npStream }}" hint-placeholder-val="{{ false }}"><span style="border:1px dashed rgba(245,188,212,.55);color:var(--pink);font-weight:700;font-size:8.5px;padding:0 6px;border-radius:999px;flex:none">在线</span></sc-if><span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ np.cv }} · {{ playState }}</span></div></div>
+  <div style="display:flex;align-items:center;gap:14px;color:var(--mut);font-size:14px">
+    <span onClick="{{ prevTrack }}" style="cursor:pointer;user-select:none">‹‹</span>
+    <span onClick="{{ togglePlay }}" style-hover="transform:scale(1.06)" style="cursor:pointer;width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--lav),var(--pink));color:var(--accentInk);display:inline-flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 0 0 4px rgba(180,150,230,.15);transition:transform .15s;user-select:none">{{ playIcon }}</span>
+    <span onClick="{{ nextTrack }}" style="cursor:pointer;user-select:none">››</span>
+  </div>
+  <div style="flex:1;display:flex;align-items:center;gap:10px;min-width:0">
+    <span style="font:500 10px ui-monospace,monospace;color:var(--dim);flex:none">{{ posTime }}</span>
+    <div style="flex:1;height:5px;border-radius:99px;background:rgba(150,130,190,.18);position:relative"><div style="width:{{ posPct }};height:100%;border-radius:99px;background:linear-gradient(90deg,var(--lav),var(--pink))"></div><div style="position:absolute;left:{{ posPct }};top:50%;transform:translate(-50%,-50%);width:11px;height:11px;border-radius:50%;background:var(--pink);border:2px solid var(--panelSolid)"></div></div>
+    <span style="font:500 10px ui-monospace,monospace;color:var(--dim);flex:none">{{ npDur }}</span>
+  </div>
+  {{ eq }}
+  <span onClick="{{ toggleExpand }}" style-hover="color:var(--pink)" style="cursor:pointer;color:var(--mut);font-size:12px;user-select:none;flex:none">{{ expandLabel }}</span>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;palette&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:[&quot;#cdbcf5&quot;,&quot;#f5bcd4&quot;],&quot;options&quot;:[[&quot;#cdbcf5&quot;,&quot;#f5bcd4&quot;],[&quot;#a8c8f0&quot;,&quot;#bde8d8&quot;],[&quot;#f5cba8&quot;,&quot;#f5bcd4&quot;],[&quot;#c3f0d8&quot;,&quot;#cdbcf5&quot;]],&quot;tsType&quot;:&quot;string[]&quot;,&quot;section&quot;:&quot;主题&quot;},&quot;defaultTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;dark&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;tsType&quot;:&quot;\&quot;dark\&quot; | \&quot;light\&quot;&quot;,&quot;section&quot;:&quot;主题&quot;},&quot;defaultPage&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;library&quot;,&quot;options&quot;:[&quot;online&quot;,&quot;discover&quot;,&quot;library&quot;,&quot;transfer&quot;,&quot;settings&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;行为&quot;}}">
+class Component extends DCLogic {
+  covers = {lav:'repeating-linear-gradient(45deg,#342a4d 0 10px,#2d2443 10px 20px)',rose:'repeating-linear-gradient(45deg,#3a2637 0 10px,#312132 10px 20px)',blue:'repeating-linear-gradient(45deg,#243044 0 10px,#1f2939 10px 20px)',plum:'repeating-linear-gradient(45deg,#4a3960 0 10px,#3e3052 10px 20px)'};
+  inks = {lav:'#9d8fc7',rose:'#b08aa4',blue:'#7f93b0',plum:'#a595cc'};
+  lib = [
+    {rj:'RJ01102334',title:'雨夜图书馆的耳语整理',cv:'结月るい',dur:'2:14:06',sub:true,fav:true,c:'plum'},
+    {rj:'RJ01098120',title:'星见站的晚安广播 vol.3',cv:'花宮ことね',dur:'1:48:22',sub:false,fav:false,c:'rose'},
+    {rj:'RJ01121457',title:'耳かきサロン·月读 特别篇',cv:'小鳥遊いろ',dur:'3:02:51',sub:true,fav:true,c:'blue'},
+    {rj:'RJ01087745',title:'白噪音实验室·细雨采样集',cv:'环境音',dur:'4:20:00',sub:false,fav:false,c:'lav'},
+    {rj:'RJ01134002',title:'添い寝アパート 402 号室',cv:'綿雲ふわり',dur:'2:36:14',sub:true,fav:false,c:'rose'},
+    {rj:'RJ01079913',title:'深夜披萨店打工日志',cv:'夜森ちか',dur:'1:12:40',sub:false,fav:false,c:'blue'},
+    {rj:'RJ01140550',title:'森林温泉旅馆的夜风',cv:'湯上あんず',dur:'2:58:03',sub:true,fav:false,c:'lav'},
+    {rj:'RJ01115821',title:'魔女之家的药草讲座',cv:'苺宮らて',dur:'1:55:10',sub:false,fav:false,c:'rose'},
+    {rj:'RJ01129467',title:'海边民宿的浪声记录',cv:'环境音',dur:'5:12:00',sub:false,fav:false,c:'blue'},
+    {rj:'RJ01136118',title:'吸血鬼小姐的耳畔童话',cv:'宵咲ゆめ',dur:'2:05:33',sub:true,fav:true,c:'plum'},
+    {rj:'RJ01141902',title:'午夜自习室·翻书与笔声',cv:'环境音',dur:'3:30:00',sub:false,fav:false,c:'lav'},
+    {rj:'RJ01148876',title:'猫耳女仆的休日按摩店',cv:'三日月ねる',dur:'1:40:18',sub:false,fav:false,c:'rose'}
+  ];
+  disc = [
+    {rj:'RJ01150233',title:'梅雨季的伞下密语 · 环绕耳语特化',cv:'雨宮しずく',circle:'雨音シアター',date:'2026-06-30',tags:['耳语','环绕声','催眠'],rate:4.83,dl:12408,price:1320,reviews:214,trN:5,sub:true,owned:false,gb:1.24,c:'plum'},
+    {rj:'RJ01151340',title:'铃兰花店的雨后打烊时光',cv:'花柊みこと',circle:'すずらん堂',date:'2026-06-28',tags:['店铺','治愈','雨声'],rate:4.66,dl:6208,price:990,reviews:98,trN:4,sub:false,owned:false,gb:0.92,c:'rose'},
+    {rj:'RJ01147105',title:'睡前朗读·银河铁道之夜(全文)',cv:'篝火ほたる',circle:'夜想図書委員会',date:'2026-06-25',tags:['朗读','睡眠导入'],rate:4.92,dl:21377,price:1100,reviews:466,trN:8,sub:true,owned:false,gb:0.66,c:'blue'},
+    {rj:'RJ01145990',title:'占卜屋的低语塔罗夜谈',cv:'宵闇まどか',circle:'月詠み茶会',date:'2026-06-21',tags:['占卜','低语'],rate:4.55,dl:5940,price:880,reviews:73,trN:3,sub:false,owned:true,gb:0.81,c:'lav'},
+    {rj:'RJ01144212',title:'耳元カウントダウン·入眠引导 60 分',cv:'眠目さやか',circle:'雨音シアター',date:'2026-06-18',tags:['催眠','计数','低音'],rate:4.68,dl:9315,price:770,reviews:151,trN:2,sub:false,owned:false,gb:0.45,c:'rose'},
+    {rj:'RJ01148876',title:'猫耳女仆的休日按摩店',cv:'三日月ねる',circle:'ねこみみ本舗',date:'2026-06-27',tags:['按摩','店铺','治愈'],rate:4.71,dl:8022,price:1210,reviews:187,trN:6,sub:false,owned:true,gb:0.68,c:'blue'},
+    {rj:'RJ01152001',title:'ふたご座喫茶的双声道接待',cv:'双葉ゆらら',circle:'ふたご座喫茶',date:'2026-07-02',tags:['店铺','双声道','耳语'],rate:4.77,dl:10233,price:1430,reviews:242,trN:6,sub:true,owned:false,gb:2.10,c:'plum'},
+    {rj:'RJ01153477',title:'午睡保健室·体温与秒针',cv:'白岬ねむ',circle:'ほけんしつ計画',date:'2026-07-05',tags:['治愈','睡眠导入','环境音'],rate:4.61,dl:4488,price:660,reviews:57,trN:3,sub:false,owned:false,gb:0.52,c:'lav'},
+    {rj:'RJ01154120',title:'雷雨夜的顶楼温室散步',cv:'青時雨まち',circle:'雨音シアター',date:'2026-07-08',tags:['雨声','散步','低语'],rate:4.85,dl:15660,price:1210,reviews:301,trN:5,sub:true,owned:false,gb:1.05,c:'blue'}
+  ];
+  tracks = [{n:'01',name:'开场问候与雨声调音',d:'08:12'},{n:'02',name:'书页整理 · 左耳侧耳语',d:'1:04:52'},{n:'03',name:'羽毛掸子与耳畔吐息',d:'32:40'},{n:'04',name:'闭馆广播 · 睡眠导入',d:'28:22'}];
+  state = {
+    page: this.props.defaultPage ?? 'library',
+    theme: this.props.defaultTheme ?? 'dark',
+    playing: true, expanded: false, libTab: 'all', query: '',
+    flt: {tags:'', circle:'', va:'', subOnly:false, order:'dl', sort:'desc', count:24},
+    showFilters: false, showTools: false, outputDir: '', dlScope: 'page', reviewOpen: false, detailRJ: '', discPage: 1,
+    onlineSort: 'dl', onlineSub: false, onlinePage: 1,
+    sel: {}, queued: {RJ01150233:1, RJ01147105:1},
+    nowRJ: 'RJ01102334', cur: 1, pos: 38,
+    tasks: [
+      {id:'RJ01150233',title:'梅雨季的伞下密语 · 环绕耳语特化',size:'1.24 GB',p:62,speed:'4.2 MB/s',st:'run',c:'plum'},
+      {id:'RJ01147105',title:'睡前朗读·银河铁道之夜(全文)',size:'680 MB',p:31,speed:'3.8 MB/s',st:'run',c:'blue'},
+      {id:'RJ01152001',title:'ふたご座喫茶的双声道接待',size:'2.10 GB',p:0,speed:'—',st:'wait',c:'rose'}
+    ],
+    done: [
+      {title:'猫耳女仆的休日按摩店',t:'今天 09:12',sub:'字幕已匹配',ok:true},
+      {title:'森林温泉旅馆的夜风',t:'昨天 23:40',sub:'字幕已匹配',ok:true},
+      {title:'吸血鬼小姐的耳畔童话',t:'昨天 22:05',sub:'无匹配字幕',ok:false}
+    ],
+    set: {concur:3,autoSub:true,notify:false,unzip:true,mirror:'asmr.one',stickers:true,path:'/Volumes/ASMR/Library'}
+  };
+  componentDidMount() {
+    this.applyTheme();
+    this.timer = setInterval(() => {
+      this.setState(s => ({
+        tasks: s.tasks.map(t => t.st === 'run' ? (t.p + Math.random()*2.2 >= 100 ? {...t,p:100,st:'done',speed:'—'} : {...t,p:t.p + Math.random()*2.2}) : t),
+        pos: s.playing ? Math.min(100, s.pos + 0.12) : s.pos
+      }));
+    }, 900);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  componentDidUpdate() { this.applyTheme(); }
+  applyTheme() {
+    document.body.dataset.theme = this.state.theme;
+    const pal = this.props.palette ?? ['#cdbcf5','#f5bcd4'];
+    document.body.style.setProperty('--lav', pal[0]);
+    document.body.style.setProperty('--pink', pal[1] ?? pal[0]);
+  }
+  parseDur(d) { const p = d.split(':').map(Number); return p.length === 3 ? p[0]*3600+p[1]*60+p[2] : p[0]*60+p[1]; }
+  fmt(sec) { sec = Math.floor(sec); const h = Math.floor(sec/3600), m = Math.floor(sec%3600/60), s = sec%60, pd = n => String(n).padStart(2,'0'); return h ? h+':'+pd(m)+':'+pd(s) : m+':'+pd(s); }
+  flip(k) { this.setState(s => ({set:{...s.set,[k]:!s.set[k]}})); }
+  splitTags(str) { return str.split(/[,，]/).map(t => t.trim()).filter(Boolean); }
+  setFlt(patch) { this.setState(s => ({flt:{...s.flt,...patch}, discPage:1})); }
+  discQuery() {
+    const s = this.state, q = s.query.trim().toLowerCase(), f = s.flt, legacy = s.query.includes('$');
+    const tags = this.splitTags(f.tags);
+    let list = this.disc.filter(w => {
+      if (q && !legacy && !(w.title+w.rj+w.cv+w.circle+w.tags.join('')).toLowerCase().includes(q)) return false;
+      if (legacy) return true;
+      if (tags.length && !tags.some(t => w.tags.some(x => x.includes(t)))) return false;
+      if (f.circle && !w.circle.includes(f.circle.trim())) return false;
+      if (f.va && !w.cv.includes(f.va.trim())) return false;
+      if (f.subOnly && !w.sub) return false;
+      return true;
+    });
+    const dir = f.sort === 'asc' ? 1 : -1;
+    const val = w => f.order === 'release' ? w.date : w[f.order];
+    list = [...list].sort((a,b) => (val(a) > val(b) ? 1 : val(a) < val(b) ? -1 : 0) * dir);
+    return {list, legacy, fltTagList: tags};
+  }
+  exportResults(fmt) {
+    const {list} = this.discQuery();
+    const data = fmt === 'json'
+      ? JSON.stringify(list.map(w => ({rj:w.rj,title:w.title,circle:w.circle,cv:w.cv,date:w.date,rate:w.rate,dl:w.dl,tags:w.tags})), null, 2)
+      : 'rj,title,circle,cv,date,rate,dl\n' + list.map(w => [w.rj,'"'+w.title+'"',w.circle,w.cv,w.date,w.rate,w.dl].join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([data], {type: fmt === 'json' ? 'application/json' : 'text/csv'}));
+    a.download = 'discover_export.' + fmt; a.click(); URL.revokeObjectURL(a.href);
+  }
+  enqueue(list, clearAll) {
+    this.setState(s => {
+      const queued = {...s.queued}, tasks = [...s.tasks], sel = {...s.sel};
+      list.forEach(w => { if (!queued[w.rj] && !w.owned) { queued[w.rj] = 1; delete sel[w.rj]; tasks.unshift({id:w.rj,title:w.title,size:w.gb.toFixed(2)+' GB',p:0,speed:'4.0 MB/s',st:'run',c:w.c}); } });
+      return {queued, tasks, sel: clearAll ? {} : sel};
+    });
+  }
+  renderVals() {
+    const s = this.state, S = s.set, q = s.query.trim().toLowerCase();
+    const now = this.lib.find(w => w.rj === s.nowRJ) || this.disc.find(w => w.rj === s.nowRJ) || this.lib[0];
+    const tr = this.tracks[s.cur];
+    const durSec = this.parseDur(tr.d);
+    const stickOn = S.stickers;
+    const stick = deg => stickOn ? {stBg:'var(--pink)',stColor:'var(--pinkInk)',stRot:'rotate('+deg+'deg)'} : {stBg:'rgba(150,130,190,.18)',stColor:'var(--mut)',stRot:'none'};
+    const chip = {run:{bg:'rgba(205,188,245,.16)',color:'var(--lav)',label:'下载中'},pause:{bg:'rgba(150,130,190,.14)',color:'var(--mut)',label:'已暂停'},wait:{bg:'rgba(150,130,190,.14)',color:'var(--dim)',label:'排队中'},done:{bg:'rgba(140,200,160,.16)',color:'var(--ok)',label:'已完成'}};
+    const navDef = [['online','在线','おんらいん'],['discover','发现','たんさく'],['library','媒体库','らいぶらり'],['transfer','传输','てんそう'],['settings','设置','せってい']];
+    const unfinished = s.tasks.filter(t => t.st !== 'done').length;
+    const libFiltered = this.lib.filter(w => s.libTab === 'sub' ? w.sub : s.libTab === 'fav' ? w.fav : true);
+    const selWorks = this.disc.filter(w => s.sel[w.rj]);
+    const selGb = selWorks.reduce((a,w) => a + w.gb, 0);
+    const {list: discList, legacy, fltTagList} = this.discQuery();
+    const f = s.flt;
+    const total = discList.length ? discList.length * 57 : 0;
+    const pages = Math.max(1, Math.ceil(total / f.count));
+    const dpage = Math.min(s.discPage, pages);
+    const pageList = discList.slice(0, f.count);
+    const det = this.disc.find(w => w.rj === s.detailRJ);
+    const chipOn = {bg:'var(--navOn)', border:'var(--lineStrong)', color:'var(--ink)'};
+    const chipOff = {bg:'transparent', border:'var(--line)', color:'var(--mut)'};
+    const orderNames = {dl:'下载量', release:'发售时间', rate:'评分', reviews:'评论数', price:'价格'};
+    const activeChips = [];
+    if (s.query.trim()) activeChips.push({label:(legacy?'语法: ':'关键词: ')+s.query.trim(), remove:() => this.setState({query:'', discPage:1})});
+    if (!legacy) {
+      fltTagList.forEach(t => activeChips.push({label:'标签: '+t, remove:() => this.setFlt({tags:fltTagList.filter(x => x !== t).join(', ')})}));
+      if (f.circle) activeChips.push({label:'社团: '+f.circle, remove:() => this.setFlt({circle:''})});
+      if (f.va) activeChips.push({label:'声优: '+f.va, remove:() => this.setFlt({va:''})});
+      if (f.subOnly) activeChips.push({label:'仅字幕作品', remove:() => this.setFlt({subOnly:false})});
+      if (f.order !== 'dl') activeChips.push({label:'排序: '+orderNames[f.order], remove:() => this.setFlt({order:'dl'})});
+      if (f.count !== 24) activeChips.push({label:'每页: '+f.count, remove:() => this.setFlt({count:24})});
+    }
+    const countBy = fn => { const m = {}; discList.forEach(w => fn(w).forEach(v => m[v] = (m[v]||0)+1)); return Object.entries(m).sort((a,b) => b[1]-a[1]).slice(0,8); };
+    let oList = this.disc.filter(w => !s.onlineSub || w.sub);
+    oList = [...oList].sort((a,b) => s.onlineSort === 'release' ? (a.date < b.date ? 1 : -1) : b[s.onlineSort] - a[s.onlineSort]);
+    const oTotal = oList.length * 126;
+    const opages = Math.max(1, Math.ceil(oTotal / 24));
+    const opage = Math.min(s.onlinePage, opages);
+    const reviewList = s.dlScope === 'selected' ? selWorks : pageList.filter(w => !w.owned && !s.queued[w.rj]);
+    const reviewGb = reviewList.reduce((a,w) => a + w.gb, 0);
+    const reviewRows = [
+      {k:'下载范围', v: s.dlScope === 'selected' ? '手动勾选的 '+reviewList.length+' 件作品' : '本页可下载的 '+reviewList.length+' 件作品'},
+      {k:'合计大小', v: '约 '+reviewGb.toFixed(2)+' GB · 预计 '+Math.max(1,Math.round(reviewGb*3))+' 分钟'},
+      {k:'输出目录', v: s.outputDir.trim() || S.path + ' (默认)'}
+    ];
+    return {
+      themeIcon: s.theme === 'dark' ? '☾' : '☀',
+      toggleTheme: () => this.setState({theme: s.theme === 'dark' ? 'light' : 'dark'}),
+      navItems: navDef.map(([key,label,kana]) => {
+        const on = s.page === key;
+        return {key,label,kana, go:() => this.setState({page:key}), bg:on?'var(--navOn)':'transparent', color:on?'var(--ink)':'var(--mut)', weight:on?700:500, kanaColor:on?'var(--lav)':'var(--dim)', badge:key==='transfer'&&unfinished>0, badgeN:unfinished};
+      }),
+      isLib: s.page==='library', isDisc: s.page==='discover', isTrans: s.page==='transfer', isSet: s.page==='settings', isOnline: s.page==='online',
+      onlineSorts: [['dl','最热'],['release','最新'],['rate','高分']].map(([id,label]) => ({label, pick:() => this.setState({onlineSort:id, onlinePage:1}), ...(s.onlineSort===id?chipOn:chipOff)})),
+      onlineSubFlip: () => this.setState({onlineSub:!s.onlineSub, onlinePage:1}),
+      onlineSubBg: s.onlineSub?'var(--navOn)':'transparent', onlineSubBorder: s.onlineSub?'var(--lineStrong)':'var(--line)', onlineSubColor: s.onlineSub?'var(--ink)':'var(--mut)', onlineSubMark: s.onlineSub?'✓':'',
+      onlineStat: oTotal.toLocaleString()+' 部在线作品 · 即点即听',
+      onlineCards: oList.map((w,i) => {
+        const playingNow = s.nowRJ === w.rj, queued = s.queued[w.rj];
+        return {rj:w.rj, title:w.title, cv:w.cv, circle:w.circle, sub:w.sub,
+          rate:w.rate.toFixed(2), dl:w.dl.toLocaleString(),
+          cover:this.covers[w.c], ink:this.inks[w.c], ...stick(i%2?-3:3),
+          border: playingNow?'var(--lineStrong)':'var(--line)',
+          pIcon: playingNow && s.playing ? '❚❚' : '▶',
+          pBg: playingNow ? 'linear-gradient(135deg,var(--lav),var(--pink))' : 'rgba(16,10,26,.72)',
+          pInk: playingNow ? 'var(--accentInk)' : 'var(--lav)',
+          play: () => playingNow ? this.setState({playing:!s.playing}) : this.setState({nowRJ:w.rj, cur:0, pos:0, playing:true}),
+          actLabel: w.owned?'已在库':queued?'已入队 ✓':'↓ 下载', actCursor: w.owned||queued?'default':'pointer',
+          actBorder: queued?'var(--lineStrong)':'var(--line)', actColor: w.owned?'var(--dim)':queued?'var(--ink)':'var(--lav)',
+          act: e => { e.stopPropagation(); if (!w.owned && !queued) this.enqueue([w], false); }};
+      }),
+      onlinePageLabel: '第 '+opage+' / '+opages.toLocaleString()+' 页',
+      onlinePrev: () => this.setState({onlinePage:Math.max(1,opage-1)}),
+      onlineNext: () => this.setState({onlinePage:Math.min(opages,opage+1)}),
+      onlinePrevColor: opage <= 1 ? 'var(--dim)' : 'var(--ink)', onlineNextColor: opage >= opages ? 'var(--dim)' : 'var(--ink)',
+      np: {title:now.title, cv:now.cv, rj:now.rj, cover:this.covers[now.c], ink:this.inks[now.c]},
+      npStream: !this.lib.some(w => w.rj === s.nowRJ),
+      streamDlLabel: s.queued[s.nowRJ] ? '已入队 ✓' : '↓ 下载本作',
+      streamDlCursor: s.queued[s.nowRJ] ? 'default' : 'pointer',
+      streamDl: () => { const w = this.disc.find(x => x.rj === s.nowRJ); if (w && !w.owned && !s.queued[w.rj]) this.enqueue([w], false); },
+      trackLabel: 'Track '+tr.n, npDur: tr.d,
+      posPct: Math.min(100,s.pos).toFixed(1)+'%', posPctLabel: Math.round(s.pos)+'%',
+      posTime: this.fmt(durSec*s.pos/100),
+      playing: s.playing, playIcon: s.playing ? '❚❚' : '▶',
+      playState: s.playing ? 'いま再生中…' : '一時停止中',
+      togglePlay: () => this.setState({playing:!s.playing}),
+      heroPlay: () => this.setState({playing:true}),
+      heroBtn: s.playing ? '❚❚ 暂停' : '▶ 继续播放',
+      prevTrack: () => this.setState({cur:Math.max(0,s.cur-1),pos:0}),
+      nextTrack: () => this.setState({cur:Math.min(this.tracks.length-1,s.cur+1),pos:0}),
+      expanded: s.expanded, expandLabel: s.expanded ? '收起 ↓' : '展开 ↑',
+      toggleExpand: () => this.setState({expanded:!s.expanded}),
+      collapse: () => this.setState({expanded:false}),
+      trackRows: this.tracks.map((t,i) => {
+        const on = i === s.cur;
+        return {...t, icon:on?'♪':t.n, bg:on?'var(--navOn)':'transparent', color:on?'var(--ink)':'var(--mut)', numColor:on?'var(--pink)':'var(--dim)', weight:on?700:500, pick:() => this.setState({cur:i,pos:0,playing:true})};
+      }),
+      libTabs: [['all','全部',this.lib.length],['sub','有字幕',this.lib.filter(w=>w.sub).length],['fav','收藏 ♡',this.lib.filter(w=>w.fav).length]].map(([id,name,n]) => {
+        const on = s.libTab === id;
+        return {label:name+' '+n, pick:() => this.setState({libTab:id}), bg:on?'var(--navOn)':'transparent', border:on?'var(--lineStrong)':'var(--line)', color:on?'var(--ink)':'var(--mut)'};
+      }),
+      libStat: libFiltered.length+' 部 · 28.4 GB',
+      libWorks: libFiltered.map((w,i) => ({...w, cover:this.covers[w.c], ink:this.inks[w.c], now:w.rj===s.nowRJ, ...stick(i%2?-3:3), play:() => this.setState({nowRJ:w.rj,cur:0,pos:2,playing:true})})),
+      query: s.query, onQuery: e => this.setState({query:e.target.value, discPage:1}),
+      modeCondBg: legacy ? 'rgba(150,130,190,.12)' : 'var(--navOn)', modeCondColor: legacy ? 'var(--dim)' : 'var(--lav)',
+      modeDslBg: legacy ? 'var(--pink)' : 'rgba(150,130,190,.12)', modeDslColor: legacy ? 'var(--pinkInk)' : 'var(--dim)',
+      showFilters: s.showFilters, showTools: s.showTools,
+      toggleFilters: () => this.setState({showFilters:!s.showFilters}),
+      toggleTools: () => this.setState({showTools:!s.showTools}),
+      filterBtnBorder: s.showFilters?'var(--lineStrong)':'var(--line)', filterBtnColor: s.showFilters?'var(--ink)':'var(--mut)', filterCaret: s.showFilters?'▴':'▾',
+      toolsBtnBorder: s.showTools?'var(--lineStrong)':'var(--line)', toolsBtnColor: s.showTools?'var(--ink)':'var(--mut)', toolsCaret: s.showTools?'▴':'▾',
+      resetSearch: () => this.setState({query:'', flt:{tags:'',circle:'',va:'',subOnly:false,order:'dl',sort:'desc',count:24}, sel:{}, detailRJ:'', discPage:1, showFilters:false, showTools:false}),
+      noActive: activeChips.length === 0, activeChips,
+      discStat: '共 '+total.toLocaleString()+' 条结果 · 已选 '+selWorks.length+' 件',
+      fltTags: f.tags, onFltTags: e => this.setFlt({tags:e.target.value}),
+      hasTagChips: fltTagList.length > 0,
+      tagChips: fltTagList.map(t => ({name:t, remove:() => this.setFlt({tags:fltTagList.filter(x => x !== t).join(', ')})})),
+      fltCircle: f.circle, onFltCircle: e => this.setFlt({circle:e.target.value}),
+      fltVa: f.va, onFltVa: e => this.setFlt({va:e.target.value}),
+      orderOpts: [['dl','下载量'],['release','发售时间'],['rate','评分'],['reviews','评论数'],['price','价格']].map(([id,label]) => ({label, pick:() => this.setFlt({order:id}), ...(f.order===id?chipOn:chipOff)})),
+      sortOpts: [['desc','降序'],['asc','升序']].map(([id,label]) => ({label, pick:() => this.setFlt({sort:id}), ...(f.sort===id?chipOn:chipOff)})),
+      countOpts: [12,24,48].map(n => ({label:String(n), pick:() => this.setFlt({count:n}), ...(f.count===n?chipOn:chipOff)})),
+      toggleSubOnly: () => this.setFlt({subOnly:!f.subOnly}),
+      subOnlyBg: f.subOnly?'var(--navOn)':'transparent', subOnlyBorder: f.subOnly?'var(--lineStrong)':'var(--line)', subOnlyColor: f.subOnly?'var(--ink)':'var(--mut)', subOnlyMark: f.subOnly?'✓':'',
+      outputDirVal: s.outputDir, onOutputDir: e => this.setState({outputDir:e.target.value}),
+      scopeOpts: [['page','本页 '+pageList.filter(w => !w.owned && !s.queued[w.rj]).length+' 项'],['selected','已选 '+selWorks.length+' 项']].map(([id,label]) => ({label, pick:() => this.setState({dlScope:id}), ...(s.dlScope===id?chipOn:chipOff)})),
+      openReview: () => this.setState({reviewOpen:true}),
+      exportCsv: () => this.exportResults('csv'), exportJson: () => this.exportResults('json'),
+      discRows: pageList.map((w,i) => {
+        const queued = s.queued[w.rj], seld = !!s.sel[w.rj], canSel = !w.owned && !queued, isDet = s.detailRJ === w.rj;
+        return {rj:w.rj, title:w.title, cv:w.cv, circle:w.circle, date:w.date, sub:w.sub, owned:!!w.owned,
+          rate:w.rate.toFixed(2), dl:w.dl.toLocaleString(),
+          cover:this.covers[w.c], ink:this.inks[w.c], ...stick(i%2?2:-2),
+          bg: seld?'var(--navOn)':'var(--card)', border: (isDet||seld)?'var(--lineStrong)':'var(--line)',
+          titleColor: w.owned?'var(--mut)':'var(--ink)', metaColor: w.owned?'var(--dim)':'var(--mut)',
+          open: () => this.setState({detailRJ:w.rj}),
+          play: e => { e.stopPropagation(); this.setState({nowRJ:w.rj, cur:0, pos:0, playing:true, detailRJ:w.rj}); },
+          playLabel: s.nowRJ === w.rj ? '♪ 播放中' : '▶ 试听',
+          playBg: s.nowRJ === w.rj ? 'var(--navOn)' : 'transparent',
+          playBorder: s.nowRJ === w.rj ? 'var(--lineStrong)' : 'var(--line)',
+          playColor: s.nowRJ === w.rj ? 'var(--ink)' : 'var(--mut)',
+          cursor: canSel?'pointer':'default', check: seld?'✓':'', ckBg: seld?'var(--lav)':'transparent', ckBorder: canSel?'var(--lineStrong)':'var(--line)',
+          toggle: e => { e.stopPropagation(); if (canSel) this.setState(st => { const sel = {...st.sel}; sel[w.rj] ? delete sel[w.rj] : sel[w.rj] = 1; return {sel}; }); },
+          tagChips: w.tags.map(t => ({name:t, pick: e => { e.stopPropagation(); this.setFlt({tags:[...new Set([...fltTagList,t])].join(', ')}); }})),
+          actLabel: w.owned?'已拥有':queued?'已入队 ✓':'↓ 下载', actCursor: w.owned||queued?'default':'pointer',
+          actBg: w.owned||queued?'transparent':'var(--navOn)', actBorder: queued?'var(--lineStrong)':'var(--line)',
+          actColor: w.owned?'var(--dim)':queued?'var(--ink)':'var(--lav)',
+          act: e => { e.stopPropagation(); if (!w.owned && !queued) this.enqueue([w], false); }};
+      }),
+      pageLabel: '第 '+dpage+' / '+pages.toLocaleString()+' 页 · 每页 '+f.count+' 条',
+      prevPage: () => this.setState({discPage:Math.max(1,dpage-1)}),
+      nextPage: () => this.setState({discPage:Math.min(pages,dpage+1)}),
+      prevColor: dpage <= 1 ? 'var(--dim)' : 'var(--ink)', nextColor: dpage >= pages ? 'var(--dim)' : 'var(--ink)',
+      facetCards: [
+        {title:'本页标签 · たぐ', tagBg:'var(--pink)', tagInk:'var(--pinkInk)', rot:'rotate(-2deg)',
+          items: countBy(w => w.tags).map(([v,n]) => ({name:'#'+v, n:String(n), pick:() => this.setFlt({tags:[...new Set([...fltTagList,v])].join(', ')})}))},
+        {title:'本页社团 · さーくる', tagBg:'var(--lav)', tagInk:'var(--accentInk)', rot:'rotate(2deg)',
+          items: countBy(w => [w.circle]).map(([v,n]) => ({name:v, n:String(n), pick:() => this.setFlt({circle:v})}))},
+        {title:'本页声优 · こえ', tagBg:'var(--pink)', tagInk:'var(--pinkInk)', rot:'rotate(2deg)',
+          items: countBy(w => [w.cv]).map(([v,n]) => ({name:v, n:String(n), pick:() => this.setFlt({va:v})}))}
+      ],
+      detailOn: !!det, detailOff: !det,
+      det: det ? {rj:det.rj, title:det.title, circle:det.circle, cv:det.cv, cover:this.covers[det.c], ink:this.inks[det.c]} : {},
+      detSub: det ? det.sub : false,
+      detMetrics: det ? [{k:'发售日',v:det.date},{k:'价格',v:'¥'+det.price.toLocaleString()},{k:'评论数',v:String(det.reviews)},{k:'音轨数',v:det.trN+' 轨'}] : [],
+      detTracks: det ? this.tracks.slice(0, Math.min(4, det.trN)).map((t,i) => {
+        const on = s.nowRJ === det.rj && s.cur === i;
+        return {...t, icon:on?'♪':t.n, color:on?'var(--ink)':'var(--mut)', numColor:on?'var(--pink)':'var(--dim)', weight:on?700:500, bg:on?'var(--navOn)':'transparent',
+          pick:() => this.setState({nowRJ:det.rj, cur:i, pos:0, playing:true})};
+      }) : [],
+      detActLabel: det ? (det.owned?'已拥有':s.queued[det.rj]?'已入队 ✓':'↓ 下载当前作品') : '',
+      detActCursor: det && !det.owned && !s.queued[det.rj] ? 'pointer' : 'default',
+      detAct: () => { if (det && !det.owned && !s.queued[det.rj]) this.enqueue([det], false); },
+      reviewOpen: s.reviewOpen,
+      closeReview: () => this.setState({reviewOpen:false}),
+      reviewRows, reviewWarn: reviewList.length >= 4,
+      confirmReview: () => { this.enqueue(reviewList, s.dlScope === 'selected'); this.setState({reviewOpen:false}); },
+      selCount: selWorks.length, showBatch: s.page==='discover' && selWorks.length > 0 && !s.reviewOpen,
+      batchText: '合计约 '+selGb.toFixed(2)+' GB · 预计 '+Math.max(1,Math.round(selGb*3))+' 分钟 · 完成后自动匹配字幕',
+      clearSel: () => this.setState({sel:{}}),
+      enqueueSel: () => this.setState({dlScope:'selected', reviewOpen:true}),
+      queueStat: s.tasks.filter(t=>t.st==='run').length+' 个进行中 · 并发上限 '+S.concur,
+      taskRows: s.tasks.map(t => ({...t, cover:this.covers[t.c], pw:Math.round(t.p)+'%', pct:Math.round(t.p)+'%',
+        chipBg:chip[t.st].bg, chipColor:chip[t.st].color, stLabel:chip[t.st].label,
+        btn: t.st==='run'?'❚❚ 暂停':t.st==='pause'?'▶ 继续':t.st==='wait'?'▶ 开始':'✓',
+        toggle: () => { if (t.st==='done') return; this.setState(st => ({tasks: st.tasks.map(x => x.id===t.id ? {...x, st: x.st==='run'?'pause':'run', speed: x.st==='run'?'—':'4.0 MB/s'} : x)})); }})),
+      syncRows: [
+        {name:'本地媒体库', path:S.path, st:'已同步 · 5 分钟前', chipBg:'rgba(140,200,160,.16)', chipColor:'var(--ok)', hasP:false, pw:'0%'},
+        {name:'NAS · WebDAV', path:'https://nas.local/dav', st:'同步中 · 8/12 文件', chipBg:'rgba(205,188,245,.16)', chipColor:'var(--lav)', hasP:true, pw:'68%'},
+        {name:'手机 · KikoePlay', path:'局域网直连', st:'待连接', chipBg:'rgba(150,130,190,.14)', chipColor:'var(--dim)', hasP:false, pw:'0%'}
+      ],
+      doneRows: s.done.map(d => ({...d, chipBg: d.ok?'rgba(205,188,245,.16)':'rgba(150,130,190,.14)', chipColor: d.ok?'var(--lav)':'var(--dim)'})),
+      concur: S.concur, path: S.path,
+      concurUp: () => this.setState(st => ({set:{...st.set,concur:Math.min(8,st.set.concur+1)}})),
+      concurDown: () => this.setState(st => ({set:{...st.set,concur:Math.max(1,st.set.concur-1)}})),
+      dlToggles: [['autoSub','自动匹配字幕','下载完成后在字幕库中检索并挂载同名字幕'],['notify','完成后系统通知','队列全部完成时发送桌面通知'],['unzip','自动解压压缩包','解压后按曲目重命名并整理目录']].map(([k,label,desc]) => ({label, desc, bg:S[k]?'var(--lav)':'rgba(150,130,190,.3)', j:S[k]?'flex-end':'flex-start', flip:() => this.flip(k)})),
+      appearToggles: [['stickers','贴纸徽章','作品卡片上的手帐风旋转贴纸']].map(([k,label,desc]) => ({label, desc, bg:S[k]?'var(--lav)':'rgba(150,130,190,.3)', j:S[k]?'flex-end':'flex-start', flip:() => this.flip(k)})),
+      mirrors: [['asmr.one','142ms','var(--ok)'],['asmr-100','89ms','var(--ok)'],['asmr-200','超时','var(--pink)']].map(([id,lat,latColor]) => {
+        const on = S.mirror === id;
+        return {id, lat, latColor, pick:() => this.setState(st => ({set:{...st.set,mirror:id}})), bg:on?'var(--navOn)':'transparent', border:on?'var(--lineStrong)':'var(--line)', color:on?'var(--ink)':'var(--mut)'};
+      }),
+      themeOpts: [['dark','夜間モード ☾'],['light','デイモード ☀']].map(([id,label]) => {
+        const on = s.theme === id;
+        return {label, pick:() => this.setState({theme:id}), bg:on?'var(--navOn)':'transparent', border:on?'var(--lineStrong)':'var(--line)', color:on?'var(--ink)':'var(--mut)'};
+      }),
+      eq: React.createElement('div',{style:{display:'flex',alignItems:'flex-end',gap:2.5,height:18,flex:'none'}},
+        [40,75,55,90,45].map((h,i) => React.createElement('span',{key:i,style:{width:3.5,borderRadius:2,background:i%2?'var(--pink)':'var(--lav)',height:h+'%',transformOrigin:'bottom',animation:s.playing?('eqbar '+(1+i*0.17)+'s ease-in-out '+(i*0.11)+'s infinite'):'none',transform:s.playing?undefined:'scaleY(.3)'}})))
+    };
+  }
+}
+</script>
+</body>
+</html>

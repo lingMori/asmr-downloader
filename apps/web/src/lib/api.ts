@@ -162,6 +162,32 @@ export type DiscoverWorkDetail = {
   tracks: TrackNode[];
 };
 
+export type DiscoverWorkListResponse = {
+  items: DiscoverWorkSummary[];
+  page: number;
+  page_size: number;
+  total: number;
+};
+
+export type FeedbackType =
+  | "start-listen"
+  | "listen-5mins"
+  | "listen-15mins"
+  | "listen-30mins"
+  | "listen-60mins"
+  | "listen-30percent";
+
+export type PlaybackProgress = {
+  source_id: string;
+  work_title: string;
+  cover_url: string;
+  track_path: string;
+  track_title: string;
+  position: number;
+  duration: number;
+  updated_at: string;
+};
+
 export type SearchWorkSummary = {
   source_id: string;
   title: string;
@@ -367,6 +393,37 @@ function absolutizeWorkCovers<T extends DiscoverWorkSummary | SearchWorkSummary>
     main_cover_url: work.main_cover_url
       ? toAbsoluteMediaUrl(work.main_cover_url)
       : undefined,
+  };
+}
+
+function absolutizePlaybackProgress(progress: PlaybackProgress): PlaybackProgress {
+  return progress.cover_url
+    ? { ...progress, cover_url: toAbsoluteMediaUrl(progress.cover_url) }
+    : progress;
+}
+
+type DiscoverWorkListQuery = {
+  page?: number;
+  pageSize?: number;
+  subtitle?: boolean;
+};
+
+async function requestDiscoverWorkList(
+  path: string,
+  params?: DiscoverWorkListQuery,
+): Promise<DiscoverWorkListResponse> {
+  const data = await requestData<DiscoverWorkListResponse>(
+    `${path}${buildQueryString({
+      page: params?.page,
+      page_size: params?.pageSize,
+      subtitle: params?.subtitle ? 1 : undefined,
+    })}`,
+  );
+  return {
+    items: Array.isArray(data.items) ? data.items.map(absolutizeWorkCovers) : [],
+    page: data.page ?? 1,
+    page_size: data.page_size ?? 0,
+    total: data.total ?? 0,
   };
 }
 
@@ -680,6 +737,55 @@ export const apiClient = {
           )
         : [],
     };
+  },
+
+  getPopularWorks(params?: DiscoverWorkListQuery): Promise<DiscoverWorkListResponse> {
+    return requestDiscoverWorkList("/discover/popular", params);
+  },
+
+  getRecommendWorks(params?: DiscoverWorkListQuery): Promise<DiscoverWorkListResponse> {
+    return requestDiscoverWorkList("/discover/recommend", params);
+  },
+
+  getWorkNeighbors(
+    sourceId: string,
+    params?: DiscoverWorkListQuery,
+  ): Promise<DiscoverWorkListResponse> {
+    return requestDiscoverWorkList(
+      `/discover/works/${encodeURIComponent(sourceId)}/neighbors`,
+      params,
+    );
+  },
+
+  sendFeedback(sourceId: string, type: FeedbackType): Promise<{ sent: boolean }> {
+    return requestData<{ sent: boolean }>("/discover/feedback", {
+      method: "POST",
+      body: JSON.stringify({ source_id: sourceId, type }),
+    });
+  },
+
+  savePlaybackProgress(progress: PlaybackProgress): Promise<{ saved: boolean }> {
+    return requestData<{ saved: boolean }>("/playback/progress", {
+      method: "PUT",
+      body: JSON.stringify(progress),
+    });
+  },
+
+  async getLatestPlaybackProgress(limit = 10): Promise<{ items: PlaybackProgress[] }> {
+    const data = await requestData<{ items: PlaybackProgress[] }>(
+      `/playback/progress/latest${buildQueryString({ limit })}`,
+    );
+    return {
+      items: Array.isArray(data.items) ? data.items.map(absolutizePlaybackProgress) : [],
+    };
+  },
+
+  /** Rejects with an error when the server has no record (404) for this work. */
+  async getPlaybackProgress(sourceId: string): Promise<PlaybackProgress> {
+    const data = await requestData<PlaybackProgress>(
+      `/playback/progress/${encodeURIComponent(sourceId)}`,
+    );
+    return absolutizePlaybackProgress(data);
   },
 
   async getLibraryWorks(params?: {

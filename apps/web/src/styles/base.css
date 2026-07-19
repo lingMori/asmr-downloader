@@ -10,7 +10,8 @@
   html {
     min-width: 320px;
     min-height: 100%;
-    background: var(--surface-page);
+    background-color: var(--surface-page);
+    background-image: var(--page-gradient);
     color: var(--text-primary);
     font-family: var(--font-sans);
     font-synthesis: none;
@@ -24,7 +25,9 @@
     min-height: 100%;
     margin: 0;
     overflow-x: hidden;
-    background: var(--surface-page);
+    background-color: var(--surface-page);
+    background-image: var(--page-gradient);
+    background-attachment: fixed;
     color: var(--text-primary);
     transition: background-color 160ms ease, color 160ms ease;
   }
@@ -83,19 +86,22 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: var(--surface-inset);
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    border: 2px solid var(--surface-inset);
+    border: 2px solid transparent;
     border-radius: 999px;
     background: var(--border-strong);
+    background-clip: padding-box;
   }
 }
 
 .console-shell {
   min-height: 100dvh;
-  background: var(--surface-page);
+  background-color: var(--surface-page);
+  background-image: var(--page-gradient);
+  background-attachment: fixed;
   color: var(--text-primary);
 }
 

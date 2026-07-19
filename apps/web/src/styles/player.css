@@ -1,6 +1,7 @@
 @layer components {
 .audio-panel-cover {
   overflow: hidden;
+  border: 1.5px solid var(--border-strong);
   border-radius: var(--radius-media);
   background: var(--surface-inset);
 }
@@ -25,24 +26,22 @@
 }
 
 .audio-seek input[type="range"]::-webkit-slider-runnable-track {
-  height: 4px;
+  height: 5px;
   border-radius: 999px;
-  background: linear-gradient(
-    to right,
-    var(--accent) 0 var(--seek-progress),
-    var(--surface-inset) var(--seek-progress) 100%
-  );
+  background:
+    linear-gradient(to right, var(--accent), var(--accent-pink)) 0 0 / var(--seek-progress) 100% no-repeat,
+    var(--surface-inset);
 }
 
 .audio-seek input[type="range"]::-webkit-slider-thumb {
   width: 14px;
   height: 14px;
-  margin-top: -5px;
+  margin-top: -4.5px;
   appearance: none;
   border: 2px solid var(--surface-section);
   border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  background: var(--accent-pink);
+  box-shadow: 0 1px 6px rgb(10 6 18 / 0.35);
 }
 
 .audio-seek input[type="range"]:focus-visible::-webkit-slider-thumb {
@@ -50,15 +49,15 @@
 }
 
 .audio-seek input[type="range"]::-moz-range-track {
-  height: 4px;
+  height: 5px;
   border-radius: 999px;
   background: var(--surface-inset);
 }
 
 .audio-seek input[type="range"]::-moz-range-progress {
-  height: 4px;
+  height: 5px;
   border-radius: 999px;
-  background: var(--accent);
+  background: linear-gradient(to right, var(--accent), var(--accent-pink));
 }
 
 .audio-seek input[type="range"]::-moz-range-thumb {
@@ -66,7 +65,7 @@
   height: 12px;
   border: 2px solid var(--surface-section);
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-pink);
 }
 
 .audio-seek-compact {
@@ -114,6 +113,33 @@
   background: var(--accent);
 }
 
+/* Gradient circular play button with a soft glow. */
+.play-fab {
+  display: inline-flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  color: var(--on-accent);
+  box-shadow:
+    0 0 0 4px rgb(180 150 230 / 0.15),
+    0 8px 24px rgb(160 130 220 / 0.3);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.play-fab:hover:not(:disabled) {
+  transform: scale(1.06);
+}
+
+.play-fab:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .audio-dock-shell {
   position: fixed;
   z-index: 80;
@@ -131,44 +157,146 @@
 
 .audio-dock-bar {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(14rem, 0.7fr) auto;
+  grid-template-columns: auto minmax(9rem, 1fr) auto minmax(14rem, 1fr) auto;
   align-items: center;
-  gap: 0.75rem;
-  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
-  background: color-mix(in srgb, var(--surface-overlay) 90%, transparent);
+  gap: 0.9rem;
+  border-color: var(--border-strong);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface-overlay) 88%, transparent);
   box-shadow: var(--shadow-dock);
-  backdrop-filter: blur(18px) saturate(120%);
-  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
 }
 
 .audio-dock-controls {
   display: flex;
   flex: none;
   align-items: center;
+  gap: 0.5rem;
+}
+
+.audio-dock-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
   gap: 0.35rem;
 }
 
-.audio-dock-panel {
+.audio-player-backdrop {
   position: fixed;
-  right: 0.75rem;
-  bottom: 5.75rem;
-  left: 0.75rem;
-  margin: 0 auto;
-  max-width: 92rem;
-  max-height: calc(100dvh - 7rem);
-  overflow: auto;
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 150ms ease, transform 150ms ease, visibility 150ms step-start;
-  visibility: visible;
+  inset: 0;
+  z-index: 90;
+  display: block;
+  border: 0;
+  background: rgb(10 6 18 / 0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 
-.audio-dock-panel-collapsed {
-  pointer-events: none;
-  opacity: 0;
-  transform: translateY(8px);
-  transition: opacity 120ms ease, transform 120ms ease, visibility 120ms step-end;
-  visibility: hidden;
+.audio-player-expanded {
+  position: fixed;
+  z-index: 95;
+  bottom: 6rem;
+  left: 50%;
+  display: grid;
+  width: min(860px, calc(100vw - 3rem));
+  max-height: calc(100dvh - 8.5rem);
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 1.35rem;
+  overflow: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: 22px;
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-overlay);
+  padding: 1.35rem;
+  transform: translateX(-50%);
+}
+
+.audio-player-close {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-tertiary);
+}
+
+.audio-player-close:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.subtitle-card {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 0.65rem 0.8rem;
+}
+
+.stream-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px dashed rgb(245 188 212 / 0.55);
+  border-radius: var(--radius-pill);
+  padding: 0.05rem 0.55rem;
+  color: var(--accent-pink);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.gradient-pill-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.4rem;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--accent-gradient);
+  padding: 0.45rem 1rem;
+  color: var(--on-accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgb(160 130 220 / 0.25);
+  transition: transform 150ms ease;
+}
+
+.gradient-pill-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.gradient-pill-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.expanded-track-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.75rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  padding: 0.5rem 0.75rem;
+  color: var(--text-secondary);
+  text-align: left;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.expanded-track-row:hover {
+  background: var(--surface-elevated);
+}
+
+.expanded-track-row[data-active="true"] {
+  background: var(--interactive-bg-strong);
+  color: var(--text-primary);
 }
 
 .yoru-floating-subtitle {
@@ -187,23 +315,23 @@
 
 .yoru-floating-subtitle-text {
   max-width: min(48rem, calc(100vw - 2rem));
-  border: 1px solid rgb(255 255 255 / 0.12);
+  border: 1px solid var(--border);
   border-radius: var(--radius-control);
-  background: rgb(21 20 25 / 0.9);
+  background: var(--surface-overlay);
   padding: 0.65rem 0.9rem;
-  color: #f7f2f6;
+  color: var(--text-primary);
   font-size: 0.95rem;
   font-weight: 600;
   line-height: 1.55;
   text-align: center;
-  box-shadow: 0 10px 26px rgb(5 4 7 / 0.24);
+  box-shadow: var(--shadow-dock);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
 @media (max-width: 1023px) {
   .audio-dock-bar {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
   }
 
   .audio-dock-timeline {
@@ -223,7 +351,7 @@
   }
 
   .audio-dock-bar {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     gap: 0.5rem;
     padding: 0.5rem;
   }
@@ -232,16 +360,12 @@
     display: none;
   }
 
-  .audio-dock-controls > button:first-child,
-  .audio-dock-controls > button:nth-child(4) {
-    display: none;
-  }
-
-  .audio-dock-panel {
-    right: 0.5rem;
-    bottom: 5rem;
-    left: 0.5rem;
-    max-height: calc(100dvh - 5.75rem);
+  .audio-player-expanded {
+    bottom: 5.5rem;
+    max-height: calc(100dvh - 7rem);
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    padding: 1rem;
   }
 
   .yoru-floating-subtitle {
@@ -251,6 +375,8 @@
 
 @media (prefers-reduced-transparency: reduce) {
   .audio-dock-bar,
+  .audio-player-expanded,
+  .audio-player-backdrop,
   .yoru-floating-subtitle-text {
     background: var(--surface-overlay);
     backdrop-filter: none;
@@ -259,8 +385,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .audio-dock-panel,
-  .audio-dock-panel-collapsed,
+  .play-fab,
+  .gradient-pill-button,
+  .expanded-track-row,
   .tape-track__fill {
     transition: none;
   }
