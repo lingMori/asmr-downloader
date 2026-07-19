@@ -5,6 +5,9 @@
     "lint": "echo 'TODO: lint'",
     "test:web": "npm --prefix apps/web run test -- --run",
     "build:web": "npm --prefix apps/web run build",
-    "dev:web": "npm --prefix apps/web run dev"
+    "dev:web": "npm --prefix apps/web run dev",
+    "test:yoru": "npm --prefix apps/yoru run test -- --run",
+    "build:yoru": "npm --prefix apps/yoru run build",
+    "dev:yoru": "npm --prefix apps/yoru run dev"
   }
 }

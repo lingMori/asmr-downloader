@@ -1,0 +1,336 @@
+/* ─────────────────────────────────────────────────────────────
+   设置页私有样式(y-set-*):取值照抄原型 dc.html:389-461 内联样式。
+   hover 一律包进 @media (hover:hover);断点 ≤1100 单列 / <768 移动。
+   ───────────────────────────────────────────────────────────── */
+
+@layer components {
+  /* 2 列网格(dc.html:391);≤1100 平板/移动单列(计划 §4) */
+  .y-set-grid {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
+  @media (max-width: 1100px) {
+    .y-set-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* 贴纸 section 卡(dc.html:392) */
+  .y-set-card {
+    position: relative;
+    background: var(--card);
+    border: 1.5px solid var(--line);
+    border-radius: 18px;
+    padding: 18px;
+  }
+  .y-set-card__body {
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .y-set-card__body--tight {
+    gap: 10px;
+  }
+
+  /* 字段行(dc.html:395):窄屏允许控制区换行 */
+  .y-set-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .y-set-row__text {
+    flex: 1 1 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .y-set-row__label {
+    font-weight: 700;
+    font-size: 12.5px;
+  }
+  .y-set-row__desc {
+    font-size: 10.5px;
+    color: var(--dim);
+  }
+
+  /* mono 展示(存储路径,dc.html:404) */
+  .y-set-mono {
+    font: 500 10.5px ui-monospace, monospace;
+    color: var(--dim);
+    background: var(--field);
+    border: 1.5px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 10px;
+    display: inline-block;
+    word-break: break-all;
+  }
+
+  /* 输入框(沿用 dc.html:404 的 field/line/8px 组合) */
+  .y-set-input {
+    width: 100%;
+    background: var(--field);
+    border: 1.5px solid var(--line);
+    border-radius: 8px;
+    padding: 7px 10px;
+    color: var(--ink);
+    font-size: 12px;
+    transition: border-color 0.15s;
+  }
+  .y-set-input:focus {
+    border-color: var(--lineStrong);
+  }
+  .y-set-input::placeholder {
+    color: var(--dim);
+  }
+  .y-set-input:disabled {
+    opacity: 0.6;
+  }
+  .y-set-input--mono {
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+  }
+
+  /* 小型描边胶囊钮(更改…/重新检查,dc.html:405) */
+  .y-set-mini-btn {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--line);
+    background: transparent;
+    color: var(--mut);
+    font-size: 11px;
+    border-radius: 999px;
+    padding: 6px 14px;
+    user-select: none;
+    transition: border-color 0.15s;
+    flex: none;
+  }
+  .y-set-mini-btn:disabled {
+    color: var(--dim);
+    cursor: default;
+  }
+
+  /* 表单块(数据源卡账号/密码) */
+  .y-set-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .y-set-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .y-set-field__label {
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .y-set-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .y-set-inline > .y-set-input {
+    flex: 1 1 200px;
+    width: auto;
+  }
+
+  /* 卡底保存行(有未保存修改时出现) */
+  .y-set-foot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+  .y-set-foot__hint {
+    margin-right: auto;
+    font-size: 10.5px;
+    color: var(--dim);
+  }
+
+  /* 连接状态行(dc.html:426) */
+  .y-set-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    color: var(--mut);
+  }
+  .y-set-status__text {
+    min-width: 0;
+    word-break: break-all;
+  }
+  .y-set-status > .y-set-mini-btn {
+    margin-left: auto;
+  }
+  .y-set-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex: none;
+    background: var(--dim);
+  }
+  .y-set-dot--ok {
+    background: var(--ok);
+    box-shadow: 0 0 6px var(--ok);
+  }
+  .y-set-dot--err {
+    background: var(--pink);
+    box-shadow: 0 0 6px var(--pink);
+  }
+
+  /* 粉色错误条(沿用 y-warn-strip 的 rgba 组合,dc.html 对话框警告条) */
+  .y-set-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    border: 1.5px dashed rgba(245, 188, 212, 0.5);
+    border-radius: 10px;
+    padding: 8px 12px;
+    color: var(--pink);
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .y-set-error > .y-set-mini-btn {
+    margin-left: auto;
+  }
+
+  /* 选项 chip 行(镜像三选,dc.html:420) */
+  .y-set-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* 镜像 chip 内的 mono 小字(dc.html:422 的 lat 位,改放主机名) */
+  .y-set-mirror-host {
+    font: 500 9.5px ui-monospace, monospace;
+    color: var(--dim);
+  }
+
+  /* 主题三选(卡片式 radio) */
+  .y-set-themes {
+    display: flex;
+    gap: 8px;
+  }
+  .y-set-theme-opt {
+    cursor: pointer;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 8px;
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--mut);
+    font-size: 10.5px;
+    user-select: none;
+    transition:
+      border-color 0.15s,
+      background 0.15s;
+  }
+  .y-set-theme-opt .sym {
+    font-size: 15px;
+    line-height: 1.2;
+  }
+  .y-set-theme-opt.is-on {
+    background: var(--navOn);
+    border-color: var(--lineStrong);
+    color: var(--ink);
+  }
+
+  /* palette 双色色块 */
+  .y-set-swatches {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .y-set-swatch {
+    cursor: pointer;
+    width: 40px;
+    height: 28px;
+    border-radius: 8px;
+    border: 2px solid var(--line);
+    padding: 0;
+    transition:
+      border-color 0.15s,
+      box-shadow 0.15s;
+  }
+  .y-set-swatch.is-on {
+    border-color: var(--lav);
+    box-shadow: var(--shadow-playring);
+  }
+
+  /* 关于卡 */
+  .y-set-about-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .y-set-about-name {
+    font-weight: 900;
+    font-size: 15px;
+  }
+  .y-set-about-desc {
+    font-size: 11.5px;
+    color: var(--mut);
+  }
+  .y-set-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+  }
+
+  /* 加载骨架卡 */
+  .y-set-skel {
+    height: 190px;
+    border-radius: 18px;
+  }
+
+  /* 整页加载失败条 */
+  .y-set-load-error {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+}
+
+@media (hover: hover) {
+  .y-set-mini-btn:hover:not(:disabled) {
+    border-color: var(--lineStrong);
+  }
+  .y-set-theme-opt:hover {
+    border-color: var(--lineStrong);
+  }
+  .y-set-swatch:hover {
+    border-color: var(--lineStrong);
+  }
+}
+
+/* ── 移动形态(<768px) ── */
+@media (max-width: 767px) {
+  .y-set-grid {
+    gap: 14px;
+  }
+  .y-set-card {
+    padding: 16px 14px;
+  }
+  .y-set-themes {
+    flex-wrap: wrap;
+  }
+  .y-set-theme-opt {
+    flex: 1 1 30%;
+  }
+}

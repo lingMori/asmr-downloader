@@ -1,0 +1,88 @@
+/* ─────────────────────────────────────────────────────────────
+   YORU base:reset、字体、背景渐变、滚动条、焦点态、全局动效
+   ───────────────────────────────────────────────────────────── */
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: "Zen Maru Gothic", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 13.5px;
+    color: var(--ink);
+    background: linear-gradient(160deg, var(--bg1) 0%, var(--bg2) 55%, var(--bg3) 100%);
+    background-attachment: fixed;
+  }
+
+  a {
+    color: var(--lav);
+    text-decoration: none;
+  }
+  @media (hover: hover) {
+    a:hover {
+      color: var(--pink);
+    }
+  }
+
+  input {
+    font-family: inherit;
+  }
+
+  /* 定制滚动条(10px,胶囊 thumb) */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(150, 130, 190, 0.25);
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* 键盘可达性(原型缺失,补齐) */
+  :focus-visible {
+    outline: 2px solid var(--lav);
+    outline-offset: 2px;
+  }
+
+  /* EQ 五柱动效 */
+  @keyframes eqbar {
+    0%,
+    100% {
+      transform: scaleY(0.3);
+    }
+    50% {
+      transform: scaleY(1);
+    }
+  }
+
+  /* 骨架屏呼吸 */
+  @keyframes y-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  /* 贴纸关闭态:不旋转、去色(原型 renderVals stick() 的去色方案) */
+  [data-stickers="false"] .y-sticker {
+    transform: none;
+    background: rgba(150, 130, 190, 0.18);
+    color: var(--mut);
+  }
+}

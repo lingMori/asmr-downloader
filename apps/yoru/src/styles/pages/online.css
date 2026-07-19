@@ -1,0 +1,222 @@
+/* ─────────────────────────────────────────────────────────────
+   在线曲库 /online 页面私有样式(y-onl-*)
+   取值照抄原型 dc.html 在线屏:页头 283-293 / 卡片 296-311 / 分页 314-318;
+   在播渐变圆钮见 renderVals dc.html:722-723;
+   rgba(16,10,26,.7/.72) 出处 dc.html:302-303(圆钮底/评分胶囊底)。
+   ───────────────────────────────────────────────────────────── */
+
+/* ── 页头 aside:排序 chips + 仅字幕 + 统计(dc.html:287-293) ── */
+.y-onl-sorts {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.y-onl-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.y-onl-filter__label {
+  cursor: pointer;
+  padding: 4px 0;
+  font-size: 11px;
+  color: var(--mut);
+  user-select: none;
+}
+.y-onl-stat {
+  font-size: 11.5px;
+  color: var(--mut);
+}
+
+/* ── 网格(dc.html:295;移动 2 列 minmax(150px,1fr) 见重构计划 §4) ── */
+.y-onl-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  gap: 16px;
+  transition: opacity 0.15s;
+}
+/* 翻页/切条件时保留上一页数据(react-query placeholderData),降透明度示意加载 */
+.y-onl-grid.is-stale {
+  opacity: 0.55;
+}
+.y-onl-skeleton {
+  aspect-ratio: 4 / 3;
+}
+
+/* ── 卡片(dc.html:297;hover 上浮见下方 hover 媒体查询) ── */
+.y-onl-card {
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+/* 「字幕あり」贴纸(dc.html:299;旋转角由 Sticker 内联变量控制) */
+.y-onl-card__sub {
+  right: 6px;
+}
+
+/* 4:3 封面(dc.html:301;在播作品边框 lineStrong,renderVals:720) */
+.y-onl-cover {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  overflow: hidden;
+}
+.y-onl-cover__img,
+.y-onl-cover__ph {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* works/status 徽章贴封面左上(复用共享 .y-status-badge,加毛玻璃底保证图上可读) */
+.y-onl-cover__status {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(16, 10, 26, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* 评分胶囊(dc.html:303 左下毛玻璃) */
+.y-onl-cover__rate {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  background: rgba(16, 10, 26, 0.7);
+  color: var(--lav);
+  font: 600 9px ui-monospace, monospace;
+  padding: 2px 8px;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* 右下圆形播放钮(dc.html:302;在播渐变底 renderVals:722-723) */
+.y-onl-cover__play {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(16, 10, 26, 0.72);
+  color: var(--lav);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  box-shadow: var(--shadow-thumb);
+  user-select: none;
+}
+.y-onl-cover__play.is-on {
+  background: linear-gradient(135deg, var(--lav), var(--pink));
+  color: var(--accentInk);
+}
+
+/* 音轨详情拉取中:整罩压暗 + 中心 spinner */
+.y-onl-cover__loading {
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 10, 26, 0.45);
+}
+.y-onl-cover__loading::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: 50%;
+  border: 2.5px solid var(--lineStrong);
+  border-top-color: var(--lav);
+  animation: y-onl-spin 0.8s linear infinite;
+}
+@keyframes y-onl-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 标题两行截断(dc.html:305) */
+.y-onl-card__title {
+  margin-top: 7px;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+/* CV · 社团单行截断(dc.html:306) */
+.y-onl-card__meta {
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: var(--mut);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* DL mono + 右侧下载钮(dc.html:307-309) */
+.y-onl-card__foot {
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.y-onl-card__dl {
+  font: 500 9.5px ui-monospace, monospace;
+  color: var(--dim);
+}
+.y-onl-card__act {
+  margin-left: auto;
+  display: inline-flex;
+}
+
+/* ── 错误条(虚线提示条范式,dc.html:349) ── */
+.y-onl-error {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  padding: 10px 14px;
+  color: var(--mut);
+  font-size: 11.5px;
+}
+.y-onl-error__retry {
+  margin-left: auto;
+}
+
+.y-onl-empty {
+  margin-top: 14px;
+}
+.y-onl-pagination {
+  margin-top: 16px;
+}
+
+/* hover 仅精确指针(dc.html style-hover 语义) */
+@media (hover: hover) {
+  .y-onl-card:hover {
+    transform: translateY(-3px);
+  }
+  .y-onl-filter__label:hover {
+    color: var(--ink);
+  }
+}
+
+/* 移动形态(<768):2 列网格 */
+@media (max-width: 767px) {
+  .y-onl-grid {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+    gap: 12px;
+  }
+}

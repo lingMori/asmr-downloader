@@ -1,0 +1,437 @@
+/* ─────────────────────────────────────────────────────────────
+   传输中心页面私有样式(仅 /transfer 使用,类名 y-tr-*)
+   布局与任务行照抄原型 dc.html:324-386;状态 chip 配色 dc.html:664。
+   hover 一律包 @media (hover:hover);断点 <768 移动 / ≤1100 单列(§4)。
+   ───────────────────────────────────────────────────────────── */
+
+/* 布局:桌面 1.55fr/1fr 双栏(dc.html:326) */
+.y-tr-grid {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.y-tr-side {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+/* 分区卡(dc.html:327/353/370;18px 圆角照抄 327) */
+.y-tr-card {
+  position: relative; /* Sticker section 角标定位锚点 */
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: 18px;
+  padding: 18px;
+}
+.y-tr-card--queue {
+  padding: 18px 18px 14px;
+}
+
+/* 卡头:h2 + 右侧计数 chips(dc.html:329-332) */
+.y-tr-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 4px 0 12px;
+  flex-wrap: wrap;
+}
+.y-tr-title {
+  margin: 0;
+  font-weight: 900;
+  font-size: 15px;
+}
+.y-tr-stats {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+/* 状态计数 chip(纯展示;沿用 dc.html:664 chip 公式) */
+.y-tr-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  border: 1.5px solid var(--line);
+  color: var(--mut);
+  font-size: 10px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.y-tr-stat > b {
+  font: 700 10px ui-monospace, monospace;
+  color: var(--lav);
+}
+.y-tr-stat--ok > b {
+  color: var(--ok);
+}
+.y-tr-stat--bad > b {
+  color: var(--pink);
+}
+
+/* ── 任务行(dc.html:332-348) ── */
+.y-tr-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.y-tr-task {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--field);
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.y-tr-task__cover {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  flex: none;
+}
+.y-tr-task__main {
+  flex: 1;
+  min-width: 0;
+}
+.y-tr-task__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.y-tr-task__rj {
+  font: 700 9.5px ui-monospace, monospace;
+  color: var(--lav);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.y-tr-task__title {
+  margin-top: 2px;
+  font-weight: 700;
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.y-tr-task__bar {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.y-tr-task__progress {
+  flex: 1;
+}
+.y-tr-task__meta {
+  font: 500 10px ui-monospace, monospace;
+  color: var(--mut);
+  flex: none;
+  max-width: 55%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 失败行 message 粉色小字 */
+.y-tr-task__meta--fail {
+  color: var(--pink);
+}
+.y-tr-task__actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+/* 状态 chip(dc.html:664;failed 粉色按同公式推导) */
+.y-tr-chip {
+  font-weight: 700;
+  font-size: 8.5px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex: none;
+}
+.y-tr-chip--lav {
+  background: rgba(205, 188, 245, 0.16);
+  color: var(--lav);
+}
+.y-tr-chip--ok {
+  background: rgba(140, 200, 160, 0.16);
+  color: var(--ok);
+}
+.y-tr-chip--pink {
+  background: rgba(245, 188, 212, 0.16);
+  color: var(--pink);
+}
+.y-tr-chip--mut {
+  background: rgba(150, 130, 190, 0.14);
+  color: var(--mut);
+}
+.y-tr-chip--dim {
+  background: rgba(150, 130, 190, 0.14);
+  color: var(--dim);
+}
+
+/* 描边小胶囊操作钮(dc.html:348) */
+.y-tr-act {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-size: 11px;
+  border-radius: 999px;
+  padding: 6px 13px;
+  flex: none;
+  user-select: none;
+  transition: border-color 0.15s;
+}
+.y-tr-act:disabled {
+  color: var(--dim);
+  cursor: default;
+}
+.y-tr-act--danger {
+  color: var(--pink);
+  border-color: rgba(245, 188, 212, 0.4); /* 同 dc.html:781 虚线粉公式推导 */
+}
+
+/* 虚线提示条补充(本体用共享 .y-hint;dc.html:349) */
+.y-tr-hint {
+  margin-top: 12px;
+}
+.y-tr-hint__mark {
+  color: var(--pink);
+  font-size: 13px;
+}
+.y-tr-link {
+  margin-left: auto;
+  color: var(--lav);
+  font-size: 11px;
+  white-space: nowrap;
+  flex: none;
+  transition: color 0.15s;
+}
+
+/* 卡内错误条(视觉沿用 .y-warn-strip 的虚线粉公式) */
+.y-tr-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1.5px dashed rgba(245, 188, 212, 0.5);
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: var(--pink);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.y-tr-error > span {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── 同步卡(原型 352-369 的 field 卡范式,内容替换为真实 sync report) ── */
+.y-tr-syncrows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.y-tr-syncrow {
+  background: var(--field);
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.y-tr-syncrow__top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.y-tr-syncrow__label {
+  font-weight: 700;
+  font-size: 12.5px;
+}
+.y-tr-syncrow__count {
+  margin-left: auto;
+  font: 500 10px ui-monospace, monospace;
+  color: var(--dim);
+}
+.y-tr-syncrow__bar {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.y-tr-syncrow__progress {
+  flex: 1;
+}
+.y-tr-syncrow__pct {
+  font: 500 10px ui-monospace, monospace;
+  color: var(--mut);
+  flex: none;
+  min-width: 34px;
+  text-align: right;
+}
+.y-tr-dlstats {
+  margin-top: 10px;
+  font: 500 10.5px ui-monospace, monospace;
+  color: var(--mut);
+}
+.y-tr-syncbtns {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── 最近完成(dc.html:372-380) ── */
+.y-tr-donelist {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.y-tr-done {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+}
+.y-tr-done__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+  flex: none;
+  margin-top: 5px;
+}
+.y-tr-done__body {
+  flex: 1;
+  min-width: 0;
+}
+.y-tr-done__line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.y-tr-done__title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.y-tr-done__time {
+  font: 500 10px ui-monospace, monospace;
+  color: var(--dim);
+  flex: none;
+}
+.y-tr-done__sub {
+  margin-top: 1px;
+  font-size: 10.5px;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.y-tr-dim {
+  color: var(--dim);
+  font-size: 11.5px;
+  padding: 6px 0;
+}
+
+/* 删除对话框补充 */
+.y-tr-check {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: var(--mut);
+  font-size: 11.5px;
+  cursor: pointer;
+  padding: 0;
+  user-select: none;
+}
+/* 危险确认钮(粉底深字,与粉色贴纸同配色) */
+.y-tr-btn-danger {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--pink);
+  color: var(--pinkInk);
+  font-weight: 700;
+  font-size: 13px;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 22px;
+  user-select: none;
+  transition: transform 0.15s;
+}
+.y-tr-btn-danger:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .y-tr-act:hover:not(:disabled) {
+    border-color: var(--lineStrong);
+  }
+  .y-tr-act--danger:hover:not(:disabled) {
+    border-color: var(--pink);
+  }
+  .y-tr-link:hover {
+    color: var(--pink);
+  }
+  .y-tr-btn-danger:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+}
+
+/* 平板(≤1100):单列堆叠 队列→同步→最近完成(§4) */
+@media (max-width: 1100px) {
+  .y-tr-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 移动(<768):触达目标 ≥44px,操作钮换行下沉 */
+@media (max-width: 767px) {
+  .y-tr-card {
+    padding: 16px 14px;
+    border-radius: 16px;
+  }
+  .y-tr-card--queue {
+    padding: 16px 14px 12px;
+  }
+  .y-tr-stats {
+    margin-left: 0;
+    width: 100%;
+  }
+  .y-tr-task {
+    flex-wrap: wrap;
+  }
+  .y-tr-task__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .y-tr-act {
+    min-height: 44px;
+    padding: 6px 16px;
+  }
+  .y-tr-syncbtns > .y-btn-ghost {
+    flex: 1 1 0;
+    min-height: 44px;
+  }
+  .y-tr-error > .y-tr-act {
+    min-height: 36px;
+  }
+}

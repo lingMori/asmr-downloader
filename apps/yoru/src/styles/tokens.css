@@ -1,0 +1,108 @@
+/* ─────────────────────────────────────────────────────────────
+   YORU「夜间电台」设计令牌
+   取值照抄原型 dc.html:14-27(暗)/ 20-23(亮)。
+   --lav/--pink 不受主题覆盖,由 [data-palette] 注入(原型 data-props 4 组)。
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  /* 背景三段渐变(160deg) */
+  --bg1: #1c1528;
+  --bg2: #221a33;
+  --bg3: #261a2f;
+
+  /* 面板/卡片/输入底 */
+  --panel: rgba(24, 18, 36, 0.82); /* 毛玻璃浮层底 */
+  --panelSolid: #221c33; /* 不透明浮层底(模态/展开播放器) */
+  --card: rgba(255, 255, 255, 0.035);
+  --cardHover: rgba(255, 255, 255, 0.07);
+  --field: rgba(24, 18, 36, 0.6);
+
+  /* 描边 */
+  --line: rgba(205, 188, 245, 0.14);
+  --lineStrong: rgba(205, 188, 245, 0.32);
+
+  /* 文字 */
+  --ink: #efeaf6;
+  --mut: #9a8fb5;
+  --dim: #7d7398;
+  --accentInk: #2a1830; /* 渐变主钮上的文字色 */
+  --pinkInk: #3a2032; /* 粉色贴纸上的文字色 */
+
+  /* 状态 */
+  --ok: #8fd0a8;
+
+  /* 导航/选中底 */
+  --navBg: rgba(255, 255, 255, 0.045);
+  --navOn: rgba(205, 188, 245, 0.2);
+
+  /* 主题色(默认 palette = lavender;由 data-palette 覆盖) */
+  --lav: #cdbcf5;
+  --pink: #f5bcd4;
+
+  /* 圆角阶梯 */
+  --r-xs: 5px;
+  --r-sm: 10px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-pill: 999px;
+
+  /* 阴影(取自原型) */
+  --shadow-cover: 0 16px 40px rgba(0, 0, 0, 0.35); /* 封面 */
+  --shadow-btn: 0 8px 24px rgba(160, 130, 220, 0.3); /* 渐变主钮 */
+  --shadow-bar: 0 12px 32px rgba(0, 0, 0, 0.3); /* 浮条(播放条/批量栏) */
+  --shadow-modal: 0 30px 80px rgba(0, 0, 0, 0.5); /* 模态/展开播放器 */
+  --shadow-playring: 0 0 0 4px rgba(180, 150, 230, 0.15); /* 圆形播放钮外环 */
+  --shadow-thumb: 0 4px 14px rgba(0, 0, 0, 0.35); /* 卡面圆形播放钮 */
+
+  /* z-index 阶梯 */
+  --z-sticker: 1;
+  --z-batchbar: 30;
+  --z-player-overlay: 40;
+  --z-player: 41;
+  --z-dialog-overlay: 50;
+  --z-dialog: 51;
+  --z-toast: 60;
+
+  /* 字号阶梯(注释;正文 13.5px 在 base.css 的 body 上)
+     标题:24/20/17/16/15(900) 正文:13.5/12.5/12 辅助:11.5/11/10.5
+     mono 小字:10.5/10/9.5 贴纸/假名:9.5/9/8.5/8 */
+}
+
+/* 亮色主题(原型 dc.html:20-23;不覆盖 --lav/--pink) */
+:root[data-theme="light"] {
+  --bg1: #f5eefb;
+  --bg2: #f8f1f7;
+  --bg3: #fdf4ef;
+  --panel: rgba(255, 255, 255, 0.82);
+  --panelSolid: #ffffff;
+  --card: rgba(124, 96, 180, 0.05);
+  --cardHover: rgba(124, 96, 180, 0.1);
+  --field: rgba(255, 255, 255, 0.7);
+  --line: rgba(124, 96, 180, 0.16);
+  --lineStrong: rgba(124, 96, 180, 0.34);
+  --ink: #38294e;
+  --mut: #7d6f9c;
+  --dim: #a195bd;
+  --ok: #3f9e68;
+  --navBg: rgba(124, 96, 180, 0.06);
+  --navOn: rgba(124, 96, 180, 0.16);
+}
+
+/* palette 注入(原型 data-props 4 组) */
+:root[data-palette="lavender"] {
+  --lav: #cdbcf5;
+  --pink: #f5bcd4;
+}
+:root[data-palette="blue"] {
+  --lav: #a8c8f0;
+  --pink: #bde8d8;
+}
+:root[data-palette="orange"] {
+  --lav: #f5cba8;
+  --pink: #f5bcd4;
+}
+:root[data-palette="green"] {
+  --lav: #c3f0d8;
+  --pink: #cdbcf5;
+}

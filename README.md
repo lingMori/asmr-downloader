@@ -51,8 +51,8 @@ go run .
 打开另一个终端：
 
 ```bash
-npm install --prefix apps/web
-npm run dev:web
+npm install --prefix apps/yoru
+npm run dev:yoru
 ```
 
 然后访问：
@@ -61,11 +61,13 @@ npm run dev:web
 http://127.0.0.1:5173
 ```
 
-前端默认连接 `http://127.0.0.1:8080/api`。后端运行在其他地址时，可以这样指定：
+新前端「夜 · YORU」位于 `apps/yoru`(旧前端 `apps/web` 保留可用)。开发服务器已把 `/api` 与 `/media` 代理到 `http://127.0.0.1:8080`,无需额外配置;后端在其他地址时可这样指定:
 
 ```bash
-VITE_API_BASE_URL=http://127.0.0.1:18080/api npm run dev:web
+VITE_API_BASE_URL=http://127.0.0.1:18080/api npm run dev:yoru
 ```
+
+旧前端仍可用 `npm run dev:web` 启动。
 
 ## 第一次使用
 
@@ -119,11 +121,11 @@ go run . --addr :8080
 ## 生产构建
 
 ```bash
-npm run build:web
+npm run build:yoru
 go run .
 ```
 
-完成前端构建后，Go 服务会自动提供 `apps/web/dist`。发布包也可以从可执行文件旁的 `web/` 目录加载前端，或通过 `ASMRO_WEB_DIR` 指定其他目录。
+完成前端构建后，Go 服务按以下顺序寻找前端目录:`ASMRO_WEB_DIR` → `apps/yoru/dist` → `apps/web/dist` → `./web` → 可执行文件旁的 `web/`。即默认优先提供新前端「夜 · YORU」;把 `ASMRO_WEB_DIR` 指向 `apps/web/dist` 即可切回旧前端。
 
 ## 开发与测试
 
@@ -131,17 +133,18 @@ go run .
 # 后端测试
 go test ./...
 
-# 前端测试
-npm run test:web
+# 新前端测试(apps/yoru)
+npm run test:yoru
 
-# 前端生产构建
-npm run build:web
+# 新前端生产构建
+npm run build:yoru
 ```
 
 主要目录：
 
 ```text
-apps/web/          React 前端
+apps/yoru/         新前端「夜 · YORU」(React 19 + Vite,双端适配)
+apps/web/          旧前端(保留,不再迭代)
 internal/server/   HTTP 接口与静态资源服务
 internal/services/ 搜索、下载、同步、媒体库和任务服务
 internal/store/    SQLite 任务存储

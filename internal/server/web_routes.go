@@ -43,7 +43,8 @@ func (s *Server) registerWebRoutes() {
 }
 
 func resolveWebDir() string {
-	candidates := []string{os.Getenv("ASMRO_WEB_DIR"), filepath.Join("apps", "web", "dist"), "web"}
+	// 解析顺序:ASMRO_WEB_DIR 环境变量 > 新前端 apps/yoru/dist > 旧前端 apps/web/dist > ./web > 可执行文件旁 web
+	candidates := []string{os.Getenv("ASMRO_WEB_DIR"), filepath.Join("apps", "yoru", "dist"), filepath.Join("apps", "web", "dist"), "web"}
 	if executable, err := os.Executable(); err == nil {
 		candidates = append(candidates, filepath.Join(filepath.Dir(executable), "web"))
 	}

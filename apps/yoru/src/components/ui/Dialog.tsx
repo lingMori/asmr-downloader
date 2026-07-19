@@ -1,0 +1,79 @@
+import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+
+export type DialogProps = {
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+  /** 无障碍标签 */
+  label?: string;
+  /** 点遮罩关闭,默认 true */
+  closeOnOverlay?: boolean;
+  className?: string;
+};
+
+/** 模态对话框:遮罩 z50 + 居中卡 z51(dc.html:511-512),framer-motion 进出,ESC/点遮罩关闭 */
+export function Dialog({ open, onClose, children, label, closeOnOverlay = true, className }: DialogProps) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  return createPortal(
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            key="overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={closeOnOverlay ? onClose : undefined}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(10,6,18,.5)",
+              backdropFilter: "blur(2px)",
+              WebkitBackdropFilter: "blur(2px)",
+              zIndex: "var(--z-dialog-overlay)" as never,
+            }}
+          />
+          <motion.div
+            key="card"
+            role="dialog"
+            aria-modal="true"
+            aria-label={label}
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className={cn("y-dialog", className)}
+            style={{
+              position: "fixed",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%,-50%)",
+              width: "min(440px,calc(100vw - 56px))",
+              zIndex: "var(--z-dialog)" as never,
+              background: "var(--panelSolid)",
+              border: "1.5px solid var(--lineStrong)",
+              borderRadius: 20,
+              boxShadow: "var(--shadow-modal)",
+              padding: 22,
+            }}
+          >
+            {children}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>,
+    document.body,
+  );
+}

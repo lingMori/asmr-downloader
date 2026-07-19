@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1c1528" />
+    <meta name="description" content="ASMRoner · よる夜间电台" />
+    <title>ASMRoner · よる夜间电台</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet" />
+    <script>
+      // 防 FOUC:首帧前从 localStorage["yoru:settings"] 恢复主题/palette/贴纸
+      (function () {
+        var d = document.documentElement;
+        var theme = "dark", palette = "lavender", stickers = true;
+        try {
+          var raw = localStorage.getItem("yoru:settings");
+          var s = raw ? JSON.parse(raw) : {};
+          if (s && typeof s === "object") {
+            if (s.theme === "dark" || s.theme === "light") theme = s.theme;
+            else if (s.theme === "system")
+              theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+            if (["lavender", "blue", "orange", "green"].indexOf(s.palette) >= 0) palette = s.palette;
+            if (s.stickers === false) stickers = false;
+          }
+        } catch (e) { /* 读不到时用默认 dark/lavender/stickers=true */ }
+        d.dataset.theme = theme;
+        d.dataset.palette = palette;
+        d.dataset.stickers = String(stickers);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

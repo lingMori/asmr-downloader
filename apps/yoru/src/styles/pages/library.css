@@ -1,0 +1,482 @@
+/* ─────────────────────────────────────────────────────────────
+   媒体库 /library + /library/$id 页面私有样式(y-lib-*)。
+   取值照抄原型 dc.html:56-94(hero/分区标题/作品卡),出处逐条注释;
+   原型缺失部分(空态/详情页/移动端)按同范式补,仅用 tokens。
+   ───────────────────────────────────────────────────────────── */
+
+@layer components {
+  /* ── hero「继续收听 · つづき」(dc.html:56-69) ── */
+  .y-lib-hero {
+    display: flex;
+    gap: 22px;
+    /* dc.html:56 渐变大卡底 */
+    background: linear-gradient(120deg, rgba(205, 188, 245, 0.14), rgba(245, 188, 212, 0.08) 70%);
+    border: 1.5px solid var(--lineStrong);
+    border-radius: 20px;
+    padding: 20px;
+    position: relative;
+  }
+  .y-lib-hero__sticker {
+    left: 24px; /* dc.html:57 */
+  }
+  .y-lib-hero__cover {
+    width: 160px;
+    aspect-ratio: 1;
+    flex: none;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: var(--shadow-cover);
+  }
+  .y-lib-hero__cover img,
+  .y-lib-hero__cover .y-cover-ph {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .y-lib-hero__body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .y-lib-hero__title {
+    font-weight: 900;
+    font-size: 24px;
+    line-height: 1.3;
+  }
+  .y-lib-hero__meta {
+    margin-top: 5px;
+    font-size: 13px;
+    color: var(--mut);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .y-lib-hero__rj {
+    font: 600 11px ui-monospace, monospace;
+    color: var(--lav);
+  }
+  .y-lib-hero__actions {
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  /* 迷你进度条(dc.html:65) */
+  .y-lib-hero__progress {
+    flex: 1;
+    max-width: 260px;
+    height: 5px;
+    border-radius: 99px;
+    background: rgba(150, 130, 190, 0.18);
+    overflow: hidden;
+  }
+  .y-lib-hero__progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, var(--lav), var(--pink));
+  }
+  .y-lib-hero__pct {
+    font: 500 10px ui-monospace, monospace;
+    color: var(--mut);
+  }
+
+  /* hero 空态(原型缺失,虚线范式补) */
+  .y-lib-hero--empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    border: 2px dashed var(--line);
+    border-radius: 20px;
+    padding: 26px 20px;
+    color: var(--mut);
+    font-size: 12px;
+    text-align: center;
+    line-height: 1.7;
+  }
+  .y-lib-hero__moon {
+    font-size: 18px;
+  }
+  .y-lib-hero--empty p {
+    margin: 0;
+  }
+  .y-lib-error {
+    margin-top: 14px;
+  }
+  .y-lib-hero__empty-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .y-lib-hero__skeleton {
+    height: 202px;
+    border-radius: 20px;
+  }
+
+  /* ── 分区标题行(dc.html:70-79;搜索框为原型缺失按范式补) ── */
+  .y-lib-section {
+    margin-top: 20px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .y-lib-section__title {
+    margin: 0;
+    font-weight: 900;
+    font-size: 16px;
+  }
+  .y-lib-tabs {
+    margin-left: 12px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .y-lib-search {
+    margin-left: 12px;
+    flex: 0 1 220px;
+    min-width: 140px;
+    background: var(--field);
+    border: 1.5px solid var(--line);
+    border-radius: var(--r-pill);
+    padding: 6px 14px;
+    color: var(--ink);
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .y-lib-search::placeholder {
+    color: var(--dim);
+  }
+  .y-lib-search:focus {
+    border-color: var(--lineStrong);
+  }
+  .y-lib-stat {
+    margin-left: auto;
+    font-size: 11.5px;
+    color: var(--mut);
+  }
+
+  /* ── 作品网格(dc.html:80) ── */
+  .y-lib-grid {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    gap: 16px;
+  }
+
+  /* ── 作品卡(dc.html:82-92) ── */
+  .y-lib-card {
+    position: relative;
+    transition: transform 0.2s;
+  }
+  .y-lib-card__link {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+  }
+  .y-lib-card__cover {
+    aspect-ratio: 1;
+    border-radius: 12px;
+    border: 1.5px solid var(--line);
+    overflow: hidden;
+    display: flex;
+  }
+  .y-lib-card__cover img,
+  .y-lib-card__cover .y-cover-ph {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    flex: 1;
+  }
+  .y-lib-card__title {
+    margin-top: 7px;
+    font-weight: 700;
+    font-size: 12px;
+    line-height: 1.35;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .y-lib-card__meta {
+    margin-top: 2px;
+    font-size: 10.5px;
+    color: var(--mut);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .y-lib-card__meta-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .y-lib-card__fav {
+    margin-left: auto;
+    flex: none;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: var(--dim);
+    font-size: 13px;
+    line-height: 1;
+    padding: 6px;
+    margin-right: -6px;
+    border-radius: var(--r-xs);
+    transition: color 0.15s;
+  }
+  .y-lib-card__fav.is-on {
+    color: var(--pink);
+  }
+  /* 贴纸落位(dc.html:84/87;旋转角由 Sticker 组件 --sticker-rot 控制) */
+  .y-lib-card__st-sub {
+    right: 6px;
+  }
+  .y-lib-card__st-now {
+    left: 6px;
+  }
+
+  .y-lib-pagination {
+    margin-top: 16px;
+  }
+
+  /* ── 详情页(原型缺失,按同范式补) ── */
+  .y-lib-detail__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--mut);
+    font-size: 12px;
+    text-decoration: none;
+    transition: color 0.15s;
+    padding: 6px 0;
+  }
+  .y-lib-detail__head {
+    margin-top: 12px;
+    display: flex;
+    gap: 22px;
+  }
+  .y-lib-detail__cover {
+    width: 160px;
+    aspect-ratio: 1;
+    flex: none;
+    border-radius: 14px;
+    border: 1.5px solid var(--line);
+    overflow: hidden;
+    box-shadow: var(--shadow-cover);
+    display: flex;
+  }
+  .y-lib-detail__cover img,
+  .y-lib-detail__cover .y-cover-ph {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    flex: 1;
+  }
+  .y-lib-detail__info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .y-lib-detail__title {
+    margin: 0;
+    font-weight: 900;
+    font-size: 20px;
+    line-height: 1.35;
+  }
+  .y-lib-detail__id {
+    margin-top: 6px;
+    font: 600 11px ui-monospace, monospace;
+    color: var(--lav);
+  }
+  .y-lib-detail__chips {
+    margin-top: 10px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .y-lib-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 11px;
+    border-radius: var(--r-pill);
+    border: 1.5px solid var(--line);
+    color: var(--mut);
+    font-size: 10.5px;
+    white-space: nowrap;
+  }
+  .y-lib-detail__actions {
+    margin-top: 14px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .y-lib-detail__skeleton-rows {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* 文件分组列表 */
+  .y-lib-group {
+    margin-top: 20px;
+  }
+  .y-lib-group__title {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .y-lib-group__count {
+    font: 500 10px ui-monospace, monospace;
+    color: var(--dim);
+  }
+  .y-lib-group__list {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .y-lib-file {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    border: 1.5px solid transparent;
+    background: transparent;
+    color: var(--ink);
+    font-size: 12.5px;
+    font-family: inherit;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      border-color 0.15s;
+  }
+  .y-lib-file--static {
+    cursor: default;
+  }
+  .y-lib-file.is-on {
+    background: var(--navOn);
+  }
+  .y-lib-file__num {
+    font: 500 10px ui-monospace, monospace;
+    color: var(--dim);
+    width: 22px;
+    flex: none;
+  }
+  .y-lib-file.is-on .y-lib-file__num {
+    color: var(--pink);
+  }
+  .y-lib-file__name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .y-lib-file__badge {
+    flex: none;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--lav);
+    border: 1px solid var(--lineStrong);
+    border-radius: var(--r-pill);
+    padding: 1px 7px;
+  }
+  .y-lib-file__now {
+    flex: none;
+    color: var(--pink);
+    font-size: 11px;
+  }
+  .y-lib-file__open {
+    flex: none;
+    color: var(--dim);
+    font-size: 11px;
+  }
+}
+
+/* hover 体系:仅精确指针设备 */
+@media (hover: hover) {
+  .y-lib-card:hover {
+    transform: translateY(-3px); /* dc.html:82 */
+  }
+  .y-lib-card__fav:hover {
+    color: var(--pink);
+  }
+  .y-lib-detail__back:hover {
+    color: var(--ink);
+  }
+  .y-lib-file:not(.y-lib-file--static):hover {
+    background: var(--cardHover);
+  }
+}
+
+/* 移动端(<768,§4):hero 纵排封面居中;网格 2 列;详情页头纵向 */
+@media (max-width: 767px) {
+  .y-lib-hero {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 14px;
+    padding: 18px 16px;
+  }
+  .y-lib-hero__body {
+    align-items: center;
+  }
+  .y-lib-hero__meta {
+    justify-content: center;
+  }
+  .y-lib-hero__actions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .y-lib-hero__progress {
+    flex: 1 1 100%;
+    max-width: none;
+    order: 3;
+  }
+  .y-lib-grid {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+    gap: 12px;
+  }
+  .y-lib-search {
+    flex: 1 1 100%;
+    margin-left: 0;
+    order: 4;
+  }
+  .y-lib-tabs {
+    margin-left: 0;
+  }
+  .y-lib-detail__head {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 14px;
+  }
+  .y-lib-detail__info {
+    align-items: center;
+  }
+  .y-lib-detail__chips,
+  .y-lib-detail__actions {
+    justify-content: center;
+  }
+}
