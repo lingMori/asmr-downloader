@@ -1,175 +1,104 @@
-# ASMRoner
+# ASMRoner · よる夜间电台
 
-把 asmr.one 上想听的作品，稳定地下载、整理并留在自己的设备上。
+> 夜深了,把想听的声音,收进自己的电台。
 
-ASMRoner 是一个本地运行的 ASMR 下载与媒体管理工具。你可以在浏览器里搜索作品、创建下载任务、查看实时进度、重试失败任务，并在下载完成后直接浏览和播放本地音频。
-
-```text
-找到作品 -> 加入下载 -> 查看进度 -> 自动整理 -> 本地播放
-```
+ASMRoner 是一台只属于你的 ASMR 电台:在本地安静地运行,替你检索 asmr.one、收藏喜欢的作品、即刻串流或留档下载,配上逐句跟随的字幕——今晚,接着昨晚继续听。
 
 <p>
   <img alt="Go 1.25+" src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat-square&logo=go&logoColor=white" />
   <img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=0b0e0c" />
   <img alt="Vite 8" src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white" />
-  <img alt="SQLite" src="https://img.shields.io/badge/SQLite-local_tasks-003B57?style=flat-square&logo=sqlite&logoColor=white" />
+  <img alt="SQLite" src="https://img.shields.io/badge/SQLite-local-003B57?style=flat-square&logo=sqlite&logoColor=white" />
 </p>
 
-![ASMRoner YORU 本地下载工作台](docs/assets/asmroner-yoru-workbench.jpg)
+![在线曲库:热门与推荐,随滚动不断涌现](docs/assets/yoru-online.jpg)
 
-## 能做什么
+## 一夜电台 · つかいかた
 
-- 按标题、RJ 号和标签搜索远端作品，查看作品详情。
-- 下载单个作品、批量 RJ、选中的搜索结果或 Hot100 内容。
-- 在任务中心查看排队、运行、完成和失败状态。
-- 实时接收任务进度与日志，不需要守着终端等待。
-- 对失败任务执行重试，并保留之前的任务记录。
-- 同步作品元数据，将下载结果整理进本地媒体库。
-- 浏览本地文件、播放音频并匹配已有字幕。
-- 在界面中管理账号、代理、下载目录、并发和限流配置。
+### 🔍 发现 · たんさく
 
-整个工作台运行在本机。任务记录保存在 SQLite 中，配置与媒体文件保存在本地目录中；默认情况下，服务不会暴露到局域网。
+关键词、RJ 号,或者把标签、社团、声优随手组合起来;懂行的话,直接贴一段 `$tag:x$ $circle:y$` 高级语法。结果随滚动不断涌现,右边栏把这一批作品的标签、社团、声优摊开来——点一下,就变成新的筛选条件。看中的结果,还能导出成 CSV / JSON 慢慢挑。
 
-## 快速开始
+![发现:组合筛选与 facet 聚合](docs/assets/yoru-discover.jpg)
 
-需要准备：
+### 🗂 详情 · しょうさい
 
-- Go 1.25 或更高版本
-- Node.js 22
-- npm
+每部作品都有一页完整的档案:完整封面、分级、社团、声优、标签,评分、销量、时长一应俱全,标签和声优点一下就能顺藤摸瓜。往下是整棵文件树——本地已下载的和在线的并排摆着,点哪一轨,就播哪一轨。末尾还有相似作品。
 
-### 1. 启动服务
+![作品详情:完整信息与文件层级](docs/assets/yoru-work-detail.jpg)
+
+### ♡ 收藏 · これから
+
+作品可收藏进媒体库,随时可以回来串流。下载?那是另一回事——留给没网的日子,不必绑定。本地已下载的作品会自动标上「已下载 ✓」。
+
+### ▶️ 播放 · さいせい
+
+播放条一直守在页面底部,翻页、换栏都不打断。字幕会一句一句跟上声音:播放条上方看当前这一句,展开便是整段字幕卡。听到一半关了也没关系——进度记在本机,本地文件和在线串流一视同仁,下次打开媒体库,「继续收听」就在最上面等你。听得越多,「为你推荐」越懂你(收听行为会反馈给推荐系统,游客身份同样生效)。
+
+### ⬇️ 下载 · てんそう
+
+勾好一批,复核一下范围和目录,放进队列就去忙别的。进度实时推进,失败可以重试,完成可以通知你;元数据同步和失败补下,也都在「传输」一页里。
+
+### 📱 口袋版 · けいたい
+
+底部标签栏、双列网格、全屏播放器。
+
+<p align="center"><img alt="移动端" src="docs/assets/yoru-mobile.jpg" width="300" /></p>
+
+## 界面 · がいかん
+
+暗紫夜色是默认,白天有日间模式,另有 4 组配色可换;手帐风贴纸不喜欢可以关掉。Zen Maru Gothic 的圆润字型,从桌面到手机都是同一套语言。
+
+## 开始收听
+
+要求:Go 1.25+、Node.js 22+、npm。
 
 ```bash
+# 1. 启动后端(首次运行自动生成 .asmroner-data/config.toml)
 go run .
-```
 
-第一次启动时，ASMRoner 会自动创建 `.asmroner-data/config.toml`。
-
-### 2. 启动网页工作台
-
-打开另一个终端：
-
-```bash
+# 2. 另开一个终端,启动前端
 npm install --prefix apps/yoru
-npm run dev:yoru
+npm run dev:yoru          # http://127.0.0.1:5173
 ```
 
-然后访问：
+**生产模式(单端口)**:`npm run build:yoru && go run .`,直接打开 <http://127.0.0.1:8080>。
+Go 按 `ASMRO_WEB_DIR` → `apps/yoru/dist` → `apps/web/dist` → `./web` 的顺序找前端,默认就是「夜 · YORU」;想切回旧前端,把 `ASMRO_WEB_DIR` 指向 `apps/web/dist` 即可。
 
-```text
-http://127.0.0.1:5173
-```
+上手只需五步:设置里确认下载目录(账号留空即游客)→ 发现里检索,♡ 收藏或复核下载 → 在线里直接听 → 媒体库继续昨晚的进度 → 传输里看队列。
 
-新前端「夜 · YORU」位于 `apps/yoru`(旧前端 `apps/web` 保留可用)。开发服务器已把 `/api` 与 `/media` 代理到 `http://127.0.0.1:8080`,无需额外配置;后端在其他地址时可这样指定:
-
-```bash
-VITE_API_BASE_URL=http://127.0.0.1:18080/api npm run dev:yoru
-```
-
-旧前端仍可用 `npm run dev:web` 启动。
-
-## 第一次使用
-
-1. 打开“设置”，填写账号信息并确认下载目录。
-2. 根据网络环境配置代理、并发数和请求限速。
-3. 前往“搜索”，输入作品标题或 RJ 号。
-4. 打开作品详情并创建下载任务。
-5. 在“任务”中观察进度，必要时取消或重试。
-6. 下载和同步完成后，从“媒体库”浏览并播放作品。
-
-总览页会集中显示活动任务、同步状态和最近进入媒体库的作品。顶栏的任务入口可以在任何页面快速查看正在运行的任务。
-
-## 批量下载与同步
-
-除了从搜索结果创建任务，任务中心也支持直接输入多个 RJ 号，以及创建 Hot100 下载任务。
-
-同步页面用于刷新作品清单和元数据，也可以继续下载同步过程中发现的缺失内容。失败记录会保留在报告中，方便之后重新执行，而不是从头开始。
-
-## 本地媒体与播放
-
-媒体库展示已经保存到本地的作品。进入作品后，可以查看目录与文件、播放音频，并在存在匹配字幕时同步显示字幕。
-
-播放器在页面之间保持播放状态，所以可以一边听作品，一边继续搜索或管理下载任务。
-
-## 配置与数据
-
-默认运行目录：
+## 本地保存
 
 ```text
 .asmroner-data/
-├── config.toml       # 账号、代理、目录和运行参数
-└── asmroner.db       # 任务与任务日志
+├── config.toml       # 账号、镜像/代理、下载目录、并发与限流
+└── asmroner.db       # SQLite:任务、收藏、播放进度
 ```
 
-实际媒体文件保存在配置的下载或同步目录中。建议定期备份配置文件、任务数据库和媒体目录。
+默认只监听 `127.0.0.1:8080`(`--addr` 或 `ASMRO_HTTP_ADDR` 可改;要共享到局域网,请自行做好访问控制)。CORS 白名单可用 `ASMRO_CORS_ORIGINS` 覆盖。镜像只代理检索与元数据,音频由源站直连下载。
 
-后端默认监听本机回环地址：
+## 技术栈
 
 ```text
-127.0.0.1:8080
-```
-
-确实需要从其他设备访问时，可以显式指定监听地址：
-
-```bash
-go run . --addr :8080
-```
-
-这会让服务可以被局域网访问。请同时配置防火墙和访问控制，不要直接暴露到公网。
-
-## 生产构建
-
-```bash
-npm run build:yoru
-go run .
-```
-
-完成前端构建后，Go 服务按以下顺序寻找前端目录:`ASMRO_WEB_DIR` → `apps/yoru/dist` → `apps/web/dist` → `./web` → 可执行文件旁的 `web/`。即默认优先提供新前端「夜 · YORU」;把 `ASMRO_WEB_DIR` 指向 `apps/web/dist` 即可切回旧前端。
-
-## 开发与测试
-
-```bash
-# 后端测试
-go test ./...
-
-# 新前端测试(apps/yoru)
-npm run test:yoru
-
-# 新前端生产构建
-npm run build:yoru
-```
-
-主要目录：
-
-```text
-apps/yoru/         新前端「夜 · YORU」(React 19 + Vite,双端适配)
+apps/yoru/         新前端「夜 · YORU」(默认;React 19 + Vite + Tailwind v4 + TanStack)
 apps/web/          旧前端(保留,不再迭代)
-internal/server/   HTTP 接口与静态资源服务
-internal/services/ 搜索、下载、同步、媒体库和任务服务
+internal/server/   HTTP API、SSE、静态资源与 SPA 托管
+internal/services/ 搜索/发现/推荐/媒体库/收藏/任务/同步/播放进度
+internal/engine/   asmr.one 上游代理、下载引擎、推荐反馈
 internal/store/    SQLite 任务存储
-internal/engine/   asmr.one 数据与下载引擎
-docs/              架构和开发文档
+docs/              架构与开发文档
 ```
 
-进一步阅读：
+后端对前端只暴露 `/api/*` 与 `/media/*`,统一 `{code, message, data}` 包络;实时进度走 `GET /api/events`(SSE);本地媒体经 `/media/...` 伺服,远端音频经 `/api/discover/works/.../stream` 代理,支持 Range。
 
-- [当前项目地图](docs/current-project-map.md)
-- [服务端开发说明](docs/server-dev.md)
-- [API 草案](docs/api-spec-draft.md)
-- [YORU 前端重构说明](<apps/web/docs/ASMRoner 前端重构文档 · YORU_FM「深夜电台」改版.md>)
+```bash
+go test ./...            # 后端测试
+npm run test:yoru        # 前端测试(vitest)
+npm run build:yoru       # 前端生产构建
+```
 
-## 分支说明
+前端包内约定见 [apps/yoru/AGENTS.md](apps/yoru/AGENTS.md);更多设计与开发文档见 [docs/](docs/)。
 
-这份 README 对应 `codex/yoru-workbench-refactor`。它作为偏向下载器和任务管理的 YORU 工作台版本独立保留，不与默认分支 `v2` 合并。
+## 说明
 
-## 使用边界
-
-请只下载和保存你有权访问的内容，并遵守来源站点规则及相关版权要求。
-
-
-## 未来版本目标
-- 打包软件
-- 继续修改前端，大概率会出两种思路的前端版本，分别是下载器和媒体库
-- 当前的前端版本是下载器，媒体库版本会在后续开发中出现
-- 可以的话，媒体库版本会尽量和asmrone的官方前端功能保持一致
+本项目仅提供工具能力,检索、元数据与音频内容均来自 asmr.one / DLsite,请遵守源站条款并支持正版。源站内容包含成人向作品,请在符合当地法规的前提下使用;README 截图中封面已做打码处理。
