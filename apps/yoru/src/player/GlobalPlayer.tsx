@@ -18,13 +18,22 @@ import {
   prevIndex,
   shouldResume,
   shouldSendFeedback,
+  activeCueIndex,
 } from "./logic";
 import { usePlaybackPersistence } from "./usePlaybackPersistence";
+import { useSubtitles, type SubtitleState } from "./useSubtitles";
+import type { SubtitleCue } from "@/lib/subtitles";
 import type { PlaybackSession, PlayerTrack } from "./types";
 
 export type PlaySessionOptions = {
-  /** 显式指定续播秒数;指定后不再查服务端历史进度 */
+  /** 显式指定续播秒数(作用于 startIndex 轨);指定后不再查服务端历史进度 */
   resumeFrom?: number;
+  /**
+   * 整作续播语义:查服务端历史进度,命中则切到记录的曲目并从记录位置续播。
+   * 仅用于「▶ 播放整作」这类入口;显式点选某轨时不要传,
+   * 否则用户选任何轨都会被历史进度强制切回上次那轨。
+   */
+  resumeWork?: boolean;
 };
 
 export type PlayerContextValue = {
@@ -37,6 +46,11 @@ export type PlayerContextValue = {
   volume: number;
   muted: boolean;
   currentTrack: PlayerTrack | null;
+  /** 当前曲目字幕(Provider 内单次拉取,播放条/展开层共用) */
+  subtitleCues: SubtitleCue[];
+  subtitleState: SubtitleState;
+  /** 当前时间轴命中的字幕行下标;-1 = 无命中 */
+  activeCueIdx: number;
   /** 后续页面唯一入口:建立一个新会话并开播 */
   playSession: (session: PlaybackSession, opts?: PlaySessionOptions) => void;
   toggle: () => void;
@@ -101,8 +115,9 @@ export function GlobalPlayerProvider({ children }: { children: ReactNode }) {
       setDuration(0);
       pendingSeekRef.current = opts?.resumeFrom ?? null;
 
-      // 未显式指定 resumeFrom 时查服务端历史进度,404 视为无进度从头播
-      if (opts?.resumeFrom == null && next.sourceId) {
+      // 整作续播(resumeWork)才查服务端历史进度,404 视为无进度从头播;
+      // 显式选轨不传 resumeWork —— 用户选哪轨就播哪轨
+      if (opts?.resumeFrom == null && opts?.resumeWork && next.sourceId) {
         void apiClient
           .getPlaybackProgress(next.sourceId)
           .then((progress) => {
@@ -308,6 +323,16 @@ export function GlobalPlayerProvider({ children }: { children: ReactNode }) {
   const currentTrack = session ? (session.tracks[index] ?? null) : null;
   const trackUrl = currentTrack?.url ?? "";
 
+  // 当前曲目字幕:Provider 内单次拉取,播放条(停靠行)与展开层(字幕卡)共用
+  const { cues: subtitleCues, state: subtitleState } = useSubtitles(
+    currentTrack?.subtitleUrl,
+    currentTrack?.title,
+  );
+  const activeCueIdx = useMemo(
+    () => activeCueIndex(subtitleCues, position),
+    [subtitleCues, position],
+  );
+
   // 换轨自动开播(playing 为 true 时)
   useEffect(() => {
     const audio = audioRef.current;
@@ -337,6 +362,9 @@ export function GlobalPlayerProvider({ children }: { children: ReactNode }) {
       volume,
       muted,
       currentTrack,
+      subtitleCues,
+      subtitleState,
+      activeCueIdx,
       playSession,
       toggle,
       next,
@@ -358,6 +386,9 @@ export function GlobalPlayerProvider({ children }: { children: ReactNode }) {
       volume,
       muted,
       currentTrack,
+      subtitleCues,
+      subtitleState,
+      activeCueIdx,
       playSession,
       toggle,
       next,

@@ -1,7 +1,7 @@
 import "@/styles/pages/discover.css";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
@@ -9,9 +9,10 @@ import { apiClient, type DiscoverWorkSummary } from "@/lib/api";
 import { keys } from "@/lib/keys";
 import { cn } from "@/lib/utils";
 import { findSubtitleForAudio, flattenPlayableTracks, flattenSubtitleTracks } from "@/lib/playback";
-import { EmptyState, Pagination, Skeleton } from "@/components/ui";
+import { EmptyState, Skeleton } from "@/components/ui";
 import { DownloadReviewDialog, type DownloadReviewItem } from "@/components/DownloadReviewDialog";
 import { isWorkUnavailable, useWorksStatus } from "@/hooks/useWorksStatus";
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { useGlobalPlayer } from "@/player";
 import { ActiveChips } from "@/components/discover/ActiveChips";
 import { BatchBar } from "@/components/discover/BatchBar";
@@ -65,7 +66,7 @@ export function DiscoverScreen() {
 
   const advanced = isAdvancedQuery(url.q);
 
-  // 筛选/翻页变化时清空勾选(勾选只对当前结果页有意义)
+  // 筛选变化时清空勾选(勾选只对当前结果集有意义;翻页为无限滚动,不影响勾选)
   const filterKey = JSON.stringify([
     url.q,
     url.tags,
@@ -75,44 +76,36 @@ export function DiscoverScreen() {
     url.order,
     url.sort,
     url.pageSize,
-    url.page,
   ]);
   useEffect(() => {
     setSelected(new Set());
   }, [filterKey]);
 
-  // ── 数据源:q 含 $ → 高级语法走 /search(客户端补 facets);否则结构化 /discover/search ──
-  const searchParams = advanced
-    ? { q: url.q, page: url.page, pageSize: url.pageSize, order: url.order, sort: url.sort, subtitle: url.subtitle }
-    : {
-        q: url.q,
-        tag: url.tags.join(","),
-        circle: url.circle,
-        va: url.va,
-        subtitle: url.subtitle,
-        page: url.page,
-        pageSize: url.pageSize,
-        order: url.order,
-        sort: url.sort,
-      };
-  const searchQuery = useQuery({
-    queryKey: keys.discover.search(searchParams),
-    queryFn: async (): Promise<{ items: DiscoverWorkSummary[]; total: number; facets: DiscoverFacets }> => {
+  // ── 数据源:q 含 $ → 高级语法走 /search;否则结构化 /discover/search。
+  //    无限滚动:queryKey 不含 page,逐页累加;返回每批 items/total。
+  const searchQuery = useInfiniteQuery({
+    queryKey: keys.discover.search({
+      q: url.q,
+      tag: url.tags.join(","),
+      circle: url.circle,
+      va: url.va,
+      subtitle: url.subtitle,
+      order: url.order,
+      sort: url.sort,
+      pageSize: url.pageSize,
+    }),
+    queryFn: async ({ pageParam }): Promise<{ items: DiscoverWorkSummary[]; total: number }> => {
       if (advanced) {
         const data = await apiClient.searchWorks({
           query: url.q,
           count: url.pageSize,
-          page: url.page,
+          page: pageParam,
           pageSize: url.pageSize,
           order: url.order,
           sort: url.sort,
           subtitle: url.subtitle ? 1 : 0,
         });
-        return {
-          items: data.items as DiscoverWorkSummary[],
-          total: data.total,
-          facets: buildFacetsFromItems(data.items as DiscoverWorkSummary[]),
-        };
+        return { items: data.items as DiscoverWorkSummary[], total: data.total };
       }
       const data = await apiClient.searchDiscover({
         q: url.q,
@@ -120,32 +113,41 @@ export function DiscoverScreen() {
         circle: url.circle,
         va: url.va,
         subtitle: url.subtitle,
-        page: url.page,
+        page: pageParam,
         pageSize: url.pageSize,
         order: url.order,
         sort: url.sort,
       });
-      const hasFacets =
-        data.facets.tags.length > 0 || data.facets.circles.length > 0 || data.facets.vas.length > 0;
-      return {
-        items: data.items,
-        total: data.total,
-        facets: hasFacets ? data.facets : buildFacetsFromItems(data.items),
-      };
+      return { items: data.items, total: data.total };
     },
-    placeholderData: keepPreviousData,
+    initialPageParam: 1,
+    getNextPageParam: (lastBatch, allBatches) =>
+      lastBatch.items.length >= url.pageSize ? allBatches.length + 1 : undefined,
   });
 
-  const items = searchQuery.data?.items ?? [];
-  const total = searchQuery.data?.total ?? 0;
-  const facets = searchQuery.data?.facets ?? { tags: [], circles: [], vas: [] };
-  const totalPages = Math.max(1, Math.ceil(total / url.pageSize));
+  const items = useMemo(
+    () => searchQuery.data?.pages.flatMap((p) => p.items) ?? [],
+    [searchQuery.data],
+  );
+  const total = searchQuery.data?.pages[0]?.total ?? 0;
+  const hasNextPage = searchQuery.hasNextPage ?? false;
+  // facets:对已加载结果集客户端精确聚合(原服务端 facets 本就只反映单页)
+  const facets = useMemo(() => buildFacetsFromItems(items), [items]);
+
+  const sentinelRef = useInfiniteScroll<HTMLDivElement>({
+    enabled: hasNextPage && !searchQuery.isError && items.length > 0,
+    onHit: () => {
+      if (hasNextPage && !searchQuery.isFetchingNextPage) {
+        void searchQuery.fetchNextPage();
+      }
+    },
+  });
 
   // ── works/status:驱动徽章/禁选/置灰/下载钮三态 ──
   const pageIds = useMemo(() => items.map((w) => w.source_id), [items]);
   const { map: statusMap } = useWorksStatus(pageIds);
   const titleById = useMemo(() => new Map(items.map((w) => [w.source_id, w.title])), [items]);
-  const pageDownloadable = useMemo(
+  const loadedDownloadable = useMemo(
     () => items.filter((w) => !isWorkUnavailable(statusMap.get(w.source_id))),
     [items, statusMap],
   );
@@ -156,14 +158,14 @@ export function DiscoverScreen() {
       const list =
         scopeKind === "selected"
           ? Array.from(selected).map((id) => ({ sourceId: id, title: titleById.get(id) ?? id }))
-          : pageDownloadable.map((w) => ({ sourceId: w.source_id, title: w.title }));
+          : loadedDownloadable.map((w) => ({ sourceId: w.source_id, title: w.title }));
       if (list.length === 0) {
         toast.info("没有可下载的作品");
         return;
       }
       setReviewItems(list);
     },
-    [selected, titleById, pageDownloadable],
+    [selected, titleById, loadedDownloadable],
   );
 
   // ── 试听:取详情首个 playable track 建单轨 stream 会话 ──
@@ -234,7 +236,7 @@ export function DiscoverScreen() {
 
   const addTag = useCallback(
     (tag: string) => {
-      if (!url.tags.includes(tag)) setUrl({ tags: [...url.tags, tag], page: 1 });
+      if (!url.tags.includes(tag)) setUrl({ tags: [...url.tags, tag] });
     },
     [url.tags, setUrl],
   );
@@ -253,7 +255,7 @@ export function DiscoverScreen() {
       <div className="y-disc__inner">
         <SearchBar
           q={url.q}
-          onCommitQ={(q) => setUrl({ q, page: 1 })}
+          onCommitQ={(q) => setUrl({ q })}
           showFilters={showFilters}
           showTools={showTools}
           onToggleFilters={() => setShowFilters((v) => !v)}
@@ -275,7 +277,7 @@ export function DiscoverScreen() {
           <ToolsPanel
             outputDir={outputDir}
             onOutputDir={setOutputDir}
-            pageCount={pageDownloadable.length}
+            pageCount={loadedDownloadable.length}
             selectedCount={selected.size}
             scope={effectiveScope}
             onScope={setScope}
@@ -343,13 +345,14 @@ export function DiscoverScreen() {
                 />
               ))}
 
-            {!searchQuery.isLoading && !searchQuery.isError && items.length > 0 && (
-              <Pagination
-                page={url.page}
-                totalPages={totalPages}
-                onPage={(p) => setUrl({ page: p })}
-                label={`第 ${Math.min(url.page, totalPages)} / ${totalPages.toLocaleString()} 页 · 每页 ${url.pageSize} 条`}
-              />
+            {/* 无限滚动:哨兵 + 加载中骨架行 + 到底提示 */}
+            {!searchQuery.isError && items.length > 0 && hasNextPage && (
+              <div ref={sentinelRef} className="y-disc-sentinel" aria-hidden="true">
+                {searchQuery.isFetchingNextPage && <Skeleton variant="row" count={2} />}
+              </div>
+            )}
+            {!searchQuery.isError && items.length > 0 && !hasNextPage && (
+              <div className="y-disc-end">已经到底啦 · 共 {total.toLocaleString()} 条</div>
             )}
 
             {isMobile && (
@@ -357,8 +360,8 @@ export function DiscoverScreen() {
                 <FacetCards
                   facets={facets}
                   onAddTag={addTag}
-                  onSetCircle={(circle) => setUrl({ circle, page: 1 })}
-                  onSetVa={(va) => setUrl({ va, page: 1 })}
+                  onSetCircle={(circle) => setUrl({ circle })}
+                  onSetVa={(va) => setUrl({ va })}
                 />
               </div>
             )}
@@ -374,8 +377,8 @@ export function DiscoverScreen() {
               <FacetCards
                 facets={facets}
                 onAddTag={addTag}
-                onSetCircle={(circle) => setUrl({ circle, page: 1 })}
-                onSetVa={(va) => setUrl({ va, page: 1 })}
+                onSetCircle={(circle) => setUrl({ circle })}
+                onSetVa={(va) => setUrl({ va })}
               />
             </div>
           )}

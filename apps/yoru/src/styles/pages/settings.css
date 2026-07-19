@@ -4,7 +4,8 @@
    ───────────────────────────────────────────────────────────── */
 
 @layer components {
-  /* 2 列网格(dc.html:391);≤1100 平板/移动单列(计划 §4) */
+  /* 2 列网格(dc.html:391);≤1100 平板/移动单列(计划 §4)。
+     两列各自独立收拢,避免行高被高卡撑开产生空白 */
   .y-set-grid {
     max-width: 1100px;
     margin: 0 auto;
@@ -13,9 +14,31 @@
     gap: 18px;
     align-items: start;
   }
+  .y-set-col {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
   @media (max-width: 1100px) {
     .y-set-grid {
-      grid-template-columns: 1fr;
+      display: flex;
+      flex-direction: column;
+    }
+    .y-set-col {
+      display: contents;
+    }
+    /* 单列时恢复 下载→数据源→外观→关于 的顺序 */
+    .y-set-col:nth-child(1) > *:nth-child(1) {
+      order: 1;
+    }
+    .y-set-col:nth-child(2) > *:nth-child(1) {
+      order: 2;
+    }
+    .y-set-col:nth-child(1) > *:nth-child(2) {
+      order: 3;
+    }
+    .y-set-col:nth-child(2) > *:nth-child(2) {
+      order: 4;
     }
   }
 
@@ -45,10 +68,13 @@
     flex-wrap: wrap;
   }
   .y-set-row__text {
-    flex: 1 1 220px;
     display: flex;
     flex-direction: column;
     gap: 3px;
+  }
+  /* flex-basis 仅在行式布局生效(控制宽度);列式(.y-set-field)中不撑高度 */
+  .y-set-row > .y-set-row__text {
+    flex: 1 1 220px;
   }
   .y-set-row__label {
     font-weight: 700;

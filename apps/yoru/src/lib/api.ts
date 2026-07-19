@@ -270,7 +270,67 @@ export type WorkStatus = {
   message?: string;
   task_id?: number;
   library_id?: string;
+  /** 是否已收藏(收藏即入库,与下载状态独立) */
+  collected?: boolean;
 };
+
+/** 收藏(入库)作品快照:与服务端 collections 表对应;POST 时无需 created_at/updated_at */
+export type Collection = {
+  source_id: string;
+  title: string;
+  circle: string;
+  vas: string[];
+  tags: string[];
+  release: string;
+  rate: number;
+  dl_count: number;
+  duration: number;
+  has_subtitle: boolean;
+  thumbnail_url: string;
+  main_cover_url: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type CollectionInput = Omit<Collection, "created_at" | "updated_at">;
+
+export type CollectionListResponse = {
+  items: Collection[];
+  total: number;
+  page: number;
+  page_size: number;
+};
+
+/** 从作品摘要构建收藏快照(DiscoverWorkSummary/Online 卡片数据通用) */
+export function toCollectionInput(work: {
+  source_id: string;
+  title: string;
+  circle: string;
+  vas?: string[];
+  tags?: string[];
+  release?: string;
+  rate?: number;
+  dl_count?: number;
+  duration?: number;
+  has_subtitle?: boolean;
+  thumbnail_url?: string;
+  main_cover_url?: string;
+}): CollectionInput {
+  return {
+    source_id: work.source_id,
+    title: work.title,
+    circle: work.circle ?? "",
+    vas: work.vas ?? [],
+    tags: work.tags ?? [],
+    release: work.release ?? "",
+    rate: work.rate ?? 0,
+    dl_count: work.dl_count ?? 0,
+    duration: work.duration ?? 0,
+    has_subtitle: work.has_subtitle ?? false,
+    thumbnail_url: work.thumbnail_url ?? "",
+    main_cover_url: work.main_cover_url ?? "",
+  };
+}
 
 export type WorkStatusResponse = {
   items: WorkStatus[];
@@ -370,6 +430,14 @@ function absolutizeLibrarySummary(work: LibraryWorkSummary): LibraryWorkSummary 
   return work.thumbnail_url
     ? { ...work, thumbnail_url: toAbsoluteMediaUrl(work.thumbnail_url) }
     : work;
+}
+
+function absolutizeCollection(item: Collection): Collection {
+  return {
+    ...item,
+    thumbnail_url: item.thumbnail_url ? toAbsoluteMediaUrl(item.thumbnail_url) : item.thumbnail_url,
+    main_cover_url: item.main_cover_url ? toAbsoluteMediaUrl(item.main_cover_url) : item.main_cover_url,
+  };
 }
 
 function absolutizeLibraryDetail(detail: LibraryWorkDetail): LibraryWorkDetail {
@@ -813,5 +881,36 @@ export const apiClient = {
       `/library/works/${encodeURIComponent(id)}`,
     );
     return absolutizeLibraryDetail(data);
+  },
+
+  async getCollections(params?: {
+    page?: number;
+    pageSize?: number;
+  }): Promise<CollectionListResponse> {
+    const data = await requestData<CollectionListResponse>(
+      `/collections${buildQueryString({
+        page: params?.page,
+        page_size: params?.pageSize,
+      })}`,
+    );
+    return {
+      ...data,
+      items: Array.isArray(data.items) ? data.items.map(absolutizeCollection) : [],
+    };
+  },
+
+  /** 收藏(入库)一个作品;body 为作品快照,服务端按 source_id upsert */
+  addCollection(work: CollectionInput): Promise<{ collected: boolean }> {
+    return requestData<{ collected: boolean }>("/collections", {
+      method: "POST",
+      body: JSON.stringify(work),
+    });
+  },
+
+  removeCollection(sourceId: string): Promise<{ deleted: boolean }> {
+    return requestData<{ deleted: boolean }>(
+      `/collections/${encodeURIComponent(sourceId)}`,
+      { method: "DELETE" },
+    );
   },
 };

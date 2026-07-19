@@ -2,6 +2,7 @@ import type { DiscoverWorkSummary, WorkStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatCount, formatDate, formatRate } from "@/lib/format";
 import { CoverPlaceholder, Sticker } from "@/components/ui";
+import { CollectButton } from "@/components/CollectButton";
 import { DownloadButton, WorkStatusBadge } from "@/components/WorkBadge";
 import { isWorkUnavailable } from "@/hooks/useWorksStatus";
 import type { CoverColor } from "@/components/ui";
@@ -123,6 +124,10 @@ export function ResultRow({
       >
         {previewing ? "… 加载中" : isPlaying ? "♪ 播放中" : "▶ 试听"}
       </button>
+
+      <span onClick={(e) => e.stopPropagation()}>
+        <CollectButton work={work} collected={status?.collected ?? false} size="sm" />
+      </span>
 
       <span onClick={(e) => e.stopPropagation()}>
         <DownloadButton status={status} onDownload={onDownload} />

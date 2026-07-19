@@ -51,7 +51,7 @@ export function ToolsPanel({
           <div className="y-disc-field__label">下载范围</div>
           <div className="y-disc-opts y-disc-scope" role="radiogroup" aria-label="下载范围">
             <Chip active={scope === "page"} onClick={() => onScope("page")}>
-              本页 {pageCount} 项
+              已加载 {pageCount} 项
             </Chip>
             <Chip
               active={scope === "selected"}

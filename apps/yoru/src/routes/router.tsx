@@ -68,16 +68,16 @@ const libraryRoute = createRoute({
   component: lazyRouteComponent(() => import("./screens/Library"), "LibraryScreen"),
 });
 
-const libraryDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/library/$id",
-  component: lazyRouteComponent(() => import("./screens/LibraryDetail"), "LibraryDetailScreen"),
-});
-
 const discoverRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/discover",
   component: lazyRouteComponent(() => import("./screens/Discover"), "DiscoverScreen"),
+});
+
+const workDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/works/$sourceId",
+  component: lazyRouteComponent(() => import("./screens/WorkDetail"), "WorkDetailScreen"),
 });
 
 const onlineRoute = createRoute({
@@ -108,8 +108,8 @@ const styleLabRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   libraryRoute,
-  libraryDetailRoute,
   discoverRoute,
+  workDetailRoute,
   onlineRoute,
   transferRoute,
   settingsRoute,

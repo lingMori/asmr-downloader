@@ -34,7 +34,7 @@ describe("discover helpers", () => {
     expect(buildExportQuery(DEFAULT_DISCOVER_URL)).toBe("");
   });
 
-  it("parseDiscoverSearch:缺省/非法值回退默认,subtitle=1,page_size 只认 12/24/48", () => {
+  it("parseDiscoverSearch:缺省/非法值回退默认,subtitle=1,page_size 只认 12/24/48(无 page,无限滚动)", () => {
     expect(parseDiscoverSearch({})).toEqual(DEFAULT_DISCOVER_URL);
     expect(
       parseDiscoverSearch({
@@ -44,7 +44,6 @@ describe("discover helpers", () => {
         order: "price",
         sort: "asc",
         page_size: "48",
-        page: "3",
         work: "RJ001",
       }),
     ).toEqual({
@@ -56,17 +55,18 @@ describe("discover helpers", () => {
       order: "price",
       sort: "asc",
       pageSize: 48,
-      page: 3,
       work: "RJ001",
     });
-    expect(parseDiscoverSearch({ order: "nope", page_size: "99", page: "-2" })).toEqual(
+    expect(parseDiscoverSearch({ order: "nope", page_size: "99" })).toEqual(
       DEFAULT_DISCOVER_URL,
     );
+    // 历史 URL 里的 page 参数直接忽略,不进入规范状态
+    expect(parseDiscoverSearch({ page: "3" })).toEqual(DEFAULT_DISCOVER_URL);
   });
 
   it("toDiscoverSearch:默认值省略,与 parse 往返一致", () => {
     expect(toDiscoverSearch(DEFAULT_DISCOVER_URL)).toEqual({});
-    const raw = { q: "x", tags: "a", page_size: "12", page: "2", work: "RJ9" };
+    const raw = { q: "x", tags: "a", page_size: "12", work: "RJ9" };
     expect(parseDiscoverSearch(toDiscoverSearch(parseDiscoverSearch(raw)))).toEqual(
       parseDiscoverSearch(raw),
     );

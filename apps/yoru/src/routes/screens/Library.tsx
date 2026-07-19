@@ -5,18 +5,25 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { apiClient } from "@/lib/api";
 import { keys } from "@/lib/keys";
-import { useFavorites } from "@/lib/favorites";
+import { useCollections } from "@/hooks/useCollections";
+import { useWorksStatus } from "@/hooks/useWorksStatus";
+import { useStreamSession } from "@/hooks/useStreamSession";
 import { useGlobalPlayer } from "@/player";
 import { Chip, EmptyState, Pagination, Skeleton } from "@/components/ui";
+import {
+  DownloadReviewDialog,
+  type DownloadReviewItem,
+} from "@/components/DownloadReviewDialog";
 import { ContinueHero } from "@/components/library/ContinueHero";
+import { CollectionCard } from "@/components/library/CollectionCard";
 import { WorkCard } from "@/components/library/WorkCard";
 
 const PAGE_SIZE = 24;
 
-type LibTab = "all" | "sub" | "fav";
+type LibTab = "all" | "sub";
 
 function parseTab(value: unknown): LibTab {
-  return value === "sub" || value === "fav" ? value : "all";
+  return value === "sub" ? "sub" : "all";
 }
 
 function parsePage(value: unknown): number {
@@ -24,7 +31,11 @@ function parsePage(value: unknown): number {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
 }
 
-/** 媒体库(继续收听 hero + 本地作品网格;URL 状态 tab/q/page) */
+/**
+ * 媒体库(收藏即入库):hero 继续收听 →「收藏作品 · これから」(服务端
+ * collections,可串流/可取消收藏/可下载)→「本地作品 らいぶらり」
+ * (已下载文件,URL 状态 tab/q/page)。
+ */
 export function LibraryScreen() {
   const rawSearch = useSearch({ strict: false }) as Record<string, unknown>;
   const tab = parseTab(rawSearch.tab);
@@ -32,7 +43,6 @@ export function LibraryScreen() {
   const page = parsePage(rawSearch.page);
   const navigate = useNavigate();
   const { session } = useGlobalPlayer();
-  const favorites = useFavorites();
 
   const updateSearch = (patch: { tab?: LibTab; q?: string; page?: number }) => {
     void navigate({
@@ -65,6 +75,14 @@ export function LibraryScreen() {
     queryFn: () => apiClient.getLatestPlaybackProgress(1),
   });
 
+  // ── 收藏作品(收藏即入库):全量 collections + 批量 works/status ──
+  const collectionsQuery = useCollections();
+  const collections = collectionsQuery.items;
+  const collectionIds = useMemo(() => collections.map((c) => c.source_id), [collections]);
+  const collectionStatus = useWorksStatus(collectionIds);
+  const { playWorkStream, loadingId } = useStreamSession();
+  const [reviewItem, setReviewItem] = useState<DownloadReviewItem | null>(null);
+
   const worksQuery = useQuery({
     queryKey: keys.library.works({ page, pageSize: PAGE_SIZE, search: q }),
     queryFn: () =>
@@ -73,12 +91,12 @@ export function LibraryScreen() {
 
   const items = useMemo(() => worksQuery.data?.items ?? [], [worksQuery.data]);
   const total = worksQuery.data?.total ?? 0;
-  // 计数口径:全部 = API total;有字幕/收藏 = 当前已加载页内计数(后端无对应聚合接口)
+  // 本地卡的 ♡ 收藏标记走服务端 works/status.collected(按 media_id 批量)
+  const localStatus = useWorksStatus(useMemo(() => items.map((w) => w.media_id), [items]));
+  // 计数口径:全部 = API total;有字幕 = 当前已加载页内计数(后端无对应聚合接口)
   const subCount = items.filter((w) => w.has_subtitles).length;
-  const favCount = items.filter((w) => favorites.has(w.id)).length;
   const visible = items.filter((w) => {
     if (tab === "sub") return w.has_subtitles;
-    if (tab === "fav") return favorites.has(w.id);
     return true;
   });
 
@@ -116,6 +134,57 @@ export function LibraryScreen() {
         </div>
       )}
 
+      {/* ── 收藏作品 · これから(收藏即入库,下载只是离线可选) ── */}
+      <div className="y-lib-section">
+        <h2 className="y-lib-section__title">收藏作品</h2>
+        <span className="y-kana">これから</span>
+        {collections.length > 0 && <span className="y-lib-stat">{collections.length} 部</span>}
+      </div>
+      {collectionsQuery.isError ? (
+        <div className="y-hint" role="alert">
+          收藏作品加载失败:
+          {collectionsQuery.error instanceof Error ? collectionsQuery.error.message : "未知错误"}
+          <button
+            type="button"
+            className="y-btn-ghost"
+            onClick={() => void collectionsQuery.refetch()}
+          >
+            重试
+          </button>
+        </div>
+      ) : collectionsQuery.isLoading ? (
+        <div className="y-lib-grid">
+          <Skeleton variant="card" count={4} />
+        </div>
+      ) : collections.length === 0 ? (
+        <div className="y-lib-collect-empty">
+          还没有收藏作品 — 在发现或在线点 ♡,收藏即入库
+        </div>
+      ) : (
+        <div className="y-lib-grid">
+          {collections.map((work, i) => (
+            <CollectionCard
+              key={work.source_id}
+              work={work}
+              status={collectionStatus.map.get(work.source_id)}
+              nowPlaying={session?.sourceId === work.source_id}
+              loading={loadingId === work.source_id}
+              stickerRotate={i % 2 ? -3 : 3}
+              onPlay={() =>
+                void playWorkStream(work.source_id, {
+                  workTitle: work.title,
+                  coverUrl: work.thumbnail_url || work.main_cover_url,
+                  cv: work.vas.join("、"),
+                  rj: work.source_id,
+                })
+              }
+              onDownload={() => setReviewItem({ sourceId: work.source_id, title: work.title })}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* ── 本地作品 · らいぶらり(已下载文件) ── */}
       <div className="y-lib-section">
         <h2 className="y-lib-section__title">本地作品</h2>
         <span className="y-kana">らいぶらり</span>
@@ -125,9 +194,6 @@ export function LibraryScreen() {
           </Chip>
           <Chip active={tab === "sub"} onClick={() => updateSearch({ tab: "sub", page: 1 })}>
             有字幕 {subCount}
-          </Chip>
-          <Chip active={tab === "fav"} onClick={() => updateSearch({ tab: "fav", page: 1 })}>
-            收藏 ♡ {favCount}
           </Chip>
         </div>
         <input
@@ -181,8 +247,7 @@ export function LibraryScreen() {
                 work={work}
                 stickerRotate={i % 2 ? -3 : 3}
                 nowPlaying={session?.sourceId === work.media_id}
-                fav={favorites.has(work.id)}
-                onToggleFav={() => favorites.toggle(work.id)}
+                collected={localStatus.map.get(work.media_id)?.collected ?? false}
               />
             ))}
           </div>
@@ -196,6 +261,12 @@ export function LibraryScreen() {
           )}
         </>
       )}
+
+      <DownloadReviewDialog
+        open={reviewItem !== null}
+        onClose={() => setReviewItem(null)}
+        items={reviewItem ? [reviewItem] : []}
+      />
     </div>
   );
 }

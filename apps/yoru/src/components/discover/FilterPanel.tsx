@@ -15,12 +15,12 @@ export type FilterPanelProps = {
 /** 筛选面板(dc.html:120-170):标签/仅字幕 · 社团/声优 · 排序/顺序/每页 */
 export function FilterPanel({ state, onChange }: FilterPanelProps) {
   const [tagsText, setTagsText] = useUrlTextParam(state.tags.join(", "), (v) =>
-    onChange({ tags: splitTags(v), page: 1 }),
+    onChange({ tags: splitTags(v) }),
   );
   const [circleText, setCircleText] = useUrlTextParam(state.circle, (v) =>
-    onChange({ circle: v, page: 1 }),
+    onChange({ circle: v }),
   );
-  const [vaText, setVaText] = useUrlTextParam(state.va, (v) => onChange({ va: v, page: 1 }));
+  const [vaText, setVaText] = useUrlTextParam(state.va, (v) => onChange({ va: v }));
 
   return (
     <div className="y-disc-panel">
@@ -48,7 +48,7 @@ export function FilterPanel({ state, onChange }: FilterPanelProps) {
                     type="button"
                     className="y-disc-tagchip"
                     onClick={() =>
-                      onChange({ tags: state.tags.filter((t) => t !== tag), page: 1 })
+                      onChange({ tags: state.tags.filter((t) => t !== tag) })
                     }
                   >
                     #{tag} ×
@@ -60,7 +60,7 @@ export function FilterPanel({ state, onChange }: FilterPanelProps) {
           <label className="y-disc-subtoggle">
             <Toggle
               checked={state.subtitle}
-              onChange={(checked) => onChange({ subtitle: checked, page: 1 })}
+              onChange={(checked) => onChange({ subtitle: checked })}
               label="仅字幕作品"
             />
             仅字幕作品
@@ -98,7 +98,7 @@ export function FilterPanel({ state, onChange }: FilterPanelProps) {
                 <Chip
                   key={o.id}
                   active={state.order === o.id}
-                  onClick={() => onChange({ order: o.id, page: 1 })}
+                  onClick={() => onChange({ order: o.id })}
                 >
                   {o.label}
                 </Chip>
@@ -118,7 +118,7 @@ export function FilterPanel({ state, onChange }: FilterPanelProps) {
                   <Chip
                     key={o.id}
                     active={state.sort === o.id}
-                    onClick={() => onChange({ sort: o.id, page: 1 })}
+                    onClick={() => onChange({ sort: o.id })}
                   >
                     {o.label}
                   </Chip>
@@ -132,7 +132,7 @@ export function FilterPanel({ state, onChange }: FilterPanelProps) {
                   <Chip
                     key={n}
                     active={state.pageSize === n}
-                    onClick={() => onChange({ pageSize: n, page: 1 })}
+                    onClick={() => onChange({ pageSize: n })}
                   >
                     {n}
                   </Chip>

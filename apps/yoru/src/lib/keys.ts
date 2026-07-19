@@ -62,6 +62,12 @@ export const keys = {
   worksStatus: (ids: string[] = []) =>
     ["works-status", ...Array.from(new Set(ids)).sort()] as const,
 
+  collections: {
+    all: ["collections"] as const,
+    list: (params: { page?: number; pageSize?: number } = {}) =>
+      ["collections", "list", params] as const,
+  },
+
   playback: {
     all: ["playback"] as const,
     latest: (limit = 10) => ["playback", "latest", limit] as const,

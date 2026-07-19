@@ -19,20 +19,26 @@ import type {
 import { GlobalPlayerProvider } from "@/player";
 import { DiscoverScreen } from "./Discover";
 
-vi.mock("@/lib/api", () => ({
-  apiClient: {
-    searchDiscover: vi.fn(),
-    searchWorks: vi.fn(),
-    getDiscoverWork: vi.fn(),
-    getWorkNeighbors: vi.fn(),
-    getWorkStatuses: vi.fn(),
-    exportSearch: vi.fn(),
-    createDownload: vi.fn(),
-    getPlaybackProgress: vi.fn(),
-    savePlaybackProgress: vi.fn(),
-    sendFeedback: vi.fn(),
-  },
-}));
+vi.mock("@/lib/api", async (importActual) => {
+  const actual = await importActual<typeof import("@/lib/api")>();
+  return {
+    apiClient: {
+      searchDiscover: vi.fn(),
+      searchWorks: vi.fn(),
+      getDiscoverWork: vi.fn(),
+      getWorkNeighbors: vi.fn(),
+      getWorkStatuses: vi.fn(),
+      exportSearch: vi.fn(),
+      createDownload: vi.fn(),
+      getPlaybackProgress: vi.fn(),
+      savePlaybackProgress: vi.fn(),
+      sendFeedback: vi.fn(),
+      addCollection: vi.fn(async () => ({ collected: true })),
+      removeCollection: vi.fn(async () => ({ deleted: true })),
+    },
+    toCollectionInput: actual.toCollectionInput,
+  };
+});
 
 import { apiClient } from "@/lib/api";
 
@@ -188,6 +194,48 @@ describe("DiscoverScreen", () => {
     expect(router.state.location.search).toMatchObject({ q: "RJ123" });
   });
 
+  it("无限滚动:哨兵入视自动加载下一页并累加,末页后显示到底提示", async () => {
+    const page1Works = Array.from({ length: 24 }, (_, i) => ({
+      ...WORKS[0],
+      source_id: `RJ${String(i + 1).padStart(3, "0")}`,
+      title: `作品 ${i + 1}`,
+    }));
+    const page2Works = [
+      { ...WORKS[0], source_id: "RJ025", title: "作品 25" },
+      { ...WORKS[0], source_id: "RJ026", title: "作品 26" },
+    ];
+    mockedSearchDiscover.mockImplementation((params?: { page?: number }) =>
+      Promise.resolve(
+        searchResponse({
+          items: (params?.page ?? 1) === 1 ? page1Works : page2Works,
+          total: 26,
+        }),
+      ),
+    );
+    renderDiscover();
+
+    // 第一页 24 条渲染;满页 → 有下一页,哨兵生效;先无到底提示
+    expect(await screen.findByText("作品 24")).toBeInTheDocument();
+    expect(screen.queryByText(/已经到底啦/)).toBeNull();
+
+    const instances = (
+      window.IntersectionObserver as unknown as {
+        instances: { triggerIntersect(v: boolean): void }[];
+      }
+    ).instances;
+    expect(instances.length).toBeGreaterThan(0);
+    instances[instances.length - 1].triggerIntersect(true);
+
+    // 第二页 2 条累加;不满页 → 到底提示
+    expect(await screen.findByText("作品 25")).toBeInTheDocument();
+    expect(screen.getByText("作品 24")).toBeInTheDocument();
+    expect(await screen.findByText("已经到底啦 · 共 26 条")).toBeInTheDocument();
+    expect(mockedSearchDiscover).toHaveBeenCalledTimes(2);
+    expect(mockedSearchDiscover).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 2 }),
+    );
+  });
+
   it("筛选面板点排序 chip 实时写 URL(order=rate_average_2dp)", async () => {
     const router = renderDiscover();
     await screen.findByText("雨音の催眠夜話");
@@ -263,6 +311,37 @@ describe("DiscoverScreen", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "重试" }));
     await screen.findByText("雨音の催眠夜話");
+  });
+
+  it("结果行 ♡ 收藏:点击调 addCollection(快照带 source_id),不触发行选中", async () => {
+    renderDiscover();
+    await screen.findByText("雨音の催眠夜話");
+
+    const collectButtons = screen.getAllByRole("button", { name: "收藏" });
+    expect(collectButtons.length).toBeGreaterThan(0);
+    fireEvent.click(collectButtons[0]);
+
+    await waitFor(() =>
+      expect(vi.mocked(apiClient.addCollection)).toHaveBeenCalledWith(
+        expect.objectContaining({ source_id: "RJ001", title: "雨音の催眠夜話" }),
+      ),
+    );
+    // stopPropagation:没有打开详情
+    expect(mockedGetDiscoverWork).not.toHaveBeenCalled();
+  });
+
+  it("详情侧栏:操作行含 ♡ 收藏与「查看完整详情 →」链接(/works/$sourceId)", async () => {
+    renderDiscover();
+    await screen.findByText("雨音の催眠夜話");
+
+    fireEvent.click(screen.getByText("雨音の催眠夜話"));
+    expect(await screen.findByText("音轨试听 · ためしぎき")).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("link", { name: "查看完整详情 →" }),
+    ).toHaveAttribute("href", "/works/RJ001");
+    // 侧栏操作行的收藏钮(正常尺寸,与结果行的 sm 分开计数)
+    expect(screen.getAllByRole("button", { name: "收藏" }).length).toBeGreaterThan(1);
   });
 
   it("q 含 $ → 高级语法模式:走 searchWorks,徽章高亮「高级语法 $」", async () => {

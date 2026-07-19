@@ -1,22 +1,26 @@
 import { Link } from "@tanstack/react-router";
 import type { LibraryWorkSummary } from "@/lib/api";
 import { formatDate } from "@/lib/format";
-import { cn } from "@/lib/utils";
 import { CoverPlaceholder, Sticker } from "@/components/ui";
+import { CollectButton } from "@/components/CollectButton";
 import { coverColorFor } from "./coverColor";
 
 export type WorkCardProps = {
   work: LibraryWorkSummary;
   /** 当前全局播放器正在播这部作品(「♪ 再生中」贴纸) */
   nowPlaying: boolean;
-  fav: boolean;
-  onToggleFav: () => void;
+  /** 服务端收藏标记(works/status.collected;收藏即入库,与下载状态独立) */
+  collected: boolean;
   /** 字幕贴纸旋转角(原型按索引奇偶 ±3°) */
   stickerRotate?: number;
 };
 
-/** 媒体库作品卡(dc.html:82-92;♡ 收藏为原型缺失按心形范式补) */
-export function WorkCard({ work, nowPlaying, fav, onToggleFav, stickerRotate = 3 }: WorkCardProps) {
+/**
+ * 媒体库本地作品卡(dc.html:82-92)。整卡点击 → /works/$sourceId
+ * (作品详情唯一入口);♡ 为 CollectButton(快照只拿得到本地摘要字段,
+ * 其余由 toCollectionInput 兜底)。
+ */
+export function WorkCard({ work, nowPlaying, collected, stickerRotate = 3 }: WorkCardProps) {
   return (
     <div className="y-lib-card">
       {work.has_subtitles && (
@@ -30,8 +34,8 @@ export function WorkCard({ work, nowPlaying, fav, onToggleFav, stickerRotate = 3
         </Sticker>
       )}
       <Link
-        to="/library/$id"
-        params={{ id: work.id }}
+        to="/works/$sourceId"
+        params={{ sourceId: work.media_id }}
         className="y-lib-card__link"
         aria-label={work.title}
       >
@@ -48,15 +52,19 @@ export function WorkCard({ work, nowPlaying, fav, onToggleFav, stickerRotate = 3
         <span className="y-lib-card__meta-text">
           {work.audio_file_count} 音轨 · {formatDate(work.release_date) || "日期未知"}
         </span>
-        <button
-          type="button"
-          className={cn("y-lib-card__fav", fav && "is-on")}
-          aria-pressed={fav}
-          aria-label={fav ? `取消收藏 ${work.title}` : `收藏 ${work.title}`}
-          onClick={onToggleFav}
-        >
-          ♡
-        </button>
+        <CollectButton
+          className="y-lib-card__collect"
+          work={{
+            source_id: work.media_id,
+            title: work.title,
+            circle: "",
+            release: work.release_date,
+            has_subtitle: work.has_subtitles,
+            thumbnail_url: work.thumbnail_url,
+          }}
+          collected={collected}
+          size="sm"
+        />
       </div>
     </div>
   );

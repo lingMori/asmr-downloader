@@ -9,12 +9,11 @@ import {
   Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
-import { apiClient, type DiscoverWorkDetail, type DiscoverWorkSummary } from "@/lib/api";
+import { apiClient, type DiscoverWorkSummary } from "@/lib/api";
 import { OnlineScreen } from "./Online";
 
 const playerMock = vi.hoisted(() => ({
   playSession: vi.fn(),
-  toggle: vi.fn(),
   // useGlobalPlayer() 每次调用读这里,测试间在 beforeEach 重置
   value: null as unknown,
 }));
@@ -23,14 +22,19 @@ vi.mock("@/player", () => ({
   useGlobalPlayer: () => playerMock.value,
 }));
 
-vi.mock("@/lib/api", () => ({
-  apiClient: {
-    getPopularWorks: vi.fn(),
-    getRecommendWorks: vi.fn(),
-    getWorkStatuses: vi.fn(async () => ({ items: [] })),
-    getDiscoverWork: vi.fn(),
-  },
-}));
+vi.mock("@/lib/api", async (importActual) => {
+  const actual = await importActual<typeof import("@/lib/api")>();
+  return {
+    apiClient: {
+      getPopularWorks: vi.fn(),
+      getRecommendWorks: vi.fn(),
+      getWorkStatuses: vi.fn(async () => ({ items: [] })),
+      addCollection: vi.fn(async () => ({ collected: true })),
+      removeCollection: vi.fn(async () => ({ deleted: true })),
+    },
+    toCollectionInput: actual.toCollectionInput,
+  };
+});
 
 function makeWork(id: string, over: Partial<DiscoverWorkSummary> = {}): DiscoverWorkSummary {
   return {
@@ -52,6 +56,13 @@ function listResponse(ids: string[], total = ids.length) {
   return { items: ids.map((id) => makeWork(id)), page: 1, page_size: 24, total };
 }
 
+function triggerLastSentinel() {
+  const instances = (window.IntersectionObserver as unknown as { instances: { triggerIntersect(v: boolean): void }[] })
+    .instances;
+  expect(instances.length).toBeGreaterThan(0);
+  instances[instances.length - 1].triggerIntersect(true);
+}
+
 function renderOnline(initialUrl = "/online") {
   const rootRoute = createRootRoute({ component: Outlet });
   const onlineRoute = createRoute({
@@ -59,8 +70,13 @@ function renderOnline(initialUrl = "/online") {
     path: "/online",
     component: OnlineScreen,
   });
+  const workRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/works/$sourceId",
+    component: () => <div>detail stub</div>,
+  });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([onlineRoute]),
+    routeTree: rootRoute.addChildren([onlineRoute, workRoute]),
     history: createMemoryHistory({ initialEntries: [initialUrl] }),
   });
   const queryClient = new QueryClient({
@@ -80,12 +96,7 @@ const recommendWorks = () => vi.mocked(apiClient.getRecommendWorks);
 describe("在线曲库 /online", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    playerMock.value = {
-      session: null,
-      playing: false,
-      playSession: playerMock.playSession,
-      toggle: playerMock.toggle,
-    };
+    playerMock.value = { session: null, playSession: playerMock.playSession };
     popularWorks().mockResolvedValue(listResponse(["RJ001"]));
     recommendWorks().mockResolvedValue(listResponse(["RJ009"]));
     vi.mocked(apiClient.getWorkStatuses).mockResolvedValue({ items: [] });
@@ -94,19 +105,16 @@ describe("在线曲库 /online", () => {
   it("默认拉取热门列表;切换 chip 改走推荐接口并写 URL", async () => {
     const router = renderOnline();
 
-    // 默认 sort=popular → getPopularWorks(subtitle:false)
     expect(await screen.findByText("作品 RJ001")).toBeInTheDocument();
     expect(popularWorks()).toHaveBeenCalledWith({ page: 1, pageSize: 24, subtitle: false });
     expect(recommendWorks()).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "热门" })).toHaveAttribute("aria-pressed", "true");
-    // 本页 source_id 驱动 works/status
     expect(vi.mocked(apiClient.getWorkStatuses)).toHaveBeenCalledWith(["RJ001"]);
 
     fireEvent.click(screen.getByRole("button", { name: "为你推荐" }));
 
     expect(await screen.findByText("作品 RJ009")).toBeInTheDocument();
     expect(recommendWorks()).toHaveBeenCalledWith({ page: 1, pageSize: 24, subtitle: false });
-    // 热门只拉过一次,不重复请求
     expect(popularWorks()).toHaveBeenCalledTimes(1);
     expect(router.state.location.search).toMatchObject({ sort: "recommend" });
     expect(screen.getByRole("button", { name: "为你推荐" })).toHaveAttribute("aria-pressed", "true");
@@ -124,73 +132,67 @@ describe("在线曲库 /online", () => {
     expect(screen.getByRole("switch", { name: "仅字幕" })).toHaveAttribute("aria-checked", "true");
   });
 
-  it("点卡:拉详情拍平音轨后 playSession(stream:true) 建串流会话", async () => {
-    vi.mocked(apiClient.getDiscoverWork).mockResolvedValue({
-      tracks: [
-        {
-          type: "folder",
-          title: "root",
-          children: [
-            {
-              id: "t1",
-              type: "audio",
-              title: "01.mp3",
-              play_url: "/api/discover/works/RJ001/tracks/t1/stream",
-            },
-            {
-              id: "t2",
-              type: "subtitle",
-              title: "01.vtt",
-              file_url: "/api/discover/works/RJ001/tracks/t2/file",
-            },
-          ],
-        },
-      ],
-    } as unknown as DiscoverWorkDetail);
-    renderOnline();
+  it("点卡 → 跳转 /works/$sourceId 详情页(不直接播放)", async () => {
+    const router = renderOnline();
     expect(await screen.findByText("作品 RJ001")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("作品 RJ001"));
+    fireEvent.click(screen.getByRole("button", { name: "查看详情 作品 RJ001" }));
 
     await vi.waitFor(() => {
-      expect(playerMock.playSession).toHaveBeenCalledWith(
-        expect.objectContaining({
-          sourceId: "RJ001",
-          workTitle: "作品 RJ001",
-          stream: true,
-          startIndex: 0,
-          cv: "CV甲",
-          rj: "RJ001",
-          tracks: [
-            expect.objectContaining({
-              id: "t1",
-              url: "/api/discover/works/RJ001/tracks/t1/stream",
-              subtitleUrl: "/api/discover/works/RJ001/tracks/t2/file",
-            }),
-          ],
-        }),
-      );
+      expect(router.state.location.pathname).toBe("/works/RJ001");
     });
-    expect(apiClient.getDiscoverWork).toHaveBeenCalledWith("RJ001");
+    expect(playerMock.playSession).not.toHaveBeenCalled();
   });
 
-  it("该作已在播时点卡 → toggle,不再拉详情", async () => {
+  it("正在播放的作品:封面显示 ♪ 指示(非交互),点卡仍跳详情", async () => {
     playerMock.value = {
       session: { sourceId: "RJ001", workTitle: "作品 RJ001", tracks: [], startIndex: 0, stream: true },
-      playing: true,
       playSession: playerMock.playSession,
-      toggle: playerMock.toggle,
     };
+    const router = renderOnline();
+    expect(await screen.findByText("作品 RJ001")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "正在播放" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "查看详情 作品 RJ001" }));
+    await vi.waitFor(() => {
+      expect(router.state.location.pathname).toBe("/works/RJ001");
+    });
+    expect(playerMock.playSession).not.toHaveBeenCalled();
+  });
+
+  it("♡ 收藏:点击调 addCollection(快照带 source_id)", async () => {
     renderOnline();
     expect(await screen.findByText("作品 RJ001")).toBeInTheDocument();
-    // 在播卡圆钮显示暂停语义
-    expect(screen.getByRole("button", { name: "暂停" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("作品 RJ001"));
+    fireEvent.click(screen.getByRole("button", { name: "收藏" }));
+    await vi.waitFor(() => {
+      expect(vi.mocked(apiClient.addCollection)).toHaveBeenCalledWith(
+        expect.objectContaining({ source_id: "RJ001", title: "作品 RJ001" }),
+      );
+    });
+  });
 
-    expect(playerMock.toggle).toHaveBeenCalledTimes(1);
-    expect(apiClient.getDiscoverWork).not.toHaveBeenCalled();
-    expect(playerMock.playSession).not.toHaveBeenCalled();
+  it("无限滚动:哨兵入视自动加载下一页并累加,末页后显示到底提示", async () => {
+    const page1Ids = Array.from({ length: 24 }, (_, i) => `RJ${String(i + 1).padStart(3, "0")}`);
+    popularWorks().mockImplementation((params?: { page?: number }) =>
+      Promise.resolve(
+        (params?.page ?? 1) === 1 ? listResponse(page1Ids, 26) : listResponse(["RJ025", "RJ026"], 26),
+      ),
+    );
+    renderOnline();
+
+    // 第一页 24 条全部渲染;满页 → 有下一页,哨兵生效
+    expect(await screen.findByText("作品 RJ024")).toBeInTheDocument();
+    expect(screen.queryByText(/已经到底啦/)).toBeNull();
+
+    triggerLastSentinel();
+
+    // 第二页 2 条累加进来;不满页 → 无下一页,显示到底提示
+    expect(await screen.findByText("作品 RJ025")).toBeInTheDocument();
+    expect(screen.getByText("作品 RJ024")).toBeInTheDocument();
+    expect(await screen.findByText("已经到底啦 · 共 26 部")).toBeInTheDocument();
+    expect(popularWorks()).toHaveBeenCalledTimes(2);
+    expect(popularWorks()).toHaveBeenLastCalledWith({ page: 2, pageSize: 24, subtitle: false });
   });
 
   it("加载失败 → 内联错误条(含设置链接),重试后恢复", async () => {

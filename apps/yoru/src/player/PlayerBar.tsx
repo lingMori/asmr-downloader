@@ -34,6 +34,39 @@ export function PlayerBar() {
   );
 }
 
+/**
+ * 停靠字幕行(原型缺失,按同范式补):不展开播放器也能看到
+ * 随时间轴命中的当前句;点击展开查看完整字幕卡。
+ */
+function DockedCue() {
+  const { subtitleCues, activeCueIdx, setExpanded } = useGlobalPlayer();
+  if (activeCueIdx < 0) {
+    return null;
+  }
+  const cue = subtitleCues[activeCueIdx];
+  if (!cue?.text) {
+    return null;
+  }
+  return (
+    <button
+      type="button"
+      className="y-playerbar__cue"
+      data-testid="playerbar-cue"
+      onClick={(e) => {
+        e.stopPropagation();
+        setExpanded(true);
+      }}
+      title="展开查看全部字幕"
+      aria-label="展开查看全部字幕"
+    >
+      <span className="y-playerbar__cue-icon" aria-hidden="true">
+        ♪
+      </span>
+      <span className="y-playerbar__cue-text">{cue.text}</span>
+    </button>
+  );
+}
+
 function DesktopBar() {
   const {
     session,
@@ -59,6 +92,7 @@ function DesktopBar() {
   const playState = playing ? "いま再生中…" : "一時停止中";
   return (
     <footer className="y-playerbar y-playerbar--desktop" data-testid="playerbar-desktop">
+      <DockedCue />
       {session.coverUrl ? (
         <img className="y-playerbar__cover" src={session.coverUrl} alt="" />
       ) : (
@@ -156,6 +190,7 @@ function CompactBar() {
       data-testid="playerbar-compact"
       onClick={() => setExpanded(true)}
     >
+      <DockedCue />
       {session.coverUrl ? (
         <img className="y-playerbar__cover" src={session.coverUrl} alt="" />
       ) : (

@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { Toaster } from "sonner";
 import { GlobalPlayerProvider, useGlobalPlayer } from "./GlobalPlayer";
 import { PlayerBar } from "./PlayerBar";
+import { ExpandedPlayer } from "./ExpandedPlayer";
 import type { PlaybackSession } from "./types";
 
 vi.mock("@/lib/api", () => ({
@@ -44,6 +45,7 @@ function renderPlayer(children: React.ReactNode) {
     <GlobalPlayerProvider>
       {children}
       <PlayerBar />
+      <ExpandedPlayer />
       <Toaster />
     </GlobalPlayerProvider>,
   );
@@ -55,6 +57,10 @@ describe("GlobalPlayer + PlayerBar", () => {
     // 404 = 无历史进度
     mockedProgress.mockRejectedValue(new Error("404"));
     mockedSave.mockResolvedValue({ saved: true });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("无会话时不渲染播放条", () => {
@@ -104,5 +110,79 @@ describe("GlobalPlayer + PlayerBar", () => {
     fireEvent.click(screen.getByRole("button", { name: "下一首" }));
     fireEvent.click(screen.getByText("s2"));
     expect(await screen.findAllByText(/第二作 · Track 2/)).not.toHaveLength(0);
+  });
+
+  it("显式选轨优先于历史进度:不被强制切回上次曲目", async () => {
+    // 历史进度录的是 Track 2;用户显式 startIndex=0 点播,必须播 Track 1
+    mockedProgress.mockResolvedValue({
+      source_id: "RJ1234",
+      work_title: "ねむりの森の耳かき",
+      cover_url: "",
+      track_path: "/api/discover/works/RJ1234/tracks/2/stream",
+      track_title: "Track 2",
+      position: 120,
+      duration: 300,
+      updated_at: "2024-01-01T00:00:00Z",
+    });
+    renderPlayer(<StartButton />);
+    fireEvent.click(screen.getByText("start"));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(mockedProgress).not.toHaveBeenCalled();
+    expect(screen.getAllByText(/ねむりの森の耳かき · Track 1/).length).toBeGreaterThan(0);
+  });
+
+  it("resumeWork=true 才按历史进度续播(切到记录的曲目)", async () => {
+    mockedProgress.mockResolvedValue({
+      source_id: "RJ1234",
+      work_title: "ねむりの森の耳かき",
+      cover_url: "",
+      track_path: "/api/discover/works/RJ1234/tracks/2/stream",
+      track_title: "Track 2",
+      position: 120,
+      duration: 300,
+      updated_at: "2024-01-01T00:00:00Z",
+    });
+    function ResumeButton() {
+      const { playSession } = useGlobalPlayer();
+      return <button onClick={() => playSession(SESSION, { resumeWork: true })}>r</button>;
+    }
+    renderPlayer(<ResumeButton />);
+    fireEvent.click(screen.getByText("r"));
+    expect(await screen.findAllByText(/ねむりの森の耳かき · Track 2/)).not.toHaveLength(0);
+  });
+
+  it("停靠字幕行:随时间轴切换当前句,点击展开播放器", async () => {
+    const lrc = "[00:01.00] こんばんは\n[00:05.00] おやすみなさい\n";
+    const fetchMock = vi.fn().mockResolvedValue(new Response(lrc, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const session: PlaybackSession = {
+      ...SESSION,
+      tracks: [
+        {
+          id: "1",
+          title: "Track 1",
+          url: "/api/discover/works/RJ1234/tracks/1/stream",
+          subtitleUrl: "/media/RJ1234/01.lrc",
+        },
+      ],
+    };
+    renderPlayer(<StartButton session={session} />);
+    fireEvent.click(screen.getByText("start"));
+
+    const audio = document.querySelector("audio")!;
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+
+    // 时间 1.5s → 第一句;6s → 第二句(桌面/移动两条停靠行都会渲染)
+    audio.currentTime = 1.5;
+    fireEvent(audio, new Event("timeupdate"));
+    expect(await screen.findAllByText("こんばんは")).not.toHaveLength(0);
+    audio.currentTime = 6;
+    fireEvent(audio, new Event("timeupdate"));
+    expect(await screen.findAllByText("おやすみなさい")).not.toHaveLength(0);
+
+    // 点击停靠行 → 展开播放器(字幕卡列出全部两句)
+    fireEvent.click(screen.getAllByTestId("playerbar-cue")[0]);
+    expect(await screen.findByRole("dialog", { name: "播放器" })).toBeInTheDocument();
+    expect(screen.getAllByText("こんばんは").length).toBeGreaterThan(0);
   });
 });

@@ -4,10 +4,9 @@ import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { CoverPlaceholder, EQ, Sticker } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { activeCueIndex, formatTime } from "./logic";
+import { formatTime } from "./logic";
 import { pickCoverColor } from "./PlayerBar";
 import { useGlobalPlayer } from "./GlobalPlayer";
-import { useSubtitles } from "./useSubtitles";
 import type { PlayerTrack } from "./types";
 
 /**
@@ -53,7 +52,6 @@ function ExpandedBody() {
     session,
     index,
     playing,
-    position,
     currentTrack,
     playAt,
     setExpanded,
@@ -104,7 +102,7 @@ function ExpandedBody() {
             label="封面 · COVER"
           />
         )}
-        <SubtitleCard track={currentTrack} position={position} />
+        <SubtitleCard track={currentTrack} />
       </div>
       <div className="y-player-expanded__right">
         <div className="y-player-expanded__badges">
@@ -157,16 +155,15 @@ function ExpandedBody() {
   );
 }
 
-/** 虚线字幕卡:按 currentTime 高亮当前行并滚动到可视区 */
-function SubtitleCard({ track, position }: { track: PlayerTrack; position: number }) {
-  const { cues, state } = useSubtitles(track.subtitleUrl, track.title);
-  const activeIdx = activeCueIndex(cues, position);
+/** 虚线字幕卡:按 currentTime 高亮当前行并滚动到可视区(字幕数据来自 PlayerContext) */
+function SubtitleCard({ track }: { track: PlayerTrack }) {
+  const { subtitleCues: cues, subtitleState: state, activeCueIdx } = useGlobalPlayer();
   const listRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     activeRef.current?.scrollIntoView({ block: "nearest" });
-  }, [activeIdx]);
+  }, [activeCueIdx]);
 
   let body;
   if (!track.subtitleUrl) {
@@ -183,8 +180,8 @@ function SubtitleCard({ track, position }: { track: PlayerTrack; position: numbe
         {cues.map((cue, i) => (
           <div
             key={`${cue.start}-${i}`}
-            ref={i === activeIdx ? activeRef : undefined}
-            className={cn("y-subtitle__line", i === activeIdx && "is-active")}
+            ref={i === activeCueIdx ? activeRef : undefined}
+            className={cn("y-subtitle__line", i === activeCueIdx && "is-active")}
           >
             {cue.text}
           </div>

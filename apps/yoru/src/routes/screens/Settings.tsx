@@ -42,10 +42,14 @@ export function SettingsScreen() {
       )}
       {configQuery.data && (
         <div className="y-set-grid">
-          <DownloadCard config={configQuery.data} />
-          <SourceCard config={configQuery.data} />
-          <AppearanceCard />
-          <AboutCard />
+          <div className="y-set-col">
+            <DownloadCard config={configQuery.data} />
+            <AppearanceCard />
+          </div>
+          <div className="y-set-col">
+            <SourceCard config={configQuery.data} />
+            <AboutCard />
+          </div>
         </div>
       )}
     </div>

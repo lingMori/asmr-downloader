@@ -20,22 +20,33 @@ vi.mock("@/player", () => ({
   }),
 }));
 
-vi.mock("@/lib/api", () => ({
-  apiClient: {
-    getLibraryWorks: vi.fn(),
-    getLatestPlaybackProgress: vi.fn(),
-    getLibraryWork: vi.fn(),
-  },
-}));
+vi.mock("@/lib/api", async (importActual) => {
+  const actual = await importActual<typeof import("@/lib/api")>();
+  return {
+    apiClient: {
+      getLibraryWorks: vi.fn(),
+      getLatestPlaybackProgress: vi.fn(),
+      getLibraryWork: vi.fn(),
+      getCollections: vi.fn(),
+      getWorkStatuses: vi.fn(async () => ({ items: [] })),
+      getDiscoverWork: vi.fn(),
+      addCollection: vi.fn(async () => ({ collected: true })),
+      removeCollection: vi.fn(async () => ({ deleted: true })),
+      createDownload: vi.fn(),
+    },
+    toCollectionInput: actual.toCollectionInput,
+  };
+});
 
-import { apiClient, type LibraryWorkDetail } from "@/lib/api";
-import { FAVORITES_STORAGE_KEY } from "@/lib/favorites";
+import { apiClient, type Collection, type WorkStatus } from "@/lib/api";
 import { LibraryScreen } from "./Library";
-import { LibraryDetailScreen } from "./LibraryDetail";
 
 const mockedWorks = vi.mocked(apiClient.getLibraryWorks);
 const mockedLatest = vi.mocked(apiClient.getLatestPlaybackProgress);
-const mockedWork = vi.mocked(apiClient.getLibraryWork);
+const mockedCollections = vi.mocked(apiClient.getCollections);
+const mockedStatuses = vi.mocked(apiClient.getWorkStatuses);
+const mockedAddCollection = vi.mocked(apiClient.addCollection);
+const mockedRemoveCollection = vi.mocked(apiClient.removeCollection);
 
 const WORKS = {
   items: [
@@ -66,6 +77,21 @@ const WORKS = {
   page_size: 24,
 };
 
+const COLLECTED_WORK: Collection = {
+  source_id: "RJ555",
+  title: "收藏の夜話",
+  circle: "音の森",
+  vas: ["CV甲"],
+  tags: [],
+  release: "2024-04-01",
+  rate: 4.5,
+  dl_count: 100,
+  duration: 1800,
+  has_subtitle: true,
+  thumbnail_url: "",
+  main_cover_url: "",
+};
+
 const LOCAL_PROGRESS = {
   source_id: "RJ111",
   work_title: "ねむりの森",
@@ -87,13 +113,13 @@ function renderRoute(initial: string) {
     path: "/library",
     component: LibraryScreen,
   });
-  const detailRoute = createRoute({
+  const workRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "/library/$id",
-    component: LibraryDetailScreen,
+    path: "/works/$sourceId",
+    component: () => <div>work detail stub</div>,
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([libraryRoute, detailRoute]),
+    routeTree: rootRoute.addChildren([libraryRoute, workRoute]),
     history: createMemoryHistory({ initialEntries: [initial] }),
   });
   return render(
@@ -109,6 +135,8 @@ describe("LibraryScreen", () => {
     window.localStorage.clear();
     mockedWorks.mockResolvedValue(WORKS);
     mockedLatest.mockResolvedValue({ items: [LOCAL_PROGRESS] });
+    mockedCollections.mockResolvedValue({ items: [], total: 0, page: 1, page_size: 48 });
+    mockedStatuses.mockResolvedValue({ items: [] });
   });
 
   it("hero 展示最近进度,继续播放按 track_path 建会话并 resumeFrom", async () => {
@@ -159,6 +187,74 @@ describe("LibraryScreen", () => {
     expect(screen.getByRole("link", { name: "去在线" })).toBeInTheDocument();
   });
 
+  it("收藏区:渲染 collections 卡片(标题/CV·社团/字幕贴纸/已收藏态 ♥)", async () => {
+    mockedCollections.mockResolvedValue({
+      items: [COLLECTED_WORK],
+      total: 1,
+      page: 1,
+      page_size: 48,
+    });
+    renderRoute("/library");
+    expect(await screen.findByText("收藏の夜話")).toBeInTheDocument();
+    expect(screen.getByText("CV CV甲 · 音の森")).toBeInTheDocument();
+    expect(screen.getAllByText("字幕あり").length).toBeGreaterThan(0);
+    // 收藏区卡片恒为已收藏态;整卡链接指向 /works/$sourceId
+    expect(screen.getByRole("button", { name: "取消收藏" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("link", { name: "收藏の夜話" })).toHaveAttribute(
+      "href",
+      "/works/RJ555",
+    );
+  });
+
+  it("收藏区:点 ♥ 取消收藏 → removeCollection(source_id)", async () => {
+    mockedCollections.mockResolvedValue({
+      items: [COLLECTED_WORK],
+      total: 1,
+      page: 1,
+      page_size: 48,
+    });
+    renderRoute("/library");
+    fireEvent.click(await screen.findByRole("button", { name: "取消收藏" }));
+    await waitFor(() => expect(mockedRemoveCollection).toHaveBeenCalledWith("RJ555"));
+    expect(mockedAddCollection).not.toHaveBeenCalled();
+  });
+
+  it("收藏区:无收藏时显示虚线空态卡", async () => {
+    renderRoute("/library");
+    expect(await screen.findByText(/还没有收藏作品/)).toBeInTheDocument();
+  });
+
+  it("本地卡 ♡ 走 works/status.collected;未收藏点击 → addCollection 快照", async () => {
+    const statuses: WorkStatus[] = [
+      { source_id: "RJ222", state: "none", label: "", collected: true },
+    ];
+    mockedStatuses.mockImplementation(async (ids: string[]) => ({
+      items: statuses.filter((s) => ids.includes(s.source_id)),
+    }));
+    renderRoute("/library");
+    await screen.findByText("耳かきの夜");
+    // works/status 批量请求带上了本地 media_id
+    await waitFor(() =>
+      expect(mockedStatuses).toHaveBeenCalledWith(
+        expect.arrayContaining(["RJ111", "RJ222"]),
+      ),
+    );
+    // RJ222 collected:true → 已收藏态;RJ111 无记录 → 未收藏态
+    expect(await screen.findByRole("button", { name: "取消收藏" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "收藏" }));
+    await waitFor(() =>
+      expect(mockedAddCollection).toHaveBeenCalledWith(
+        expect.objectContaining({ source_id: "RJ111", title: "子守唄バイノーラル" }),
+      ),
+    );
+  });
+
   it("tab 过滤:有字幕只留 has_subtitles 作品,计数 = 全部 total / 页内匹配数", async () => {
     renderRoute("/library");
     expect(await screen.findByText("耳かきの夜")).toBeInTheDocument();
@@ -168,19 +264,6 @@ describe("LibraryScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: "有字幕 1" }));
     await waitFor(() => expect(screen.queryByText("耳かきの夜")).toBeNull());
     expect(screen.getAllByText("子守唄バイノーラル").length).toBeGreaterThan(0);
-  });
-
-  it("♡ 收藏切换写入 localStorage,收藏 tab 只显示已收藏", async () => {
-    renderRoute("/library");
-    const favBtn = await screen.findByRole("button", { name: "收藏 耳かきの夜" });
-    fireEvent.click(favBtn);
-
-    expect(JSON.parse(window.localStorage.getItem(FAVORITES_STORAGE_KEY)!)).toEqual(["2"]);
-    expect(await screen.findByRole("button", { name: "收藏 ♡ 1" })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "收藏 ♡ 1" }));
-    await waitFor(() => expect(screen.queryByText("子守唄バイノーラル")).toBeNull());
-    expect(screen.getByText("耳かきの夜")).toBeInTheDocument();
   });
 
   it("搜索输入 300ms 防抖后以 search 参数重新请求", async () => {
@@ -215,85 +298,5 @@ describe("LibraryScreen", () => {
     mockedWorks.mockResolvedValue(WORKS);
     fireEvent.click(screen.getByRole("button", { name: "重试" }));
     expect(await screen.findByText("耳かきの夜")).toBeInTheDocument();
-  });
-});
-
-const DETAIL: LibraryWorkDetail = {
-  summary: {
-    id: "1",
-    media_id: "RJ111",
-    title: "子守唄バイノーラル",
-    release_date: "2024-03-01",
-    has_subtitles: true,
-    file_count: 5,
-    audio_file_count: 2,
-    subtitle_count: 1,
-    thumbnail_url: "/media/RJ111/cover.jpg",
-  },
-  files: [
-    { path: "RJ111/01.mp3", name: "01 耳かき.mp3", kind: "audio", url: "/media/RJ111/01.mp3" },
-    { path: "RJ111/02.mp3", name: "02 ささやき.mp3", kind: "audio", url: "/media/RJ111/02.mp3" },
-    { path: "RJ111/01.lrc", name: "01 耳かき.lrc", kind: "subtitle", url: "/media/RJ111/01.lrc" },
-    { path: "RJ111/cover.jpg", name: "cover.jpg", kind: "image", url: "/media/RJ111/cover.jpg" },
-    { path: "RJ111/readme.txt", name: "readme.txt", kind: "other", url: "/media/RJ111/readme.txt" },
-  ],
-};
-
-describe("LibraryDetailScreen", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    window.localStorage.clear();
-    mockedWork.mockResolvedValue(DETAIL);
-  });
-
-  it("按 kind 分组渲染文件列表(组标题带计数)", async () => {
-    renderRoute("/library/1");
-    expect(await screen.findByText("子守唄バイノーラル")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "音声" })).toHaveTextContent("音声2");
-    expect(screen.getByRole("region", { name: "字幕" })).toHaveTextContent("字幕1");
-    expect(screen.getByRole("region", { name: "图片" })).toHaveTextContent("图片1");
-    expect(screen.getByRole("region", { name: "其他" })).toHaveTextContent("其他1");
-    expect(screen.getByRole("link", { name: /cover\.jpg/ })).toHaveAttribute(
-      "href",
-      "/media/RJ111/cover.jpg",
-    );
-    expect(screen.getByRole("link", { name: /cover\.jpg/ })).toHaveAttribute("target", "_blank");
-  });
-
-  it("播放整作:全部音声按序建会话并匹配字幕;单曲行为 startIndex", async () => {
-    renderRoute("/library/1");
-    fireEvent.click(await screen.findByRole("button", { name: "▶ 播放整作" }));
-    expect(playSessionMock).toHaveBeenCalledWith({
-      sourceId: "RJ111",
-      workTitle: "子守唄バイノーラル",
-      coverUrl: "/media/RJ111/cover.jpg",
-      rj: "RJ111",
-      tracks: [
-        {
-          id: "RJ111/01.mp3",
-          title: "01 耳かき.mp3",
-          url: "/media/RJ111/01.mp3",
-          subtitleUrl: "/media/RJ111/01.lrc",
-        },
-        {
-          id: "RJ111/02.mp3",
-          title: "02 ささやき.mp3",
-          url: "/media/RJ111/02.mp3",
-          subtitleUrl: undefined,
-        },
-      ],
-      startIndex: 0,
-      stream: false,
-    });
-
-    playSessionMock.mockClear();
-    fireEvent.click(screen.getByRole("button", { name: /02 ささやき\.mp3/ }));
-    expect(playSessionMock).toHaveBeenCalledWith(expect.objectContaining({ startIndex: 1 }));
-  });
-
-  it("404 → 作品不存在空态", async () => {
-    mockedWork.mockRejectedValue(new Error("404 Not Found"));
-    renderRoute("/library/9");
-    expect(await screen.findByText(/作品不存在/)).toBeInTheDocument();
   });
 });

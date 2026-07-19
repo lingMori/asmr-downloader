@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
-   媒体库 /library + /library/$id 页面私有样式(y-lib-*)。
+   媒体库 /library 页面私有样式(y-lib-*)。作品详情统一走 /works/$sourceId(workdetail.css)。
    取值照抄原型 dc.html:56-94(hero/分区标题/作品卡),出处逐条注释;
    原型缺失部分(空态/详情页/移动端)按同范式补,仅用 tokens。
    ───────────────────────────────────────────────────────────── */
@@ -107,6 +107,17 @@
   .y-lib-error {
     margin-top: 14px;
   }
+  /* 收藏区空态(虚线卡,同 hero 空态范式) */
+  .y-lib-collect-empty {
+    margin-top: 14px;
+    border: 2px dashed var(--line);
+    border-radius: 20px;
+    padding: 22px 20px;
+    color: var(--mut);
+    font-size: 12px;
+    text-align: center;
+    line-height: 1.7;
+  }
   .y-lib-hero__empty-actions {
     display: flex;
     gap: 10px;
@@ -182,6 +193,7 @@
     text-decoration: none;
   }
   .y-lib-card__cover {
+    position: relative;
     aspect-ratio: 1;
     border-radius: 12px;
     border: 1.5px solid var(--line);
@@ -219,22 +231,48 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .y-lib-card__fav {
-    margin-left: auto;
-    flex: none;
-    cursor: pointer;
-    background: none;
-    border: none;
-    color: var(--dim);
-    font-size: 13px;
-    line-height: 1;
-    padding: 6px;
-    margin-right: -6px;
-    border-radius: var(--r-xs);
-    transition: color 0.15s;
+  /* 收藏卡:封面上「已在库 ✓」徽章(毛玻璃底保证图上可读,rgba 出处 dc.html:302-303) */
+  .y-lib-card__status {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    background: rgba(16, 10, 26, 0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
   }
-  .y-lib-card__fav.is-on {
-    color: var(--pink);
+  /* 本地卡 ♡(CollectButton)贴 meta 行右侧 */
+  .y-lib-card__collect {
+    margin-left: auto;
+  }
+  /* 收藏卡行内操作:▶ 串流 / ♥ 收藏 / 下载三态 */
+  .y-lib-card__actions {
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .y-lib-card__play {
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1.5px solid var(--line);
+    background: transparent;
+    color: var(--lav);
+    font-size: 9px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    transition:
+      border-color 0.15s,
+      color 0.15s;
+  }
+  .y-lib-card__play:disabled {
+    cursor: default;
+    opacity: 0.6;
   }
   /* 贴纸落位(dc.html:84/87;旋转角由 Sticker 组件 --sticker-rot 控制) */
   .y-lib-card__st-sub {
@@ -419,7 +457,8 @@
   .y-lib-card:hover {
     transform: translateY(-3px); /* dc.html:82 */
   }
-  .y-lib-card__fav:hover {
+  .y-lib-card__play:not(:disabled):hover {
+    border-color: var(--lineStrong);
     color: var(--pink);
   }
   .y-lib-detail__back:hover {

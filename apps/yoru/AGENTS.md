@@ -16,6 +16,7 @@ src/
     TaskRealtimeBridge.tsx   SSE → react-query 桥(壳挂载一次)
     PageHeader.tsx            页头(标题+假名+虚线徽章+右侧 aside)
     WorkBadge.tsx             WorkStatusBadge(状态徽章)+ DownloadButton(下载钮三态)
+    CollectButton.tsx         收藏(入库)♡ 切换钮(配 hooks/useCollections.ts)
     DownloadReviewDialog.tsx  下载复核对话框(创建 single/batch 任务)
   player/      全局播放器:GlobalPlayer(Context)/PlayerBar/ExpandedPlayer/
                usePlaybackPersistence / useSubtitles / logic(纯函数)/ types
@@ -43,7 +44,9 @@ src/
   - `session = { sourceId?, workTitle, coverUrl?, tracks: PlayerTrack[], startIndex, stream, cv?, rj? }`;
   - `PlayerTrack = { id, title, url, duration?, subtitleUrl? }`,url 直接可播(`/media/...` 或 `.../stream`);
   - `stream: true` = 在线串流(显示徽章 + 「↓ 下载本作」+ feedback 上报);
-  - `opts.resumeFrom`(秒)显式续播;不传且 `sourceId` 存在时自动查 `GET /api/playback/progress/:sourceId` 续播(404 = 无进度);
+  - `opts.resumeFrom`(秒)在 startIndex 轨上续播;`opts.resumeWork: true` = 整作续播
+    (查 `GET /api/playback/progress/:sourceId`,命中则切到记录曲目续播,404 = 无进度)。
+    **显式点选某轨时什么都不要传**——用户选哪轨播哪轨;
   - `sourceId` 缺省时跳过进度持久化。
 - 进度持久化(10s 间隔 + 2s 节流 PUT)已内置,页面不用管。
 
@@ -70,6 +73,10 @@ src/
   页面私有组件放 `src/components/<page>/`;**页面私有样式放 `src/styles/pages/<page>.css`
   并在 screen 模块顶部 `import "@/styles/pages/<page>.css"`**——不要改 components.css,避免并行冲突。
 - 共享件直接用,不要重复造:`PageHeader`、`WorkStatusBadge`、`DownloadButton`、
-  `DownloadReviewDialog`、`useWorksStatus(sourceIds)`(src/hooks/useWorksStatus.ts)、
+  `CollectButton`(♡ 收藏入库)、`DownloadReviewDialog`、`useWorksStatus(sourceIds)`、
+  `useCollections()`/`useToggleCollection()`(src/hooks/)、`toCollectionInput`(api.ts)、
   `lib/format.ts`(formatDuration/formatCount/formatRate/formatDate/formatRelativeTime)。
 - 下载作品一律经 `DownloadReviewDialog`(单件也过复核),不要直接调 apiClient.createDownload。
+- **收藏即入库**:收藏写服务端 `/api/collections`(快照 upsert),与下载状态独立;
+  `WorkStatus.collected` 为统一收藏标记;下载只是离线可选,不再等于入库。
+- **作品详情唯一入口:`/works/$sourceId`**(本地/远端统一,展示详细内容+文件层级)。

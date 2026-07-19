@@ -496,6 +496,13 @@
     cursor: default;
     opacity: 0.55;
   }
+  /* 详情操作行:♡ 收藏入库 + 渐变下载钮 + 完整详情链接 */
+  .y-disc-detail__actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
   /* 相似作品(原型没有 → 按 facet 卡同范式补) */
   .y-disc-neighbors {
     display: grid;
@@ -760,4 +767,16 @@
     flex-direction: column;
     gap: 14px;
   }
+}
+
+/* 无限滚动:哨兵(占位触发区)+ 到底提示 */
+.y-disc-sentinel {
+  min-height: 40px;
+  margin-top: 8px;
+}
+.y-disc-end {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--dim);
 }

@@ -19,7 +19,7 @@ export function ActiveChips({ state, advanced, total, selectedCount, onChange }:
     chips.push({
       key: "q",
       label: `${advanced ? "语法" : "关键词"}: ${state.q}`,
-      remove: () => onChange({ q: "", page: 1 }),
+      remove: () => onChange({ q: "" }),
     });
   }
   if (!advanced) {
@@ -27,24 +27,24 @@ export function ActiveChips({ state, advanced, total, selectedCount, onChange }:
       chips.push({
         key: `tag:${tag}`,
         label: `标签: ${tag}`,
-        remove: () => onChange({ tags: state.tags.filter((t) => t !== tag), page: 1 }),
+        remove: () => onChange({ tags: state.tags.filter((t) => t !== tag) }),
       });
     }
     if (state.circle) {
       chips.push({
         key: "circle",
         label: `社团: ${state.circle}`,
-        remove: () => onChange({ circle: "", page: 1 }),
+        remove: () => onChange({ circle: "" }),
       });
     }
     if (state.va) {
-      chips.push({ key: "va", label: `声优: ${state.va}`, remove: () => onChange({ va: "", page: 1 }) });
+      chips.push({ key: "va", label: `声优: ${state.va}`, remove: () => onChange({ va: "" }) });
     }
     if (state.subtitle) {
       chips.push({
         key: "subtitle",
         label: "仅字幕作品",
-        remove: () => onChange({ subtitle: false, page: 1 }),
+        remove: () => onChange({ subtitle: false }),
       });
     }
     if (state.order !== DEFAULT_DISCOVER_URL.order) {
@@ -52,14 +52,14 @@ export function ActiveChips({ state, advanced, total, selectedCount, onChange }:
       chips.push({
         key: "order",
         label: `排序: ${orderLabel}`,
-        remove: () => onChange({ order: DEFAULT_DISCOVER_URL.order, page: 1 }),
+        remove: () => onChange({ order: DEFAULT_DISCOVER_URL.order }),
       });
     }
     if (state.pageSize !== DEFAULT_DISCOVER_URL.pageSize) {
       chips.push({
         key: "pageSize",
         label: `每页: ${state.pageSize}`,
-        remove: () => onChange({ pageSize: DEFAULT_DISCOVER_URL.pageSize, page: 1 }),
+        remove: () => onChange({ pageSize: DEFAULT_DISCOVER_URL.pageSize }),
       });
     }
   }

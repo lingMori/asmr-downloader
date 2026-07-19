@@ -1,11 +1,13 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { apiClient } from "@/lib/api";
 import { keys } from "@/lib/keys";
 import { cn } from "@/lib/utils";
 import { formatCount, formatDate, formatRate } from "@/lib/format";
 import { findSubtitleForAudio, flattenPlayableTracks, flattenSubtitleTracks } from "@/lib/playback";
 import { CoverPlaceholder, EmptyState, Skeleton, Sticker } from "@/components/ui";
+import { CollectButton } from "@/components/CollectButton";
 import { useWorksStatus, isWorkUnavailable } from "@/hooks/useWorksStatus";
 import { useGlobalPlayer } from "@/player";
 import type { DownloadReviewItem } from "@/components/DownloadReviewDialog";
@@ -190,14 +192,24 @@ export function DetailPanel({ workId, onDownload, onPickNeighbor }: DetailPanelP
             </div>
           </div>
 
-          <button
-            type="button"
-            className={cn("y-disc-dl", unavailable && "is-disabled")}
-            aria-disabled={unavailable}
-            onClick={unavailable ? undefined : () => onDownload({ sourceId: summary.source_id, title: summary.title })}
-          >
-            {dlLabel}
-          </button>
+          <div className="y-disc-detail__actions">
+            <CollectButton work={summary} collected={status?.collected ?? false} />
+            <button
+              type="button"
+              className={cn("y-disc-dl", unavailable && "is-disabled")}
+              aria-disabled={unavailable}
+              onClick={unavailable ? undefined : () => onDownload({ sourceId: summary.source_id, title: summary.title })}
+            >
+              {dlLabel}
+            </button>
+            <Link
+              to="/works/$sourceId"
+              params={{ sourceId: summary.source_id }}
+              className="y-btn-ghost y-disc-btn-sm"
+            >
+              查看完整详情 →
+            </Link>
+          </div>
         </div>
       </div>
 

@@ -27,7 +27,6 @@ export type DiscoverUrlState = {
   order: DiscoverOrder;
   sort: "asc" | "desc";
   pageSize: number;
-  page: number;
   /** 选中详情的作品 RJ(桌面侧栏 / 移动全屏浮层共用) */
   work?: string;
 };
@@ -41,7 +40,6 @@ export const DEFAULT_DISCOVER_URL: DiscoverUrlState = {
   order: "dl_count",
   sort: "desc",
   pageSize: 24,
-  page: 1,
   work: undefined,
 };
 
@@ -67,12 +65,7 @@ function asPageSize(v: unknown): number {
   return (DISCOVER_PAGE_SIZES as readonly number[]).includes(n) ? n : 24;
 }
 
-function asPage(v: unknown): number {
-  const n = Math.floor(Number(asString(v)));
-  return Number.isFinite(n) && n >= 1 ? n : 1;
-}
-
-/** useSearch({strict:false}) 的原始 search → 规范状态(刷新/分享保持) */
+/** useSearch({strict:false}) 的原始 search → 规范状态(刷新/分享保持;翻页为无限滚动,URL 无 page) */
 export function parseDiscoverSearch(raw: Record<string, unknown>): DiscoverUrlState {
   return {
     q: asString(raw.q).trim(),
@@ -83,7 +76,6 @@ export function parseDiscoverSearch(raw: Record<string, unknown>): DiscoverUrlSt
     order: asOrder(raw.order),
     sort: asString(raw.sort) === "asc" ? "asc" : "desc",
     pageSize: asPageSize(raw.page_size),
-    page: asPage(raw.page),
     work: asString(raw.work).trim() || undefined,
   };
 }
@@ -101,7 +93,6 @@ export function toDiscoverSearch(state: DiscoverUrlState): Record<string, unknow
     ...(state.pageSize !== DEFAULT_DISCOVER_URL.pageSize
       ? { page_size: String(state.pageSize) }
       : {}),
-    ...(state.page > 1 ? { page: String(state.page) } : {}),
     ...(state.work ? { work: state.work } : {}),
   };
 }

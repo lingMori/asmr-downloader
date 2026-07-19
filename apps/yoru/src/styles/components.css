@@ -650,6 +650,7 @@
 
   /* ── 迷你播放条(dc.html:533-548) ── */
   .y-playerbar--desktop {
+    position: relative;
     flex: none;
     margin: 12px auto 14px;
     width: min(1280px, calc(100% - 56px));
@@ -1312,4 +1313,96 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* ===== 收藏钮(共享,CollectButton) ===== */
+.y-collect-btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  color: var(--mut);
+  font-size: 14px;
+  line-height: 1;
+  background: transparent;
+  user-select: none;
+  flex: none;
+  transition:
+    border-color 0.15s,
+    color 0.15s,
+    transform 0.15s;
+}
+.y-collect-btn.is-on {
+  color: var(--pink);
+  border-color: rgba(245, 188, 212, 0.55);
+}
+.y-collect-btn.is-pending {
+  opacity: 0.6;
+  cursor: default;
+}
+.y-collect-btn--sm {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  border-width: 1px;
+}
+@media (hover: hover) {
+  .y-collect-btn:not(.is-pending):hover {
+    border-color: var(--lineStrong);
+    color: var(--pink);
+    transform: translateY(-1px);
+  }
+}
+
+/* ===== 停靠字幕行(共享,PlayerBar DockedCue;原型缺失按同范式补) ===== */
+.y-playerbar__cue {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  max-width: min(720px, calc(100vw - 56px));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-pill);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-bar);
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.y-playerbar__cue-icon {
+  color: var(--pink);
+  font-size: 11px;
+  flex: none;
+}
+.y-playerbar__cue-text {
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (hover: hover) {
+  .y-playerbar__cue:hover {
+    border-color: var(--lineStrong);
+  }
+}
+@media (max-width: 767px) {
+  .y-playerbar__cue {
+    max-width: calc(100vw - 32px);
+    padding: 5px 14px;
+  }
+  .y-playerbar__cue-text {
+    font-size: 11px;
+  }
 }
