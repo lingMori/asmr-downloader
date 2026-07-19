@@ -17,7 +17,7 @@ func TestWorkStatusServiceStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewInMemoryDb() error = %v", err)
 	}
-	if err := db.AutoMigrate(&model.WorkSyncInfo{}, &model.Task{}, &model.TaskLog{}); err != nil {
+	if err := db.AutoMigrate(&model.WorkSyncInfo{}, &model.Task{}, &model.TaskLog{}, &model.Collection{}); err != nil {
 		t.Fatalf("AutoMigrate() error = %v", err)
 	}
 
@@ -55,7 +55,17 @@ func TestWorkStatusServiceStatus(t *testing.T) {
 
 	library := NewLibraryService(nil)
 	library.SetBaseDir(baseDir)
-	service := NewWorkStatusService(db, taskStore, library)
+	collections := NewCollectionService(db)
+	// 收藏与下载状态相互独立:一个已在媒体库,一个仍在队列
+	for _, collection := range []model.Collection{
+		{SourceID: "RJ123456", Title: "in library and collected"},
+		{SourceID: "RJ222222", Title: "queued and collected"},
+	} {
+		if err := collections.Add(context.Background(), collection); err != nil {
+			t.Fatalf("Add collection error = %v", err)
+		}
+	}
+	service := NewWorkStatusService(db, taskStore, library, collections)
 
 	res, err := service.Status(context.Background(), []string{"rj123456", "RJ222222", "RJ333333", "RJ444444"})
 	if err != nil {
@@ -77,5 +87,11 @@ func TestWorkStatusServiceStatus(t *testing.T) {
 	}
 	if got["RJ444444"].State != "none" {
 		t.Fatalf("expected RJ444444 none, got %+v", got["RJ444444"])
+	}
+	if !got["RJ123456"].Collected || !got["RJ222222"].Collected {
+		t.Fatalf("expected RJ123456/RJ222222 collected, got %+v / %+v", got["RJ123456"], got["RJ222222"])
+	}
+	if got["RJ333333"].Collected || got["RJ444444"].Collected {
+		t.Fatalf("expected RJ333333/RJ444444 not collected, got %+v / %+v", got["RJ333333"], got["RJ444444"])
 	}
 }

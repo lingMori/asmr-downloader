@@ -39,6 +39,7 @@ type Server struct {
 	discoverSvc    *services.DiscoverService
 	recommenderSvc *services.RecommenderService
 	playbackSvc    *services.PlaybackService
+	collectionSvc  *services.CollectionService
 	librarySvc     *services.LibraryService
 	workStatusSvc  *services.WorkStatusService
 	systemHandler  *handlers.SystemHandler
@@ -91,8 +92,9 @@ func New() (*Server, error) {
 	discoverSvc := services.NewDiscoverService(db, engManager)
 	recommenderSvc := services.NewRecommenderService(db, engManager)
 	playbackSvc := services.NewPlaybackService(db)
+	collectionSvc := services.NewCollectionService(db)
 	librarySvc := services.NewLibraryService(cfgProvider)
-	workStatusSvc := services.NewWorkStatusService(db, taskStore, librarySvc)
+	workStatusSvc := services.NewWorkStatusService(db, taskStore, librarySvc, collectionSvc)
 
 	srv := &Server{
 		engine:         router,
@@ -107,6 +109,7 @@ func New() (*Server, error) {
 		discoverSvc:    discoverSvc,
 		recommenderSvc: recommenderSvc,
 		playbackSvc:    playbackSvc,
+		collectionSvc:  collectionSvc,
 		librarySvc:     librarySvc,
 		workStatusSvc:  workStatusSvc,
 		systemHandler:  handlers.NewSystemHandler(cfg),
@@ -156,6 +159,7 @@ func (s *Server) registerRoutes() {
 	s.registerDiscoverRoutes(api)
 	s.registerRecommenderRoutes(api)
 	s.registerPlaybackRoutes(api)
+	s.registerCollectionRoutes(api)
 	s.registerLibraryRoutes(api)
 	s.registerDownloadRoutes(api)
 	s.registerSyncRoutes(api)

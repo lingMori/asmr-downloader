@@ -23,7 +23,7 @@ func InitDB() (*gorm.DB, error) {
 		return nil, err
 	}
 	// 自动建表
-	db.AutoMigrate(&model.MetadataWork{}, &model.WorkSyncInfo{}, &model.Task{}, &model.TaskLog{}, &model.PlayProgress{})
+	db.AutoMigrate(&model.MetadataWork{}, &model.WorkSyncInfo{}, &model.Task{}, &model.TaskLog{}, &model.PlayProgress{}, &model.Collection{})
 	Database = db
 	return db, nil
 }

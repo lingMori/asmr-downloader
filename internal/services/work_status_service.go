@@ -12,9 +12,10 @@ import (
 )
 
 type WorkStatusService struct {
-	db        *gorm.DB
-	taskStore *store.TaskStore
-	library   *LibraryService
+	db          *gorm.DB
+	taskStore   *store.TaskStore
+	library     *LibraryService
+	collections *CollectionService
 }
 
 type WorkStatusResponse struct {
@@ -28,10 +29,12 @@ type WorkStatus struct {
 	Message   string `json:"message,omitempty"`
 	TaskID    uint   `json:"task_id,omitempty"`
 	LibraryID string `json:"library_id,omitempty"`
+	// Collected 是否已收藏(收藏即入库),与下载状态state相互独立
+	Collected bool `json:"collected"`
 }
 
-func NewWorkStatusService(db *gorm.DB, taskStore *store.TaskStore, library *LibraryService) *WorkStatusService {
-	return &WorkStatusService{db: db, taskStore: taskStore, library: library}
+func NewWorkStatusService(db *gorm.DB, taskStore *store.TaskStore, library *LibraryService, collections *CollectionService) *WorkStatusService {
+	return &WorkStatusService{db: db, taskStore: taskStore, library: library, collections: collections}
 }
 
 func (s *WorkStatusService) Status(ctx context.Context, sourceIDs []string) (WorkStatusResponse, error) {
@@ -106,6 +109,21 @@ func (s *WorkStatusService) Status(ctx context.Context, sourceIDs []string) (Wor
 			id := strings.ToUpper(strings.TrimSpace(info.SourceId))
 			priority, status := syncInfoWorkStatus(id, info)
 			applyWorkStatus(statuses, priorities, id, priority, status)
+		}
+	}
+
+	if s.collections != nil {
+		collected, err := s.collections.Collected(ctx, ids)
+		if err != nil {
+			return WorkStatusResponse{}, err
+		}
+		for id, ok := range collected {
+			status, exists := statuses[id]
+			if !exists || !ok {
+				continue
+			}
+			status.Collected = true
+			statuses[id] = status
 		}
 	}
 

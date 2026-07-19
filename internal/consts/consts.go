@@ -14,6 +14,14 @@ const DbName = "asmroner.db"
 // 下载错误日志
 const FailedLogName = "download_errors.log"
 
+// 收藏(collections)相关错误码
+const (
+	ErrCodeInvalidCollectionRequest = "INVALID_COLLECTION_REQUEST"
+	ErrCodeCollectionListFailed     = "COLLECTION_LIST_FAILED"
+	ErrCodeCollectionSaveFailed     = "COLLECTION_SAVE_FAILED"
+	ErrCodeCollectionDeleteFailed   = "COLLECTION_DELETE_FAILED"
+)
+
 // asmr.one id类型
 var AsmrOneIDRegex = regexp.MustCompile(`(?i)^(RJ|VJ|BJ|AJ|CJ|DL|NP|AL|KN)\d+$`)
 

@@ -43,6 +43,24 @@ type PlayProgress struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
+// Collection 收藏(收藏即入库)的作品元数据快照,仅存元数据,下载是可选的离线手段
+type Collection struct {
+	SourceID     string    `gorm:"primaryKey" json:"source_id"`
+	Title        string    `json:"title"`
+	Circle       string    `json:"circle"`
+	Vas          []string  `gorm:"serializer:json" json:"vas"`
+	Tags         []string  `gorm:"serializer:json" json:"tags"`
+	Release      string    `json:"release"`
+	Rate         float64   `json:"rate"`
+	DlCount      int       `json:"dl_count"`
+	Duration     int64     `json:"duration"`
+	HasSubtitle  bool      `json:"has_subtitle"`
+	ThumbnailURL string    `json:"thumbnail_url"`
+	MainCoverURL string    `json:"main_cover_url"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
 // WorkSyncInfo 工作同步信息
 type WorkSyncInfo struct {
 	ID             int    `gorm:"primaryKey"`
