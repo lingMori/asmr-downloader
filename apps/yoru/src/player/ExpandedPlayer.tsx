@@ -8,6 +8,7 @@ import { formatTime } from "./logic";
 import { pickCoverColor } from "./PlayerBar";
 import { useGlobalPlayer } from "./GlobalPlayer";
 import type { PlayerTrack } from "./types";
+import { SPRING_SOFT, EASE_OUT } from "@/lib/motion";
 
 /**
  * 展开播放器(原型 dc.html:475-506):
@@ -27,17 +28,17 @@ export function ExpandedPlayer() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: 0.2, ease: EASE_OUT }}
           />
           <motion.div
             className="y-player-expanded"
             role="dialog"
             aria-label="播放器"
             style={{ x: "-50%" }}
-            initial={{ opacity: 0, y: 24 }}
+            initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
-            transition={{ duration: 0.18 }}
+            transition={SPRING_SOFT}
           >
             <ExpandedBody />
           </motion.div>

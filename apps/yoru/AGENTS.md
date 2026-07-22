@@ -29,14 +29,31 @@ src/
 
 - 只用 `y-` 组件类 + tokens(`var(--*)`);**禁止新造色值/字号/圆角字面量**
   (照抄原型 dc.html 的 rgba 组合除外,注释标明出处)。
-- 液态玻璃:浮层/卡片一律走 `--glass-*` 令牌(blur+saturate、发丝描边 `var(--glass-line*)`、
-  顶部高光 `var(--glass-highlight*)`、投影 `var(--glass-shadow)`);描边用
-  `color-mix(in srgb, var(--lav) …)` 取色,4 组 palette 自动协调;新表面不要写死 blur 像素值。
+- 材质纪律(Apple Music 式):底子是近黑/近白平面色,层级只用 `--surface`/`--surface-2`
+  灰度微差;**玻璃(backdrop-filter)只给下面真有内容流过的浮层**——播放条、展开播放器、
+  对话框、批量栏、移动 tab bar(及封面图上的徽章);卡片/列表/输入一律平面 + 1px 发丝描边,
+  无投影。浮层玻璃件才用 `--glass-*` 令牌(blur+saturate、`--glass-line*`、`--glass-highlight`、
+  `--glass-shadow`),且 `--glass-bg` alpha ≥ 0.8,文字不直接坐在低透明模糊层上。
+- 点缀色纪律:`--lav`/`--pink` 只用于主 CTA、激活态(navOn)、播放中状态、收藏心形;
+  其余按钮/控件中性(灰白系)。描边用 `color-mix(in srgb, var(--lav) …)` 取色,4 组 palette 自动协调。
+  贴纸是唯一装饰元素;假名注音缩小降透明,附属于贴纸/标题。
 - 桌面模式:`:root[data-platform="desktop"]`(Wails 壳 URL 带 `?desktop=1`,见 lib/platform.ts)
-  通过 `--bg-alpha` 降低根渐变 alpha,让窗口原生玻璃透出;浏览器默认不透明。
+  的 `--bg-alpha` 机制保留(当前 100% 不透明;要透出窗口玻璃就把 tokens.css 里两个值调回 <100%)。
 - 组件视觉全部在 `components.css` 的 `@layer components`;断点:**<768 移动 / 768–1100 平板 / >1100 桌面**(CSS 写字面量 `@media (max-width: 767px)`)。
 - hover 一律包进 `@media (hover:hover)`,移动端不得依赖 hover 才能操作。
 - 贴纸受 `[data-stickers="false"]` 全局降级(去旋转去色),新贴纸沿用 `y-sticker`。
+
+## 动效
+
+- 时长/缓动只用 tokens(`--dur-fast 120ms`/`--dur-med 240ms`/`--dur-slow 400ms`,
+  `--ease-out`/`--ease-spring`);framer-motion 侧统一从 `lib/motion.ts` 取同值参数
+  (EASE_OUT/SPRING_SOFT/DIALOG_IN/ENTER),不要自造数值。
+- 列表进入过渡用 `<FadeIn index={i}>`(ui/):fade + y8、30ms 错相、只在挂载时跑一次,
+  无限滚动追加批次自然进入;key 保持稳定的已渲染项不会重播。
+- 微交互:按钮 press scale(主钮 0.97/小控件 0.96)、卡片 hover -2px + 描边变亮,
+  只动 transform/opacity。
+- reduced-motion:base.css 全局降级 + main.tsx `MotionConfig reducedMotion="user"`,
+  新动效不需要也不允许绕过这两层兜底。
 
 ## 数据访问
 

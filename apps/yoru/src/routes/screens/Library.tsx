@@ -9,7 +9,7 @@ import { useCollections } from "@/hooks/useCollections";
 import { useWorksStatus } from "@/hooks/useWorksStatus";
 import { useStreamSession } from "@/hooks/useStreamSession";
 import { useGlobalPlayer } from "@/player";
-import { Chip, EmptyState, Pagination, Skeleton } from "@/components/ui";
+import { Chip, EmptyState, FadeIn, Pagination, Skeleton } from "@/components/ui";
 import {
   DownloadReviewDialog,
   type DownloadReviewItem,
@@ -163,23 +163,24 @@ export function LibraryScreen() {
       ) : (
         <div className="y-lib-grid">
           {collections.map((work, i) => (
-            <CollectionCard
-              key={work.source_id}
-              work={work}
-              status={collectionStatus.map.get(work.source_id)}
-              nowPlaying={session?.sourceId === work.source_id}
-              loading={loadingId === work.source_id}
-              stickerRotate={i % 2 ? -3 : 3}
-              onPlay={() =>
-                void playWorkStream(work.source_id, {
-                  workTitle: work.title,
-                  coverUrl: work.thumbnail_url || work.main_cover_url,
-                  cv: work.vas.join("、"),
-                  rj: work.source_id,
-                })
-              }
-              onDownload={() => setReviewItem({ sourceId: work.source_id, title: work.title })}
-            />
+            <FadeIn key={work.source_id} index={i}>
+              <CollectionCard
+                work={work}
+                status={collectionStatus.map.get(work.source_id)}
+                nowPlaying={session?.sourceId === work.source_id}
+                loading={loadingId === work.source_id}
+                stickerRotate={i % 2 ? -3 : 3}
+                onPlay={() =>
+                  void playWorkStream(work.source_id, {
+                    workTitle: work.title,
+                    coverUrl: work.thumbnail_url || work.main_cover_url,
+                    cv: work.vas.join("、"),
+                    rj: work.source_id,
+                  })
+                }
+                onDownload={() => setReviewItem({ sourceId: work.source_id, title: work.title })}
+              />
+            </FadeIn>
           ))}
         </div>
       )}
@@ -242,13 +243,14 @@ export function LibraryScreen() {
         <>
           <div className="y-lib-grid">
             {visible.map((work, i) => (
-              <WorkCard
-                key={work.id}
-                work={work}
-                stickerRotate={i % 2 ? -3 : 3}
-                nowPlaying={session?.sourceId === work.media_id}
-                collected={localStatus.map.get(work.media_id)?.collected ?? false}
-              />
+              <FadeIn key={work.id} index={i}>
+                <WorkCard
+                  work={work}
+                  stickerRotate={i % 2 ? -3 : 3}
+                  nowPlaying={session?.sourceId === work.media_id}
+                  collected={localStatus.map.get(work.media_id)?.collected ?? false}
+                />
+              </FadeIn>
             ))}
           </div>
           {totalPages > 1 && (

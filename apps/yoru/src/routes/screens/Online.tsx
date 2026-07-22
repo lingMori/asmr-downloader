@@ -13,7 +13,7 @@ import {
   DownloadReviewDialog,
   type DownloadReviewItem,
 } from "@/components/DownloadReviewDialog";
-import { Chip, EmptyState, Skeleton, Toggle } from "@/components/ui";
+import { Chip, EmptyState, FadeIn, Skeleton, Toggle } from "@/components/ui";
 import { OnlineCard } from "@/components/online/OnlineCard";
 
 /** 每页 24 件(原型 renderVals 按 24 分页,dc.html:694) */
@@ -158,22 +158,23 @@ export function OnlineScreen() {
         <>
           <div className="y-onl-grid">
             {items.map((work, i) => (
-              <OnlineCard
-                key={work.source_id}
-                work={work}
-                status={statusQuery.map.get(work.source_id)}
-                playingNow={session?.sourceId === work.source_id}
-                stickerRotate={i % 2 ? 3 : -3}
-                onOpen={() =>
-                  void navigate({
-                    to: "/works/$sourceId",
-                    params: { sourceId: work.source_id },
-                  })
-                }
-                onDownload={() =>
-                  setReviewItem({ sourceId: work.source_id, title: work.title })
-                }
-              />
+              <FadeIn key={work.source_id} index={i}>
+                <OnlineCard
+                  work={work}
+                  status={statusQuery.map.get(work.source_id)}
+                  playingNow={session?.sourceId === work.source_id}
+                  stickerRotate={i % 2 ? 3 : -3}
+                  onOpen={() =>
+                    void navigate({
+                      to: "/works/$sourceId",
+                      params: { sourceId: work.source_id },
+                    })
+                  }
+                  onDownload={() =>
+                    setReviewItem({ sourceId: work.source_id, title: work.title })
+                  }
+                />
+              </FadeIn>
             ))}
           </div>
 

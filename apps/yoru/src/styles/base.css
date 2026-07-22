@@ -45,13 +45,13 @@
     font-family: inherit;
   }
 
-  /* 定制滚动条(10px,胶囊 thumb) */
+  /* 定制滚动条(10px,胶囊 thumb;中性灰) */
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(150, 130, 190, 0.25);
+    background: rgba(140, 140, 155, 0.3);
     border-radius: 99px;
   }
   ::-webkit-scrollbar-track {
@@ -86,10 +86,33 @@
     }
   }
 
+  /* 封面占位微 shimmer(克制的扫光,一次 2.6s) */
+  @keyframes y-shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    60%,
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
   /* 贴纸关闭态:不旋转、去色(原型 renderVals stick() 的去色方案) */
   [data-stickers="false"] .y-sticker {
     transform: none;
     background: rgba(150, 130, 190, 0.18);
     color: var(--mut);
+  }
+
+  /* 减少动效偏好:全局动效降级为即时(framer-motion 侧由 main.tsx 的
+     MotionConfig reducedMotion="user" 兜底,transform/layout 动画自动跳过) */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }

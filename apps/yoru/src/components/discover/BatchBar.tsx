@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Sticker } from "@/components/ui";
+import { SPRING_SOFT } from "@/lib/motion";
 
 export type BatchBarProps = {
   count: number;
@@ -15,10 +16,10 @@ export function BatchBar({ count, onClear, onEnqueue }: BatchBarProps) {
         <motion.div
           key="disc-batchbar"
           className="y-disc-batchbar"
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
+          transition={SPRING_SOFT}
         >
           <Sticker color="pink" rotate={-2} className="y-sticker--inline" style={{ flex: "none" }}>
             已选 {count} 件

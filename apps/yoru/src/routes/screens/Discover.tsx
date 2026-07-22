@@ -9,7 +9,7 @@ import { apiClient, type DiscoverWorkSummary } from "@/lib/api";
 import { keys } from "@/lib/keys";
 import { cn } from "@/lib/utils";
 import { findSubtitleForAudio, flattenPlayableTracks, flattenSubtitleTracks } from "@/lib/playback";
-import { EmptyState, Skeleton } from "@/components/ui";
+import { EmptyState, FadeIn, Skeleton } from "@/components/ui";
 import { DownloadReviewDialog, type DownloadReviewItem } from "@/components/DownloadReviewDialog";
 import { isWorkUnavailable, useWorksStatus } from "@/hooks/useWorksStatus";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
@@ -327,22 +327,23 @@ export function DiscoverScreen() {
             )}
 
             {!searchQuery.isError &&
-              items.map((work) => (
-                <ResultRow
-                  key={work.source_id}
-                  work={work}
-                  status={statusMap.get(work.source_id)}
-                  coverColor={coverColorFor(work.source_id)}
-                  selected={selected.has(work.source_id)}
-                  isDetail={url.work === work.source_id}
-                  isPlaying={player.session?.sourceId === work.source_id}
-                  previewing={previewingId === work.source_id}
-                  onToggleSelect={() => toggleSelect(work.source_id)}
-                  onOpen={() => setUrl({ work: work.source_id })}
-                  onPreview={() => void previewWork(work)}
-                  onDownload={() => setReviewItems([{ sourceId: work.source_id, title: work.title }])}
-                  onAddTag={addTag}
-                />
+              items.map((work, i) => (
+                <FadeIn key={work.source_id} index={i}>
+                  <ResultRow
+                    work={work}
+                    status={statusMap.get(work.source_id)}
+                    coverColor={coverColorFor(work.source_id)}
+                    selected={selected.has(work.source_id)}
+                    isDetail={url.work === work.source_id}
+                    isPlaying={player.session?.sourceId === work.source_id}
+                    previewing={previewingId === work.source_id}
+                    onToggleSelect={() => toggleSelect(work.source_id)}
+                    onOpen={() => setUrl({ work: work.source_id })}
+                    onPreview={() => void previewWork(work)}
+                    onDownload={() => setReviewItems([{ sourceId: work.source_id, title: work.title }])}
+                    onAddTag={addTag}
+                  />
+                </FadeIn>
               ))}
 
             {/* 无限滚动:哨兵 + 加载中骨架行 + 到底提示 */}

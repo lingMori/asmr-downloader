@@ -5,23 +5,15 @@
    ───────────────────────────────────────────────────────────── */
 
 @layer components {
-  /* ── hero「继续收听 · つづき」(dc.html:56-69);玻璃大卡,渐变随 palette 取色 ── */
+  /* ── hero「继续收听 · つづき」(dc.html:56-69);平面 elevated 大卡,大圆角保留 ── */
   .y-lib-hero {
     display: flex;
     gap: 22px;
-    /* dc.html:56 渐变大卡底 → color-mix 取 palette 双色,4 组 palette 自动协调 */
-    background: linear-gradient(
-      120deg,
-      color-mix(in srgb, var(--lav) 16%, transparent),
-      color-mix(in srgb, var(--pink) 9%, transparent) 70%
-    );
-    border: 1px solid var(--glass-line-strong);
+    background: var(--card);
+    border: 1px solid var(--line);
     border-radius: 20px;
     padding: 20px;
     position: relative;
-    backdrop-filter: blur(var(--glass-blur-sm)) saturate(var(--glass-saturate));
-    -webkit-backdrop-filter: blur(var(--glass-blur-sm)) saturate(var(--glass-saturate));
-    box-shadow: var(--glass-highlight-soft);
   }
   .y-lib-hero__sticker {
     left: 24px; /* dc.html:57 */
@@ -30,9 +22,8 @@
     width: 160px;
     aspect-ratio: 1;
     flex: none;
-    border-radius: 14px;
+    border-radius: var(--r-sm);
     overflow: hidden;
-    box-shadow: var(--shadow-cover);
   }
   .y-lib-hero__cover img,
   .y-lib-hero__cover .y-cover-ph {
@@ -160,14 +151,14 @@
     flex: 0 1 220px;
     min-width: 140px;
     background: var(--field);
-    border: 1.5px solid var(--line);
+    border: 1px solid var(--line);
     border-radius: var(--r-pill);
     padding: 6px 14px;
     color: var(--ink);
     font-size: 12px;
     font-family: inherit;
     outline: none;
-    transition: border-color 0.15s;
+    transition: border-color var(--dur-fast) var(--ease-out);
   }
   .y-lib-search::placeholder {
     color: var(--dim);
@@ -202,8 +193,7 @@
   .y-lib-card__cover {
     position: relative;
     aspect-ratio: 1;
-    border-radius: 12px;
-    border: 1.5px solid var(--line);
+    border-radius: var(--r-sm);
     overflow: hidden;
     display: flex;
   }
@@ -264,7 +254,7 @@
     height: 24px;
     padding: 0;
     border-radius: 50%;
-    border: 1.5px solid var(--line);
+    border: 1px solid var(--line);
     background: transparent;
     color: var(--lav);
     font-size: 9px;
@@ -274,8 +264,8 @@
     justify-content: center;
     flex: none;
     transition:
-      border-color 0.15s,
-      color 0.15s;
+      border-color var(--dur-fast) var(--ease-out),
+      color var(--dur-fast) var(--ease-out);
   }
   .y-lib-card__play:disabled {
     cursor: default;
@@ -301,7 +291,7 @@
     color: var(--mut);
     font-size: 12px;
     text-decoration: none;
-    transition: color 0.15s;
+    transition: color var(--dur-fast) var(--ease-out);
     padding: 6px 0;
   }
   .y-lib-detail__head {
@@ -313,10 +303,8 @@
     width: 160px;
     aspect-ratio: 1;
     flex: none;
-    border-radius: 14px;
-    border: 1.5px solid var(--line);
+    border-radius: var(--r-sm);
     overflow: hidden;
-    box-shadow: var(--shadow-cover);
     display: flex;
   }
   .y-lib-detail__cover img,
@@ -357,7 +345,7 @@
     gap: 4px;
     padding: 3px 11px;
     border-radius: var(--r-pill);
-    border: 1.5px solid var(--line);
+    border: 1px solid var(--line);
     color: var(--mut);
     font-size: 10.5px;
     white-space: nowrap;
@@ -413,8 +401,8 @@
     text-decoration: none;
     cursor: pointer;
     transition:
-      background 0.15s,
-      border-color 0.15s;
+      background var(--dur-fast) var(--ease-out),
+      border-color var(--dur-fast) var(--ease-out);
   }
   .y-lib-file--static {
     cursor: default;

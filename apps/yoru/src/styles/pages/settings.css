@@ -46,7 +46,7 @@
   .y-set-card {
     position: relative;
     background: var(--card);
-    border: 1.5px solid var(--line);
+    border: 1px solid var(--line);
     border-radius: 18px;
     padding: 18px;
   }
@@ -90,24 +90,23 @@
     font: 500 10.5px ui-monospace, monospace;
     color: var(--dim);
     background: var(--field);
-    border: 1.5px solid var(--line);
+    border: 1px solid var(--line);
     border-radius: 8px;
     padding: 6px 10px;
     display: inline-block;
     word-break: break-all;
   }
 
-  /* 输入框(沿用 dc.html:404 的 field/line/8px 组合;玻璃底 + 顶部高光) */
+  /* 输入框(沿用 dc.html:404 的 field/line/8px 组合;平面) */
   .y-set-input {
     width: 100%;
     background: var(--field);
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: var(--r-sm);
     padding: 7px 10px;
     color: var(--ink);
     font-size: 12px;
-    box-shadow: var(--glass-highlight-soft);
-    transition: border-color 0.15s;
+    transition: border-color var(--dur-fast) var(--ease-out);
   }
   .y-set-input:focus {
     border-color: var(--lineStrong);
@@ -129,14 +128,14 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1.5px solid var(--line);
+    border: 1px solid var(--line);
     background: transparent;
     color: var(--mut);
     font-size: 11px;
     border-radius: 999px;
     padding: 6px 14px;
     user-select: none;
-    transition: border-color 0.15s;
+    transition: border-color var(--dur-fast) var(--ease-out);
     flex: none;
   }
   .y-set-mini-btn:disabled {
@@ -257,15 +256,15 @@
     align-items: center;
     gap: 4px;
     padding: 10px 8px;
-    border: 1.5px solid var(--line);
+    border: 1px solid var(--line);
     border-radius: 12px;
     background: transparent;
     color: var(--mut);
     font-size: 10.5px;
     user-select: none;
     transition:
-      border-color 0.15s,
-      background 0.15s;
+      border-color var(--dur-fast) var(--ease-out),
+      background var(--dur-fast) var(--ease-out);
   }
   .y-set-theme-opt .sym {
     font-size: 15px;
@@ -291,8 +290,8 @@
     border: 2px solid var(--line);
     padding: 0;
     transition:
-      border-color 0.15s,
-      box-shadow 0.15s;
+      border-color var(--dur-fast) var(--ease-out),
+      box-shadow var(--dur-fast) var(--ease-out);
   }
   .y-set-swatch.is-on {
     border-color: var(--lav);

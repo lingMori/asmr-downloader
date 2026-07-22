@@ -22,7 +22,7 @@
 .y-tr-card {
   position: relative; /* Sticker section 角标定位锚点 */
   background: var(--card);
-  border: 1.5px solid var(--line);
+  border: 1px solid var(--line);
   border-radius: 18px;
   padding: 18px;
 }
@@ -54,7 +54,7 @@
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
-  border: 1.5px solid var(--line);
+  border: 1px solid var(--line);
   color: var(--mut);
   font-size: 10px;
   padding: 2px 9px;
@@ -83,7 +83,7 @@
   align-items: center;
   gap: 12px;
   background: var(--field);
-  border: 1.5px solid var(--line);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 10px 12px;
 }
@@ -181,7 +181,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1.5px solid var(--line);
+  border: 1px solid var(--line);
   background: transparent;
   color: var(--ink);
   font-size: 11px;
@@ -189,7 +189,7 @@
   padding: 6px 13px;
   flex: none;
   user-select: none;
-  transition: border-color 0.15s;
+  transition: border-color var(--dur-fast) var(--ease-out);
 }
 .y-tr-act:disabled {
   color: var(--dim);
@@ -214,7 +214,7 @@
   font-size: 11px;
   white-space: nowrap;
   flex: none;
-  transition: color 0.15s;
+  transition: color var(--dur-fast) var(--ease-out);
 }
 
 /* 卡内错误条(视觉沿用 .y-warn-strip 的虚线粉公式) */
@@ -242,7 +242,7 @@
 }
 .y-tr-syncrow {
   background: var(--field);
-  border: 1.5px solid var(--line);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 10px 12px;
 }
@@ -374,7 +374,7 @@
   border-radius: 999px;
   padding: 10px 22px;
   user-select: none;
-  transition: transform 0.15s;
+  transition: transform var(--dur-fast) var(--ease-out);
 }
 .y-tr-btn-danger:disabled {
   opacity: 0.55;

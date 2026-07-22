@@ -1,79 +1,78 @@
 /* ─────────────────────────────────────────────────────────────
    YORU「夜间电台」设计令牌
-   取值照抄原型 dc.html:14-27(暗)/ 20-23(亮),并在此之上建立
-   「液态玻璃」材质层:--glass-* 令牌承载模糊量/发丝描边/镜面高光/投影,
-   --panel/--card/--field/--line 等语义令牌改为指向玻璃令牌。
+   底子学 Apple Music 深色模式:近黑平面底,层级用 base/elevated 灰度微差,
+   不用渐变、不用色相表达层级;文字永远坐在实底/近实底上(AA ≥ 4.5:1)。
+   面子保留 yoru 身份:--lav/--pink 点缀色只用于主 CTA/激活态/播放中/收藏,
+   贴纸是唯一装饰元素。
+   玻璃(--glass-*)只给下面真有内容流过的浮层:播放条/展开播放器/对话框/批量栏/tab bar。
    描边用 color-mix(var(--lav)) 取色,4 组 palette 下自动协调。
-   --lav/--pink 不受主题覆盖,由 [data-palette] 注入(原型 data-props 4 组)。
    ───────────────────────────────────────────────────────────── */
 
 :root {
-  /* 背景三段渐变(160deg);--bg-alpha 预留给桌面模式调透出度,当前恒为不透明 */
-  --bg1: #1c1528;
-  --bg2: #221a33;
-  --bg3: #261a2f;
+  /* 背景:近黑带一丝紫的平面色(--bg-alpha 桌面模式机制保留,当前 100% 不透明) */
+  --bg1: #0e0b14;
+  --bg2: #0e0b14;
+  --bg3: #0f0c15;
   --bg-alpha: 100%;
 
-  /* ── 液态玻璃材质(macOS 26 风格) ── */
-  --glass-blur: 22px; /* 浮层背景模糊量 */
-  --glass-blur-sm: 10px; /* 小件(卡片/胶囊导航)模糊量 */
-  --glass-saturate: 1.6; /* 背透饱和度提升,玻璃"活"起来的关键 */
-  --glass-bg: rgba(30, 22, 48, 0.52); /* 玻璃浮层底(播放条/对话框/批量栏) */
-  --glass-card: rgba(255, 255, 255, 0.05); /* 玻璃卡片底 */
-  --glass-field: rgba(22, 16, 34, 0.45); /* 玻璃输入底 */
-  /* 发丝描边:palette 主色 + 微白,深底上接近 1px 高光边 */
+  /* base/elevated 两级:灰度微差表达层级,不靠模糊 */
+  --surface: #17141f; /* elevated:卡片/列表行,base + ~4% 亮度 */
+  --surface-2: #1d1a27; /* 输入/内嵌槽,再亮一档 */
+
+  /* ── 玻璃材质(仅浮层:播放条/展开播放器/对话框/批量栏/tab bar) ── */
+  --glass-blur: 20px;
+  --glass-saturate: 1.2; /* 克制,不炸色 */
+  /* 浮层承载文字 → alpha ≥ 0.8,正文对比度保住 4.5:1 */
+  --glass-bg: rgba(26, 23, 36, 0.85);
+  /* 发丝描边:palette 主色 color-mix,4 组 palette 自动协调 */
   --glass-line: color-mix(in srgb, var(--lav) 22%, rgba(255, 255, 255, 0.08));
   --glass-line-strong: color-mix(in srgb, var(--lav) 40%, rgba(255, 255, 255, 0.12));
-  /* 顶部镜面高光(inset 1px 亮边) */
-  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  --glass-highlight-soft: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  /* 柔和投影 */
-  --glass-shadow: 0 12px 32px rgba(8, 4, 16, 0.35);
+  /* 顶部镜面高光(仅玻璃浮层) */
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --glass-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
 
-  /* 面板/卡片/输入底(语义令牌 → 玻璃令牌) */
-  --panel: var(--glass-bg); /* 毛玻璃浮层底 */
-  --panelSolid: #221c33; /* 不透明浮层底(toast 等小件) */
-  --card: var(--glass-card);
-  --cardHover: rgba(255, 255, 255, 0.08);
-  --field: var(--glass-field);
+  /* 面板/卡片/输入底(语义令牌) */
+  --panel: var(--glass-bg); /* 浮层底(仅玻璃件使用) */
+  --panelSolid: #1f1c2a; /* 不透明浮层底(toast 等小件) */
+  --card: var(--surface); /* 卡片/列表:平面,无模糊 */
+  --cardHover: rgba(255, 255, 255, 0.05);
+  --field: var(--surface-2); /* 输入槽:平面 */
 
-  /* 描边 */
+  /* 描边(平面件也用这对发丝线) */
   --line: var(--glass-line);
   --lineStrong: var(--glass-line-strong);
 
-  /* 文字 */
-  --ink: #efeaf6;
-  --mut: #9a8fb5;
-  --dim: #7d7398;
+  /* 文字:提亮 + 中性化(去紫味) */
+  --ink: #f5f2fa;
+  --mut: #a9a4ba;
+  --dim: #8b86a0;
   --accentInk: #2a1830; /* 渐变主钮上的文字色 */
   --pinkInk: #3a2032; /* 粉色贴纸上的文字色 */
 
   /* 状态 */
   --ok: #8fd0a8;
 
-  /* 导航/选中底 */
-  --navBg: rgba(255, 255, 255, 0.045);
-  --navOn: color-mix(in srgb, var(--lav) 20%, transparent);
+  /* 导航底 / 激活底(激活态是点缀色的合法用途) */
+  --navBg: rgba(255, 255, 255, 0.05);
+  --navOn: color-mix(in srgb, var(--lav) 22%, transparent);
 
   /* 主题色(默认 palette = lavender;由 data-palette 覆盖) */
   --lav: #cdbcf5;
   --pink: #f5bcd4;
 
-  /* 圆角阶梯 */
+  /* 圆角阶梯(收敛:卡片/输入 8–10,大圆角只留 hero/播放器/对话框) */
   --r-xs: 5px;
-  --r-sm: 10px;
-  --r-md: 12px;
-  --r-lg: 16px;
-  --r-xl: 22px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
   --r-pill: 999px;
 
-  /* 阴影(取自原型;主钮投影随 palette 取色) */
-  --shadow-cover: 0 16px 40px rgba(0, 0, 0, 0.35); /* 封面 */
-  --shadow-btn: 0 8px 24px color-mix(in srgb, var(--lav) 30%, transparent); /* 渐变主钮 */
+  /* 阴影(仅浮层/播放控件;平面件无投影) */
+  --shadow-btn: 0 6px 18px color-mix(in srgb, var(--lav) 25%, transparent); /* 渐变主钮 */
   --shadow-bar: var(--glass-shadow); /* 浮条(播放条/批量栏) */
-  --shadow-modal: 0 30px 80px rgba(0, 0, 0, 0.5); /* 模态/展开播放器 */
+  --shadow-modal: 0 30px 80px rgba(0, 0, 0, 0.55); /* 模态/展开播放器 */
   --shadow-playring: 0 0 0 4px rgba(180, 150, 230, 0.15); /* 圆形播放钮外环 */
-  --shadow-thumb: 0 4px 14px rgba(0, 0, 0, 0.35); /* 卡面圆形播放钮 */
 
   /* z-index 阶梯 */
   --z-sticker: 1;
@@ -84,31 +83,37 @@
   --z-dialog: 51;
   --z-toast: 60;
 
+  /* 动效令牌(克制、物理感;JS 侧 framer-motion 取相同数值,见 lib/motion.ts) */
+  --dur-fast: 120ms; /* 微交互:press/hover/描边 */
+  --dur-med: 240ms; /* 状态切换:toggle/chip/卡片 */
+  --dur-slow: 400ms; /* 浮层进出 */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* 标准减速,长尾巴 */
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1); /* 轻回弹(toggle knob 等) */
+
   /* 字号阶梯(注释;正文 13.5px 在 base.css 的 body 上)
      标题:24/20/17/16/15(900) 正文:13.5/12.5/12 辅助:11.5/11/10.5
      mono 小字:10.5/10/9.5 贴纸/假名:9.5/9/8.5/8 */
 }
 
-/* 亮色主题(原型 dc.html:20-23;不覆盖 --lav/--pink) */
+/* 亮色主题:近白平面 + elevated 微差,文字中性 */
 :root[data-theme="light"] {
-  --bg1: #f5eefb;
-  --bg2: #f8f1f7;
-  --bg3: #fdf4ef;
-  --glass-bg: rgba(255, 255, 255, 0.55);
-  --glass-card: rgba(255, 255, 255, 0.42);
-  --glass-field: rgba(255, 255, 255, 0.55);
+  --bg1: #f5f4f7;
+  --bg2: #f5f4f7;
+  --bg3: #f4f3f6;
+  --surface: #ffffff;
+  --surface-2: #efecef;
+  --glass-bg: rgba(255, 255, 255, 0.85);
   --glass-line: color-mix(in srgb, var(--lav) 30%, rgba(96, 70, 150, 0.14));
   --glass-line-strong: color-mix(in srgb, var(--lav) 46%, rgba(96, 70, 150, 0.22));
   --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  --glass-highlight-soft: inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  --glass-shadow: 0 12px 32px rgba(96, 70, 150, 0.16);
+  --glass-shadow: 0 12px 32px rgba(80, 70, 110, 0.18);
   --panelSolid: #ffffff;
-  --cardHover: rgba(124, 96, 180, 0.1);
-  --ink: #38294e;
-  --mut: #7d6f9c;
-  --dim: #a195bd;
+  --cardHover: rgba(30, 25, 45, 0.05);
+  --ink: #262130;
+  --mut: #5f5a70;
+  --dim: #6a6578;
   --ok: #3f9e68;
-  --navBg: rgba(124, 96, 180, 0.06);
+  --navBg: rgba(30, 25, 45, 0.05);
 }
 
 /* palette 注入(原型 data-props 4 组) */
@@ -129,9 +134,8 @@
   --pink: #cdbcf5;
 }
 
-/* 桌面模式(Wails 壳,webview 透明):曾尝试降低 --bg-alpha 让窗口 vibrancy 整体透出,
-   实测亮色壁纸下界面糊成一团、可读性崩塌,故保持不透明;
-   玻璃感由材质层(侧栏/播放条/卡片的 backdrop-filter)承担,窗口边缘仍有系统 vibrancy */
+/* 桌面模式(Wails 壳,webview 透明):--bg-alpha 机制保留;
+   Apple Music 纪律下背景保持不透明,需要透出窗口玻璃时把下面两个值调回 <100% 即可 */
 :root[data-platform="desktop"] {
   --bg-alpha: 100%;
 }
@@ -139,18 +143,15 @@
   --bg-alpha: 100%;
 }
 
-/* 减少透明度偏好:去模糊、回到近乎不透明的底,保证可读性 */
+/* 减少透明度偏好:去模糊、回到实底 */
 @media (prefers-reduced-transparency: reduce) {
   :root {
     --glass-blur: 0px;
-    --glass-blur-sm: 0px;
     --glass-saturate: 1;
-    --glass-bg: rgba(28, 21, 44, 0.92);
-    --glass-field: rgba(24, 18, 36, 0.85);
+    --glass-bg: #1a1724;
     --bg-alpha: 100%;
   }
   :root[data-theme="light"] {
-    --glass-bg: rgba(255, 255, 255, 0.92);
-    --glass-field: rgba(255, 255, 255, 0.88);
+    --glass-bg: #ffffff;
   }
 }
