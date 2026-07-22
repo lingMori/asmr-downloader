@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ConfigResponse } from "@/lib/api";
+import { apiClient, type ConfigResponse } from "@/lib/api";
 import { Stepper } from "@/components/ui";
 import { SettingsCard } from "./SettingsCard";
 import { FieldRow, ErrorStrip, errorMessage } from "./FieldRow";
@@ -16,6 +16,7 @@ export function DownloadCard({ config }: { config: ConfigResponse }) {
   const [retries, setRetries] = useState(serverRetries);
   const [editingPath, setEditingPath] = useState(false);
   const [pathDraft, setPathDraft] = useState(serverFolder);
+  const [picking, setPicking] = useState(false);
 
   const save = useConfigSave(config);
 
@@ -56,6 +57,26 @@ export function DownloadCard({ config }: { config: ConfigResponse }) {
       { downloader: { sync_data_folder: trimmedPath } },
       { onSuccess: () => setEditingPath(false) },
     );
+  };
+
+  /** 原生目录选择:选中即保存;平台不支持时退化为手动输入 */
+  const browsePath = async () => {
+    save.reset();
+    setPicking(true);
+    try {
+      const res = await apiClient.pickDirectory();
+      if (!res.cancelled && res.path) {
+        save.mutate(
+          { downloader: { sync_data_folder: res.path } },
+          { onSuccess: () => setEditingPath(false) },
+        );
+      }
+    } catch {
+      setPathDraft(serverFolder);
+      setEditingPath(true);
+    } finally {
+      setPicking(false);
+    }
   };
 
   return (
@@ -131,17 +152,27 @@ export function DownloadCard({ config }: { config: ConfigResponse }) {
             </button>
           </>
         ) : (
-          <button
-            type="button"
-            className="y-set-mini-btn"
-            onClick={() => {
-              save.reset();
-              setPathDraft(serverFolder);
-              setEditingPath(true);
-            }}
-          >
-            更改…
-          </button>
+          <>
+            <button
+              type="button"
+              className="y-set-mini-btn"
+              disabled={picking || save.isPending}
+              onClick={browsePath}
+            >
+              {picking ? "选择中…" : "浏览…"}
+            </button>
+            <button
+              type="button"
+              className="y-set-mini-btn"
+              onClick={() => {
+                save.reset();
+                setPathDraft(serverFolder);
+                setEditingPath(true);
+              }}
+            >
+              手输
+            </button>
+          </>
         )}
       </div>
       {numbersDirty && (

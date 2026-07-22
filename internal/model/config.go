@@ -2,6 +2,7 @@ package model
 
 import (
 	"asmroner/internal/consts"
+	"asmroner/internal/paths"
 	"os"
 	"path/filepath"
 
@@ -75,7 +76,7 @@ func NewDefaultConfig() *Config {
 			ProxyUrl:       "",
 			MaxWorkers:     5,
 			MaxRetries:     3,
-			SyncDataFolder: "./syncdata",
+			SyncDataFolder: paths.DefaultDownloadDir(),
 			SyncWantedSize: "200MB",
 			PreferMedia:    "all",
 			HTTP:           DefaultHTTPHeaders(),
@@ -108,7 +109,7 @@ func LoadConfig(configPath string) (*Config, error) {
 }
 
 func ConfigFilePath() string {
-	return filepath.Join(consts.MetaDataDir, consts.ConfigFileName)
+	return filepath.Join(paths.DataDir(), consts.ConfigFileName)
 }
 
 func SaveConfig(config *Config) error {
@@ -116,7 +117,7 @@ func SaveConfig(config *Config) error {
 		config = NewDefaultConfig()
 	}
 
-	if err := os.MkdirAll(consts.MetaDataDir, 0755); err != nil {
+	if err := os.MkdirAll(paths.DataDir(), 0755); err != nil {
 		return err
 	}
 

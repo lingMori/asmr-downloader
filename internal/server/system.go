@@ -30,6 +30,7 @@ func (s *Server) registerSystemRoutes(group *gin.RouterGroup) {
 	if s.systemHandler != nil {
 		group.GET("/config", s.systemHandler.Config)
 		group.PUT("/config", s.handleConfigUpdate)
+		group.POST("/config/pick-directory", s.handlePickDirectory)
 		group.GET("/auth/status", s.handleAuthStatus)
 		group.POST("/auth/check", s.handleAuthCheck)
 		group.POST("/auth/login", s.handleAuthLogin)
@@ -38,9 +39,32 @@ func (s *Server) registerSystemRoutes(group *gin.RouterGroup) {
 
 var version = "dev"
 
+var (
+	errPickCancelled   = errors.New("directory picker cancelled")
+	errPickUnsupported = errors.New("native directory picker is only supported on macOS")
+)
+
 // SetVersion allows main package to inject build version information.
 func SetVersion(v string) {
 	version = v
+}
+
+// handlePickDirectory 打开原生目录选择对话框;取消时返回 cancelled=true 而非错误。
+func (s *Server) handlePickDirectory(ctx *gin.Context) {
+	path, err := pickDirectoryNative("选择下载目录")
+	if err != nil {
+		if errors.Is(err, errPickCancelled) {
+			respondOK(ctx, gin.H{"cancelled": true})
+			return
+		}
+		if errors.Is(err, errPickUnsupported) {
+			respondError(ctx, http.StatusNotImplemented, "PICK_UNSUPPORTED", err)
+			return
+		}
+		respondError(ctx, http.StatusInternalServerError, "PICK_FAILED", err)
+		return
+	}
+	respondOK(ctx, gin.H{"cancelled": false, "path": path})
 }
 
 func (s *Server) handleConfigUpdate(ctx *gin.Context) {

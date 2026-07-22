@@ -15,6 +15,7 @@ import (
 	"asmroner/internal/events"
 	"asmroner/internal/logger"
 	"asmroner/internal/model"
+	"asmroner/internal/paths"
 	"asmroner/internal/server/handlers"
 	"asmroner/internal/services"
 	"asmroner/internal/store"
@@ -49,7 +50,7 @@ type Server struct {
 
 // New creates a server instance after ensuring configuration and database are ready.
 func New() (*Server, error) {
-	utils.EnSureDirExist(consts.MetaDataDir)
+	utils.EnSureDirExist(paths.DataDir())
 
 	// Load configuration (fail fast if missing)
 	cfg, err := loadConfig()
@@ -127,10 +128,16 @@ func (s *Server) Run(addr string) error {
 	return s.engine.Run(addr)
 }
 
+// Handler exposes the HTTP handler so callers can serve it with their own
+// http.Server (e.g. the desktop app on a random loopback port).
+func (s *Server) Handler() http.Handler {
+	return s.engine
+}
+
 func loadConfig() (*model.Config, error) {
 	viper.SetConfigName(consts.ConfigFileName[:len("config")])
 	viper.SetConfigType("toml")
-	viper.AddConfigPath(consts.MetaDataDir)
+	viper.AddConfigPath(paths.DataDir())
 
 	if err := viper.ReadInConfig(); err != nil {
 		var notFound viper.ConfigFileNotFoundError

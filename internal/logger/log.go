@@ -5,8 +5,12 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
+
+	"asmroner/internal/consts"
+	"asmroner/internal/paths"
 )
 
 var (
@@ -21,7 +25,10 @@ var (
 func InitErrorLogger() {
 	var err error
 	// 以追加模式打开，如果没有则创建
-	errorLogFile, err = os.OpenFile("download_errors.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err = os.MkdirAll(paths.DataDir(), 0o755); err != nil {
+		log.Fatal(err)
+	}
+	errorLogFile, err = os.OpenFile(filepath.Join(paths.DataDir(), consts.FailedLogName), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}

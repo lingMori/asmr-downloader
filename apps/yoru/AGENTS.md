@@ -7,8 +7,9 @@
 
 ```
 src/
-  styles/      tokens.css(设计令牌)/ base.css / components.css(y- 前缀组件类)
+  styles/      tokens.css(设计令牌 + --glass-* 液态玻璃材质)/ base.css / components.css(y- 前缀组件类)
   lib/         纯逻辑:api.ts(apiClient)、keys.ts(查询键)、settings.tsx(客户端设置)、
+               platform.ts(桌面模式检测:?desktop=1 → data-platform="desktop")、
                subtitles.ts / feedback.ts / playback.ts / useTaskEvents.ts / utils.ts(cn)
   components/
     ui/        UI 原语(Sticker/Chip/Toggle/Stepper/ProgressBar/EQ/CoverPlaceholder/
@@ -28,6 +29,11 @@ src/
 
 - 只用 `y-` 组件类 + tokens(`var(--*)`);**禁止新造色值/字号/圆角字面量**
   (照抄原型 dc.html 的 rgba 组合除外,注释标明出处)。
+- 液态玻璃:浮层/卡片一律走 `--glass-*` 令牌(blur+saturate、发丝描边 `var(--glass-line*)`、
+  顶部高光 `var(--glass-highlight*)`、投影 `var(--glass-shadow)`);描边用
+  `color-mix(in srgb, var(--lav) …)` 取色,4 组 palette 自动协调;新表面不要写死 blur 像素值。
+- 桌面模式:`:root[data-platform="desktop"]`(Wails 壳 URL 带 `?desktop=1`,见 lib/platform.ts)
+  通过 `--bg-alpha` 降低根渐变 alpha,让窗口原生玻璃透出;浏览器默认不透明。
 - 组件视觉全部在 `components.css` 的 `@layer components`;断点:**<768 移动 / 768–1100 平板 / >1100 桌面**(CSS 写字面量 `@media (max-width: 767px)`)。
 - hover 一律包进 `@media (hover:hover)`,移动端不得依赖 hover 才能操作。
 - 贴纸受 `[data-stickers="false"]` 全局降级(去旋转去色),新贴纸沿用 `y-sticker`。

@@ -29,6 +29,23 @@
         d.dataset.palette = palette;
         d.dataset.stickers = String(stickers);
       })();
+      // 防 FOUC:桌面壳(Wails)URL 带 ?desktop=1 → 首帧前切桌面模式,
+      // 根背景变半透明让窗口玻璃透出;逻辑与 src/lib/platform.ts 保持一致
+      (function () {
+        var d = document.documentElement;
+        var platform = "web";
+        try {
+          var flag = new URLSearchParams(window.location.search).get("desktop");
+          if (flag === "1") platform = "desktop";
+          else if (flag === "0") platform = "web";
+          else {
+            var saved = localStorage.getItem("yoru:platform");
+            if (saved === "desktop") platform = "desktop";
+          }
+          localStorage.setItem("yoru:platform", platform);
+        } catch (e) { /* 读不到时用默认 web */ }
+        d.dataset.platform = platform;
+      })();
     </script>
   </head>
   <body>

@@ -8,14 +8,19 @@
 
 - 后端入口：`main.go`
 - 前端入口：`apps/yoru`(默认);`apps/web` 为旧前端，保留但不再迭代
+- 桌面入口：`apps/desktop`(Wails v3 壳,内嵌后端与前端,产出 macOS .app)
 
 旧的 `cmd/*` Cobra 命令和 `webui/*` 静态页面已经删除。
 
 ## 后端结构
 
+- `internal/app`
+  - 应用生命周期封装(`Start`/`Stop`),无头入口与桌面壳共用
+- `internal/paths`
+  - 数据目录锚定：.app 内运行落 `~/Library/Application Support/asmroner`,否则维持 CWD 相对
 - `internal/server`
   - Gin 路由、SSE 推送、静态资源与 SPA 托管
-  - SPA 解析顺序：`ASMRO_WEB_DIR` → `apps/yoru/dist` → `apps/web/dist` → `./web`
+  - SPA 解析顺序：`ASMRO_WEB_DIR` → 内嵌 FS(`embed_web` 构建,桌面 App)→ `apps/yoru/dist` → `apps/web/dist` → `./web`
 - `internal/services`
   - 业务服务层：搜索/发现、推荐、媒体库、收藏、任务、同步、播放进度、配置
 - `internal/engine`

@@ -11,6 +11,7 @@ import (
 	"asmroner/internal/consts"
 	"asmroner/internal/logger"
 	"asmroner/internal/model"
+	"asmroner/internal/paths"
 
 	"github.com/google/uuid"
 )
@@ -22,7 +23,7 @@ const RecommenderUUIDFileName = "recommender_uuid"
 const recommenderNeighborsPageSize = 20
 
 func recommenderUUIDFilePath() string {
-	return filepath.Join(consts.MetaDataDir, RecommenderUUIDFileName)
+	return filepath.Join(paths.DataDir(), RecommenderUUIDFileName)
 }
 
 // RecommenderUUID 读取推荐系统UUID，不存在时生成UUIDv4并落盘
@@ -34,7 +35,7 @@ func (m *EngineManager) RecommenderUUID() string {
 		}
 	}
 	generated := uuid.NewString()
-	if err := os.MkdirAll(consts.MetaDataDir, 0o755); err != nil {
+	if err := os.MkdirAll(paths.DataDir(), 0o755); err != nil {
 		logger.Logger().Error("create metadata dir for recommender uuid failed: " + err.Error())
 		return generated
 	}
@@ -46,7 +47,7 @@ func (m *EngineManager) RecommenderUUID() string {
 
 // saveRecommenderUUID 登录成功后覆盖写入上游返回的推荐系统UUID
 func saveRecommenderUUID(recommenderUUID string) error {
-	if err := os.MkdirAll(consts.MetaDataDir, 0o755); err != nil {
+	if err := os.MkdirAll(paths.DataDir(), 0o755); err != nil {
 		return err
 	}
 	return os.WriteFile(recommenderUUIDFilePath(), []byte(strings.TrimSpace(recommenderUUID)), 0o600)

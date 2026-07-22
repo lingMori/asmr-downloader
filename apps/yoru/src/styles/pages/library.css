@@ -5,16 +5,23 @@
    ───────────────────────────────────────────────────────────── */
 
 @layer components {
-  /* ── hero「继续收听 · つづき」(dc.html:56-69) ── */
+  /* ── hero「继续收听 · つづき」(dc.html:56-69);玻璃大卡,渐变随 palette 取色 ── */
   .y-lib-hero {
     display: flex;
     gap: 22px;
-    /* dc.html:56 渐变大卡底 */
-    background: linear-gradient(120deg, rgba(205, 188, 245, 0.14), rgba(245, 188, 212, 0.08) 70%);
-    border: 1.5px solid var(--lineStrong);
+    /* dc.html:56 渐变大卡底 → color-mix 取 palette 双色,4 组 palette 自动协调 */
+    background: linear-gradient(
+      120deg,
+      color-mix(in srgb, var(--lav) 16%, transparent),
+      color-mix(in srgb, var(--pink) 9%, transparent) 70%
+    );
+    border: 1px solid var(--glass-line-strong);
     border-radius: 20px;
     padding: 20px;
     position: relative;
+    backdrop-filter: blur(var(--glass-blur-sm)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur-sm)) saturate(var(--glass-saturate));
+    box-shadow: var(--glass-highlight-soft);
   }
   .y-lib-hero__sticker {
     left: 24px; /* dc.html:57 */

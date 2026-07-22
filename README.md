@@ -65,6 +65,8 @@ npm run dev:yoru          # http://127.0.0.1:5173
 **生产模式(单端口)**:`npm run build:yoru && go run .`,直接打开 <http://127.0.0.1:8080>。
 Go 按 `ASMRO_WEB_DIR` → `apps/yoru/dist` → `apps/web/dist` → `./web` 的顺序找前端,默认就是「夜 · YORU」;想切回旧前端,把 `ASMRO_WEB_DIR` 指向 `apps/web/dist` 即可。
 
+**桌面 App(macOS)**:`./scripts/build-desktop.sh` 产出 `release/Asmroner.app` 和 dmg——双击即用,后端与前端全部内嵌,带托盘和毛玻璃窗口(macOS 26 为液态玻璃)。详见 [docs/desktop-dev.md](docs/desktop-dev.md)。
+
 上手只需五步:设置里确认下载目录(账号留空即游客)→ 发现里检索,♡ 收藏或复核下载 → 在线里直接听 → 媒体库继续昨晚的进度 → 传输里看队列。
 
 ## 本地保存

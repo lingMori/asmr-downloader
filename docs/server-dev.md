@@ -23,6 +23,7 @@ go run .
 - `GET /api/healthz`
 - `GET /api/config`
 - `PUT /api/config`
+- `POST /api/config/pick-directory`(macOS 原生目录选择对话框)
 - `GET /api/auth/status`
 - `POST /api/auth/check`
 - `POST /api/auth/login`

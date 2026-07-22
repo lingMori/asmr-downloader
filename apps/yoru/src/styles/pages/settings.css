@@ -97,15 +97,16 @@
     word-break: break-all;
   }
 
-  /* 输入框(沿用 dc.html:404 的 field/line/8px 组合) */
+  /* 输入框(沿用 dc.html:404 的 field/line/8px 组合;玻璃底 + 顶部高光) */
   .y-set-input {
     width: 100%;
     background: var(--field);
-    border: 1.5px solid var(--line);
+    border: 1px solid var(--line);
     border-radius: 8px;
     padding: 7px 10px;
     color: var(--ink);
     font-size: 12px;
+    box-shadow: var(--glass-highlight-soft);
     transition: border-color 0.15s;
   }
   .y-set-input:focus {

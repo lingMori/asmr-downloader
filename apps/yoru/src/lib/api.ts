@@ -690,6 +690,14 @@ export const apiClient = {
     return requestData<ConfigResponse>("/config");
   },
 
+  /** 打开原生目录选择对话框(macOS);用户取消时 resolved 为 { cancelled: true } */
+  pickDirectory(): Promise<{ cancelled: boolean; path?: string }> {
+    return requestData<{ cancelled: boolean; path?: string }>(
+      "/config/pick-directory",
+      { method: "POST" },
+    );
+  },
+
   updateConfig(payload: ConfigResponse): Promise<ConfigResponse> {
     return requestData<ConfigResponse>("/config", {
       method: "PUT",

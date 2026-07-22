@@ -21,16 +21,19 @@
     min-height: 0;
   }
 
-  /* ── 搜索栏(dc.html:103-111) ── */
+  /* ── 搜索栏(dc.html:103-111);玻璃输入槽 ── */
   .y-disc-searchbar {
     flex: none;
     display: flex;
     align-items: center;
     gap: 8px;
     background: var(--field);
-    border: 1.5px solid var(--lineStrong);
+    border: 1px solid var(--glass-line-strong);
     border-radius: 16px;
     padding: 9px 12px 9px 18px;
+    backdrop-filter: blur(var(--glass-blur-sm)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur-sm)) saturate(var(--glass-saturate));
+    box-shadow: var(--glass-highlight-soft);
   }
   .y-disc-searchbar__icon {
     width: 11px;
@@ -577,7 +580,7 @@
     font-weight: 700;
   }
 
-  /* ── 批量栏(dc.html:465-472;粉色描边毛玻璃浮条) ── */
+  /* ── 批量栏(dc.html:465-472;粉色描边液态玻璃浮条) ── */
   .y-disc-batchbar {
     position: fixed;
     left: 50%;
@@ -590,11 +593,13 @@
     gap: 14px;
     padding: 11px 18px;
     background: var(--panel);
-    border: 1.5px solid rgba(245, 188, 212, 0.45); /* dc.html:466 */
+    border: 1px solid rgba(245, 188, 212, 0.45); /* dc.html:466 */
     border-radius: 16px;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: var(--shadow-bar);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    box-shadow:
+      var(--glass-highlight),
+      var(--shadow-bar);
   }
   .y-disc-batchbar__note {
     font-size: 12px;

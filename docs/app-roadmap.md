@@ -62,6 +62,8 @@
 
 ## 路线 D:桌面软件(顺带白捡)
 
+> ✅ 已落地(macOS):Wails v3 壳 + 内嵌 Go 后端 + 内嵌 yoru 前端,单 `.app` 双击即用,含托盘、单实例、毛玻璃/液态玻璃窗口。见 `docs/desktop-dev.md`。Windows 打包未做,同构可补。
+
 macOS / Windows 的软件形态几乎免费:**Wails**(Go + 系统 WebView)与现有架构同构——Go 后端 + 静态 SPA 打包为单 App,附带系统托盘、原生通知、单实例锁。工作量:几天。
 
 ## 推荐顺序与里程碑

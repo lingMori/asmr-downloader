@@ -45,3 +45,10 @@ apps/web/dist/
 
 # macOS
 .DS_Store
+
+# 桌面打包产物
+release/
+
+# 桌面构建时填充的 embed 前端(由 scripts/build-desktop.sh 生成)
+internal/server/webui/*
+!internal/server/webui/.gitkeep

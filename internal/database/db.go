@@ -3,7 +3,8 @@ package database
 import (
 	"asmroner/internal/consts"
 	"asmroner/internal/model"
-	"os"
+	"asmroner/internal/paths"
+	"path/filepath"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -14,7 +15,7 @@ var Database *gorm.DB
 
 func InitDB() (*gorm.DB, error) {
 	// 使用 SQLite 存储状态，文件名为 meta.db
-	dbPath := consts.MetaDataDir + string(os.PathSeparator) + consts.DbName
+	dbPath := filepath.Join(paths.DataDir(), consts.DbName)
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent), // Silent 不打印
 	})
