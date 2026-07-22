@@ -11,30 +11,71 @@ go run .
 
 环境变量：
 
-- `ASMRO_HTTP_ADDR`
-- `ASMRO_WEB_DIR`
+- `ASMRO_HTTP_ADDR`：监听地址，默认 `127.0.0.1:8080`
+- `ASMRO_WEB_DIR`：覆盖前端 SPA 目录（默认解析 `apps/yoru/dist` → `apps/web/dist` → `./web`)
+- `ASMRO_CORS_ORIGINS`：覆盖 CORS 白名单
 - `GIN_MODE`
 
 ## Current routes
 
+### System / Config / Auth
+
 - `GET /api/healthz`
 - `GET /api/config`
 - `PUT /api/config`
+- `GET /api/auth/status`
+- `POST /api/auth/check`
+- `POST /api/auth/login`
+
+### Search & Discover
+
 - `GET /api/search`
 - `POST /api/search/download`
 - `POST /api/search/export`
 - `GET /api/discover/search`
+- `GET /api/discover/popular`
+- `GET /api/discover/recommend`
+- `POST /api/discover/feedback`
 - `GET /api/discover/works/:sourceId`
+- `GET /api/discover/works/:sourceId/neighbors`
+- `GET /api/discover/works/:sourceId/tracks/:trackId/stream`
+- `GET /api/discover/works/:sourceId/tracks/:trackId/file`
+- `GET /api/works/status`
+
+### Downloads & Tasks
+
 - `POST /api/downloads`
-- `GET /api/library/works`
-- `GET /api/library/works/:id`
-- `GET /media/*filepath`
+- `GET /api/tasks`
+- `GET /api/tasks/summary`
+- `GET /api/tasks/:id`
+- `POST /api/tasks/:id/cancel`
+- `POST /api/tasks/:id/retry`
+- `DELETE /api/tasks/:id`
+
+### Sync
+
 - `POST /api/sync`
 - `POST /api/sync/download`
 - `POST /api/sync/retry`
 - `GET /api/sync/report`
 - `GET /api/sync/export`
-- `GET /api/tasks`
-- `GET /api/tasks/summary`
-- `GET /api/tasks/:id`
-- `GET /api/events`
+
+### Library & Collections
+
+- `GET /api/library/works`
+- `GET /api/library/works/:id`
+- `GET /media/*filepath`
+- `GET /api/collections`
+- `POST /api/collections`
+- `DELETE /api/collections/:sourceId`
+
+### Playback
+
+- `PUT /api/playback/progress`
+- `GET /api/playback/progress/latest`
+- `GET /api/playback/progress/:sourceId`
+- `DELETE /api/playback/progress/:sourceId`
+
+### Events
+
+- `GET /api/events`(SSE)
