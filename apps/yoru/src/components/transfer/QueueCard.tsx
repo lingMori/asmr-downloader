@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { MusicNote } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { apiClient, type Task, type TaskListQuery } from "@/lib/api";
@@ -30,6 +31,7 @@ const QUEUE_FILTER: TaskListQuery = { type: ["download"], page: 1, pageSize: 20 
 export function QueueCard() {
   const queryClient = useQueryClient();
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
+  const [tasksRef] = useAutoAnimate();
 
   const tasksQuery = useQuery({
     queryKey: keys.tasks.list(QUEUE_FILTER),
@@ -117,7 +119,7 @@ export function QueueCard() {
       {tasksQuery.isSuccess && (
         <>
           {tasks.length > 0 && (
-            <div className="y-tr-tasks">
+            <div className="y-tr-tasks" ref={tasksRef}>
               {tasks.map((task) => (
                 <TaskRow
                   key={task.id}

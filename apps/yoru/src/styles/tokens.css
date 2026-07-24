@@ -9,15 +9,15 @@
    ───────────────────────────────────────────────────────────── */
 
 :root {
-  /* 背景:近黑带一丝紫的平面色(--bg-alpha 桌面模式机制保留,当前 100% 不透明) */
-  --bg1: #0e0b14;
-  --bg2: #0e0b14;
-  --bg3: #0f0c15;
+  /* 背景:低彩度紫浴(oklch;--bg-alpha 桌面模式机制保留,当前 100% 不透明) */
+  --bg1: oklch(0.165 0.022 300);
+  --bg2: oklch(0.155 0.018 305);
+  --bg3: oklch(0.175 0.026 295);
   --bg-alpha: 100%;
 
   /* base/elevated 两级:灰度微差表达层级,不靠模糊 */
-  --surface: #17141f; /* elevated:卡片/列表行,base + ~4% 亮度 */
-  --surface-2: #1d1a27; /* 输入/内嵌槽,再亮一档 */
+  --surface: oklch(0.215 0.02 300); /* elevated:卡片/列表行,base + ~4% 亮度 */
+  --surface-2: oklch(0.25 0.022 300); /* 输入/内嵌槽,再亮一档 */
 
   /* ── 玻璃材质(仅浮层:播放条/展开播放器/对话框/批量栏/tab bar) ── */
   --glass-blur: 20px;
@@ -33,7 +33,7 @@
 
   /* 面板/卡片/输入底(语义令牌) */
   --panel: var(--glass-bg); /* 浮层底(仅玻璃件使用) */
-  --panelSolid: #1f1c2a; /* 不透明浮层底(toast 等小件) */
+  --panelSolid: oklch(0.26 0.024 300); /* 不透明浮层底(toast 等小件) */
   --card: var(--surface); /* 卡片/列表:平面,无模糊 */
   --cardHover: rgba(255, 255, 255, 0.05);
   --field: var(--surface-2); /* 输入槽:平面 */
@@ -66,7 +66,11 @@
   --r-md: 10px;
   --r-lg: 14px;
   --r-xl: 20px;
+  --r-2xl: 24px; /* 展开播放器大封面 */
   --r-pill: 999px;
+
+  /* 字体:正文 Zen Maru Gothic;display(Zen Old Mincho)只用于大标题/display 数字 */
+  --font-display: "Zen Old Mincho", "Zen Maru Gothic", "PingFang SC", serif;
 
   /* 阴影(仅浮层/播放控件;平面件无投影) */
   --shadow-btn: 0 6px 18px color-mix(in srgb, var(--lav) 25%, transparent); /* 渐变主钮 */
@@ -91,8 +95,8 @@
   --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1); /* 轻回弹(toggle knob 等) */
 
   /* 字号阶梯(注释;正文 13.5px 在 base.css 的 body 上)
-     标题:24/20/17/16/15(900) 正文:13.5/12.5/12 辅助:11.5/11/10.5
-     mono 小字:10.5/10/9.5 贴纸/假名:9.5/9/8.5/8 */
+     display(Zen Old Mincho):32/30/24 标题:24/20/17/16/15(900) 正文:13.5/12.5/12
+     辅助:11.5/11/10.5 mono 小字:10.5/10/9.5 贴纸/假名:9.5/9/8.5/8 */
 }
 
 /* 亮色主题:近白平面 + elevated 微差,文字中性 */

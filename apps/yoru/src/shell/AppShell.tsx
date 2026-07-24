@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { LayoutGroup } from "framer-motion";
 import { toast } from "sonner";
 import {
   Books,
@@ -17,6 +18,7 @@ import { keys } from "@/lib/keys";
 import { useSettings } from "@/lib/settings";
 import { cn } from "@/lib/utils";
 import { ExpandedPlayer, PlayerBar } from "@/player";
+import { AmbientGlow } from "@/components/AmbientGlow";
 
 type NavTo = "/online" | "/discover" | "/library" | "/transfer" | "/settings";
 
@@ -72,6 +74,7 @@ export function AppShell() {
 
   return (
     <div className="y-shell">
+      <AmbientGlow />
       <header className="y-shell-header">
         <Link to="/library" className="y-shell-logo" aria-label="ASMRoner 首页">
           <div className="y-shell-logo__title">ASMRoner</div>
@@ -121,8 +124,10 @@ export function AppShell() {
         <Outlet />
       </main>
 
-      <PlayerBar />
-      <ExpandedPlayer />
+      <LayoutGroup>
+        <PlayerBar />
+        <ExpandedPlayer />
+      </LayoutGroup>
 
       <nav className="y-tabbar" aria-label="主导航(移动端)">
         {navItems.map((item) => {

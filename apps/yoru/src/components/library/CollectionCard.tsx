@@ -31,7 +31,7 @@ export function CollectionCard({
   status,
   nowPlaying,
   loading,
-  stickerRotate = 3,
+  stickerRotate = -2,
   onPlay,
   onDownload,
 }: CollectionCardProps) {

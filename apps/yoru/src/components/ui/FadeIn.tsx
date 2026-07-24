@@ -10,7 +10,7 @@ export type FadeInProps = {
 };
 
 /**
- * 列表/卡片进入过渡:fade + translateY 8px,间隔 30ms。
+ * 列表/卡片进入过渡:fade + translateY 10px 轻 spring,间隔 40ms。
  * 只在挂载时跑一次 —— 已渲染项不会因追加加载重复动画(key 稳定即可)。
  */
 export function FadeIn({ index = 0, className, children }: FadeInProps) {

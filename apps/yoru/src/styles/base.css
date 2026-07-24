@@ -19,6 +19,7 @@
     margin: 0;
     font-family: "Zen Maru Gothic", "PingFang SC", "Microsoft YaHei", sans-serif;
     font-size: 13.5px;
+    line-height: 1.6;
     color: var(--ink);
     /* --bg-alpha:浏览器 100%(不透明渐变);data-platform="desktop" 时降低,
        webview 透明 → 窗口原生玻璃(vibrancy)透出,见 tokens.css */

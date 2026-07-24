@@ -178,7 +178,6 @@ export function OnlineScreen() {
                   work={work}
                   status={statusQuery.map.get(work.source_id)}
                   playingNow={session?.sourceId === work.source_id}
-                  stickerRotate={i % 2 ? 3 : -3}
                   onOpen={() =>
                     void navigate({
                       to: "/works/$sourceId",

@@ -171,7 +171,6 @@ export function LibraryScreen() {
                 status={collectionStatus.map.get(work.source_id)}
                 nowPlaying={session?.sourceId === work.source_id}
                 loading={loadingId === work.source_id}
-                stickerRotate={i % 2 ? -3 : 3}
                 onPlay={() =>
                   void playWorkStream(work.source_id, {
                     workTitle: work.title,
@@ -248,7 +247,6 @@ export function LibraryScreen() {
               <FadeIn key={work.id} index={i}>
                 <WorkCard
                   work={work}
-                  stickerRotate={i % 2 ? -3 : 3}
                   nowPlaying={session?.sourceId === work.media_id}
                   collected={localStatus.map.get(work.media_id)?.collected ?? false}
                 />

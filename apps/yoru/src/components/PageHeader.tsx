@@ -11,13 +11,13 @@ export type PageHeaderProps = {
   aside?: ReactNode;
 };
 
-/** 页头(原型各页大标题 + 假名注音 + 右侧统计/操作位) */
+/** 页头(editorial 版式:假名 eyebrow 在上 + display 大标题 + 右侧统计/操作位) */
 export function PageHeader({ title, kana, badge, aside }: PageHeaderProps) {
   return (
     <div className="y-page-head">
       <div className="y-page-head__titles">
+        {kana && <div className="y-page-head__kana">{kana}</div>}
         <div className="y-page-head__title">{title}</div>
-        {kana && <div className="y-kana">{kana}</div>}
       </div>
       {badge && <span className="y-page-head__badge">{badge}</span>}
       {aside && <div className="y-page-head__aside">{aside}</div>}

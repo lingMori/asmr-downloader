@@ -22,7 +22,7 @@ export type OnlineCardProps = {
   /** 全局播放器当前会话是否为该作品(仅作展示指示,不可点击) */
   playingNow: boolean;
   /** 字幕贴纸旋转角(原型 ±3° 交替) */
-  stickerRotate: number;
+  stickerRotate?: number;
   /** 整卡点击 → 作品详情页(在详情页再决定播放) */
   onOpen: () => void;
   onDownload: () => void;
@@ -38,7 +38,7 @@ export function OnlineCard({
   work,
   status,
   playingNow,
-  stickerRotate,
+  stickerRotate = -2,
   onOpen,
   onDownload,
 }: OnlineCardProps) {

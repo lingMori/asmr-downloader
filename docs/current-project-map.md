@@ -59,7 +59,8 @@
 
 - `/api/*` 统一 `{code, message, data}` 包络,路由清单见 `docs/server-dev.md`
 - `GET /api/events` SSE 实时推送任务进度
-- `/media/*` 本地媒体文件伺服;远端音频经 `/api/discover/works/.../stream` 代理(支持 Range)
+- `/media/*` 本地媒体文件伺服;远端音频经 `/api/discover/works/.../stream` 代理(支持 Range);
+  非音频叶经 `.../file` 代理;封面经 `.../cover` 代理(同源,供前端 canvas 取色)
 
 ## 运行与验证
 

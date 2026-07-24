@@ -458,12 +458,19 @@ function absolutizeWorkCovers<T extends DiscoverWorkSummary | SearchWorkSummary>
     tags: Array.isArray(work.tags) ? work.tags : [],
     vas: Array.isArray(work.vas) ? work.vas : [],
     thumbnail_url: work.thumbnail_url
-      ? toAbsoluteMediaUrl(work.thumbnail_url)
+      ? proxiedDiscoverCover(work.source_id, "240x240")
       : undefined,
     main_cover_url: work.main_cover_url
-      ? toAbsoluteMediaUrl(work.main_cover_url)
+      ? proxiedDiscoverCover(work.source_id, "main")
       : undefined,
   };
+}
+
+/** 封面改走同源代理(上游图床 CORS 不放行,canvas 取色需要同源像素) */
+function proxiedDiscoverCover(sourceId: string, type: "main" | "240x240"): string {
+  return toAbsoluteMediaUrl(
+    `/api/discover/works/${encodeURIComponent(sourceId)}/cover?type=${type}`,
+  );
 }
 
 function absolutizePlaybackProgress(progress: PlaybackProgress): PlaybackProgress {

@@ -1,3 +1,4 @@
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { formatCount } from "@/lib/format";
 import { DISCOVER_ORDERS, DEFAULT_DISCOVER_URL, type DiscoverUrlState } from "./helpers";
 
@@ -12,8 +13,9 @@ export type ActiveChipsProps = {
 
 type ChipDef = { key: string; label: string; remove: () => void };
 
-/** 激活条件 chips 行(dc.html:112-118 + renderVals 680-689) */
+/** 激活条件 chips 行(dc.html:112-118 + renderVals 680-689;增删 FLIP 过渡) */
 export function ActiveChips({ state, advanced, total, selectedCount, onChange }: ActiveChipsProps) {
+  const [rowRef] = useAutoAnimate();
   const chips: ChipDef[] = [];
   if (state.q) {
     chips.push({
@@ -65,7 +67,7 @@ export function ActiveChips({ state, advanced, total, selectedCount, onChange }:
   }
 
   return (
-    <div className="y-disc-chips">
+    <div className="y-disc-chips" ref={rowRef}>
       {chips.length === 0 && (
         <span className="y-disc-chip y-disc-chip--empty">
           还没有激活筛选条件 — 条件实时应用到结果

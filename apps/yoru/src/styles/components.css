@@ -22,7 +22,7 @@
     padding: 10px 22px;
     /* 唯一渐变 CTA:平面 + 一团 palette 柔光,不做高光描边 */
     box-shadow: var(--shadow-btn);
-    transition: transform var(--dur-fast) var(--ease-out);
+    transition: transform var(--dur-fast) var(--ease-spring);
     user-select: none;
   }
   .y-btn-primary:active:not(:disabled) {
@@ -65,8 +65,8 @@
     background: var(--pink);
     color: var(--pinkInk);
     font-weight: 700;
-    font-size: 8.5px;
-    padding: 2px 8px;
+    font-size: 9.5px;
+    padding: 3px 10px;
     border-radius: 999px;
     transform: rotate(var(--sticker-rot, -2deg));
     white-space: nowrap;
@@ -378,7 +378,7 @@
   }
   .y-metric__value {
     margin-top: 2px;
-    font: 700 11.5px ui-monospace, monospace;
+    font: 600 16px ui-monospace, monospace;
     color: var(--ink);
   }
 
@@ -468,7 +468,7 @@
     border: 1px solid var(--line);
     border-radius: var(--r-md);
     transition:
-      transform var(--dur-med) var(--ease-out),
+      transform var(--dur-med) var(--ease-spring),
       border-color var(--dur-fast) var(--ease-out);
   }
 
@@ -522,7 +522,7 @@
       border-color var(--dur-fast) var(--ease-out),
       color var(--dur-fast) var(--ease-out),
       background var(--dur-fast) var(--ease-out),
-      transform var(--dur-fast) var(--ease-out);
+      transform var(--dur-fast) var(--ease-spring);
   }
   .y-btn-ghost:active:not(:disabled),
   .y-chip:active,
@@ -812,7 +812,7 @@
     font-size: 11px;
     border: none;
     box-shadow: var(--shadow-playring);
-    transition: transform var(--dur-fast) var(--ease-out);
+    transition: transform var(--dur-fast) var(--ease-spring);
     user-select: none;
   }
   .y-playerbar__seekwrap {
@@ -897,7 +897,7 @@
     position: fixed;
     left: 50%;
     bottom: 96px;
-    width: min(860px, calc(100vw - 56px));
+    width: min(920px, calc(100vw - 56px));
     z-index: var(--z-player);
     background: var(--panel);
     border: 1px solid var(--glass-line-strong);
@@ -931,7 +931,7 @@
     transition: border-color var(--dur-fast) var(--ease-out);
   }
   .y-player-expanded__left {
-    width: 190px;
+    width: 300px;
     flex: none;
     display: flex;
     flex-direction: column;
@@ -941,7 +941,7 @@
   .y-player-expanded__cover {
     width: 100%;
     aspect-ratio: 1;
-    border-radius: var(--r-md);
+    border-radius: var(--r-2xl);
     object-fit: cover;
   }
   /* 虚线字幕卡(dc.html:482-485;静态字幕→同步高亮补齐) */
@@ -1000,13 +1000,15 @@
   }
   .y-player-expanded__title {
     margin-top: 8px;
+    font-family: var(--font-display);
     font-weight: 900;
-    font-size: 20px;
-    line-height: 1.3;
+    font-size: 32px;
+    line-height: 1.25;
   }
   .y-player-expanded__meta {
-    margin-top: 3px;
+    margin-top: 6px;
     font-size: 12px;
+    line-height: 1.6;
     color: var(--mut);
   }
   .y-player-expanded__rj {
@@ -1243,8 +1245,9 @@
   }
   .y-player-expanded__cover {
     order: 1;
-    width: 128px;
+    width: min(240px, 60vw);
     margin: 0 auto;
+    border-radius: var(--r-2xl);
   }
   .y-player-expanded__badges {
     order: 2;
@@ -1252,7 +1255,7 @@
   }
   .y-player-expanded__title {
     order: 3;
-    font-size: 17px;
+    font-size: 24px;
     text-align: center;
   }
   .y-player-expanded__meta {
@@ -1282,11 +1285,19 @@
 .y-page-head__titles {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+}
+/* 假名 eyebrow:editorial 副标(不再是 8px 附属小字) */
+.y-page-head__kana {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: color-mix(in srgb, var(--lav) 70%, var(--dim));
 }
 .y-page-head__title {
+  font-family: var(--font-display);
   font-weight: 900;
-  font-size: 20px;
+  font-size: 30px;
   line-height: 1.2;
   color: var(--ink);
 }
@@ -1434,7 +1445,7 @@
   transition:
     border-color var(--dur-fast) var(--ease-out),
     color var(--dur-fast) var(--ease-out),
-    transform var(--dur-fast) var(--ease-out);
+    transform var(--dur-fast) var(--ease-spring);
 }
 .y-collect-btn.is-on {
   color: var(--pink);
@@ -1508,4 +1519,24 @@
   .y-playerbar__cue-text {
     font-size: 11px;
   }
+}
+
+/* ===== 环境氛围层(AmbientGlow:封面主色光晕 + 颗粒;z-index -1 不遮内容) ===== */
+.y-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.34;
+  /* 换封面/播放态切换时颜色与透明度都缓变(1.2s 呼吸节奏) */
+  transition: opacity 1.2s var(--ease-out);
+}
+.y-ambient.is-playing {
+  opacity: 0.5;
+}
+:root[data-theme="light"] .y-ambient {
+  opacity: 0.16;
+}
+:root[data-theme="light"] .y-ambient.is-playing {
+  opacity: 0.24;
 }

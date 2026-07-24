@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 import {
   ArrowSquareOut,
   CaretDown,
@@ -34,8 +35,10 @@ export type FileTreeProps = {
  * other 有 url=新窗口打开,无 url 灰显静态行。
  */
 export function FileTree({ nodes, activeId, defaultExpandDepth = 0, onPreview }: FileTreeProps) {
+  // 展开/折叠与列表增删的 FLIP 过渡(auto-animate 默认尊重 reduced-motion)
+  const [rootRef] = useAutoAnimate();
   return (
-    <div className="y-wd-tree">
+    <div className="y-wd-tree" ref={rootRef}>
       {nodes.map((node) => (
         <TreeRow
           key={node.id}
@@ -71,6 +74,7 @@ type TreeRowProps = {
 
 function TreeRow({ node, depth, activeId, defaultExpandDepth, onPreview }: TreeRowProps) {
   const [open, setOpen] = useState(depth < defaultExpandDepth);
+  const [childrenRef] = useAutoAnimate();
 
   if (node.kind === "folder") {
     const FolderIcon = open ? FolderOpen : Folder;
@@ -92,7 +96,7 @@ function TreeRow({ node, depth, activeId, defaultExpandDepth, onPreview }: TreeR
           <span className="y-wd-tree__name">{node.name}</span>
         </button>
         {open && (
-          <div className="y-wd-tree__children">
+          <div className="y-wd-tree__children" ref={childrenRef}>
             {(node.children ?? []).map((child) => (
               <TreeRow
                 key={child.id}

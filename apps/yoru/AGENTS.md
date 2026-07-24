@@ -1,6 +1,7 @@
 # apps/yoru — ASMRoner「よる」前端包内约定
 
-新前端(React 19 + Vite + TS strict + Tailwind v4 CSS-based + TanStack Router/Query + sonner + framer-motion)。
+新前端(React 19 + Vite + TS strict + Tailwind v4 CSS-based + TanStack Router/Query + sonner + framer-motion
++ @paper-design/shaders-react(氛围 WebGL)+ @formkit/auto-animate(列表 FLIP))。
 旧包 `apps/web` 只读,禁止改动、禁止互相 import;Go 代码禁止改动。
 
 ## 目录结构
@@ -10,7 +11,8 @@ src/
   styles/      tokens.css(设计令牌 + --glass-* 液态玻璃材质)/ base.css / components.css(y- 前缀组件类)
   lib/         纯逻辑:api.ts(apiClient)、keys.ts(查询键)、settings.tsx(客户端设置)、
                platform.ts(桌面模式检测:?desktop=1 → data-platform="desktop")、
-               subtitles.ts / feedback.ts / playback.ts / useTaskEvents.ts / utils.ts(cn)
+               glow.ts(封面取色/光晕色板)、subtitles.ts / feedback.ts / playback.ts /
+               useTaskEvents.ts / utils.ts(cn + copyText)
   components/
     ui/        UI 原语(Sticker/Chip/Toggle/Stepper/ProgressBar/EQ/CoverPlaceholder/
                EmptyState/Skeleton/Pagination/Dialog)
@@ -19,6 +21,7 @@ src/
     WorkBadge.tsx             WorkStatusBadge(状态徽章)+ DownloadButton(下载钮三态)
     CollectButton.tsx         收藏(入库)♡ 切换钮(配 hooks/useCollections.ts)
     DownloadReviewDialog.tsx  下载复核对话框(创建 single/batch 任务)
+    AmbientGlow.tsx           环境氛围层(封面主色光晕 + 颗粒;AmbientGlowCanvas 为 lazy WebGL 实现)
     workdetail/               FileTree(默认全折叠,phosphor 类型图标)+ tree(纯逻辑)
                               + FilePreviewDialog(非音频应用内预览:图片灯箱/文本/视频)
   player/      全局播放器:GlobalPlayer(Context)/PlayerBar/ExpandedPlayer/
@@ -33,6 +36,8 @@ src/
   (照抄原型 dc.html 的 rgba 组合除外,注释标明出处)。
 - **图标一律 `@phosphor-icons/react`**(尺寸 11–16 按槽位,激活态 `weight="fill"`);
   禁用文本符号字形(♪ ★ ☾ ▶ ✓ 等),播放中行内指示用 `EQ` 组件而非静态图标。
+- **display 字体**:`var(--font-display)`(Zen Old Mincho)只用于页头标题/详情 H1/hero/展开播放器
+  标题这类大标题与 display 数字,正文永远 Zen Maru Gothic;圆角大档 `--r-2xl`(24px)只给展开播放器封面。
 - 材质纪律(Apple Music 式):底子是近黑/近白平面色,层级只用 `--surface`/`--surface-2`
   灰度微差;**玻璃(backdrop-filter)只给下面真有内容流过的浮层**——播放条、展开播放器、
   对话框、批量栏、移动 tab bar(及封面图上的徽章);卡片/列表/输入一律平面 + 1px 发丝描边,
@@ -49,15 +54,22 @@ src/
 
 ## 动效
 
+- 三层分工,**优先用成熟库,不手写**:
+  - 氛围层:`@paper-design/shaders-react`(WebGL)——`AmbientGlow`(壳挂载一次)用
+    `MeshGradient` 把封面主色(`lib/glow.ts` canvas 取色 + `useCoverGlow`,失败回退散列色)
+    渗透进背景,自带颗粒;lazy 分包 + webgl2 预检,失败回退 CSS 径向渐变,不许白屏。
+  - 交互层:`framer-motion`(LayoutGroup/layoutId 共享元素转场、drag 手势、variants);
+    参数统一从 `lib/motion.ts` 取(EASE_OUT/SPRING_SOFT/DIALOG_IN/ENTER),不要自造数值。
+  - 列表层:`@formkit/auto-animate` 的 `useAutoAnimate()` 挂容器 ref(FileTree/队列/chips 行),
+    默认尊重 reduced-motion。
 - 时长/缓动只用 tokens(`--dur-fast 120ms`/`--dur-med 240ms`/`--dur-slow 400ms`,
-  `--ease-out`/`--ease-spring`);framer-motion 侧统一从 `lib/motion.ts` 取同值参数
-  (EASE_OUT/SPRING_SOFT/DIALOG_IN/ENTER),不要自造数值。
-- 列表进入过渡用 `<FadeIn index={i}>`(ui/):fade + y8、30ms 错相、只在挂载时跑一次,
+  `--ease-out`/`--ease-spring`);按压/hover 位移类 transition 一律 `--ease-spring`。
+- 列表进入过渡用 `<FadeIn index={i}>`(ui/):fade + y10 轻 spring、40ms 错相、只在挂载时跑一次,
   无限滚动追加批次自然进入;key 保持稳定的已渲染项不会重播。
 - 微交互:按钮 press scale(主钮 0.97/小控件 0.96)、卡片 hover -2px + 描边变亮,
   只动 transform/opacity。
-- reduced-motion:base.css 全局降级 + main.tsx `MotionConfig reducedMotion="user"`,
-  新动效不需要也不允许绕过这两层兜底。
+- reduced-motion:base.css 全局降级 + main.tsx `MotionConfig reducedMotion="user"`
+  (shader 层经 framer `useReducedMotion` speed=0 定格),新动效不需要也不允许绕过这些兜底。
 
 ## 数据访问
 

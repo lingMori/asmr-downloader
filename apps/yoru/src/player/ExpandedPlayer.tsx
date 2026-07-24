@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useDragControls, type PanInfo } from "framer-motion";
 import { Check, DownloadSimple, MusicNote, X } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
@@ -19,6 +19,13 @@ import { SPRING_SOFT, EASE_OUT } from "@/lib/motion";
 export function ExpandedPlayer() {
   const { session, expanded, setExpanded } = useGlobalPlayer();
   const open = expanded && Boolean(session);
+  const dragControls = useDragControls();
+
+  // 下拉手势:速度或位移超阈值即关闭(橡皮筋回弹交给 SPRING_SOFT)
+  const onDragEnd = (_: unknown, info: PanInfo) => {
+    if (info.velocity.y > 500 || info.offset.y > 120) setExpanded(false);
+  };
+
   return (
     <AnimatePresence>
       {open && session && (
@@ -40,8 +47,14 @@ export function ExpandedPlayer() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
             transition={SPRING_SOFT}
+            drag="y"
+            dragListener={false}
+            dragControls={dragControls}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.4 }}
+            onDragEnd={onDragEnd}
           >
-            <ExpandedBody />
+            <ExpandedBody dragControls={dragControls} />
           </motion.div>
         </div>
       )}
@@ -49,7 +62,7 @@ export function ExpandedPlayer() {
   );
 }
 
-function ExpandedBody() {
+function ExpandedBody({ dragControls }: { dragControls: ReturnType<typeof useDragControls> }) {
   const {
     session,
     index,
@@ -96,7 +109,16 @@ function ExpandedBody() {
       </button>
       <div className="y-player-expanded__left">
         {session.coverUrl ? (
-          <img className="y-player-expanded__cover" src={session.coverUrl} alt="" />
+          <motion.img
+            className="y-player-expanded__cover"
+            src={session.coverUrl}
+            alt=""
+            /* 与迷你播放条封面共享 layoutId:42px → 大封面连续放大;
+               封面即下拉关闭手势的把手(dragListener 关闭,仅此处启动拖拽) */
+            layoutId="player-cover"
+            style={{ borderRadius: 24, touchAction: "none" }}
+            onPointerDown={(e) => dragControls.start(e)}
+          />
         ) : (
           <CoverPlaceholder
             className="y-player-expanded__cover"

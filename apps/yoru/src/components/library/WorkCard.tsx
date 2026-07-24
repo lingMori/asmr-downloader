@@ -21,7 +21,7 @@ export type WorkCardProps = {
  * (作品详情唯一入口);♡ 为 CollectButton(快照只拿得到本地摘要字段,
  * 其余由 toCollectionInput 兜底)。
  */
-export function WorkCard({ work, nowPlaying, collected, stickerRotate = 3 }: WorkCardProps) {
+export function WorkCard({ work, nowPlaying, collected, stickerRotate = -2 }: WorkCardProps) {
   return (
     <div className="y-lib-card">
       {work.has_subtitles && (

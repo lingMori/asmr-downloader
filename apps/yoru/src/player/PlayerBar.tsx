@@ -1,4 +1,5 @@
 import { useRef, useState, type CSSProperties } from "react";
+import { motion } from "framer-motion";
 import {
   CaretDown,
   CaretUp,
@@ -104,7 +105,14 @@ function DesktopBar() {
     <footer className="y-playerbar y-playerbar--desktop" data-testid="playerbar-desktop">
       <DockedCue />
       {session.coverUrl ? (
-        <img className="y-playerbar__cover" src={session.coverUrl} alt="" />
+        <motion.img
+          className="y-playerbar__cover"
+          src={session.coverUrl}
+          alt=""
+          /* 共享元素转场:展开时把 layoutId 让给展开层大封面 */
+          layoutId={expanded ? undefined : "player-cover"}
+          style={{ borderRadius: 8 }}
+        />
       ) : (
         <CoverPlaceholder
           className="y-playerbar__cover"
