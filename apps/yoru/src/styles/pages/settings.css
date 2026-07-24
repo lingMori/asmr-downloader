@@ -267,7 +267,8 @@
       background var(--dur-fast) var(--ease-out);
   }
   .y-set-theme-opt .sym {
-    font-size: 15px;
+    display: inline-flex;
+    align-items: center;
     line-height: 1.2;
   }
   .y-set-theme-opt.is-on {

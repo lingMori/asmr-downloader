@@ -1,3 +1,4 @@
+import { DownloadSimple } from "@phosphor-icons/react";
 import { Chip, Sticker } from "@/components/ui";
 
 export type DownloadScope = "page" | "selected";
@@ -69,7 +70,7 @@ export function ToolsPanel({
             onClick={onReview}
             disabled={(scope === "page" ? pageCount : selectedCount) === 0}
           >
-            ↓ 复核下载范围
+            <DownloadSimple size={13} weight="bold" /> 复核下载范围
           </button>
           <button
             type="button"

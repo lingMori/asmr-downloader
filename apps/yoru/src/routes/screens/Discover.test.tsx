@@ -240,7 +240,7 @@ describe("DiscoverScreen", () => {
     const router = renderDiscover();
     await screen.findByText("雨音の催眠夜話");
 
-    fireEvent.click(screen.getByRole("button", { name: /筛选 ▾/ }));
+    fireEvent.click(screen.getByRole("button", { name: /筛选/ }));
     fireEvent.click(await screen.findByRole("button", { name: "评分" }));
 
     await waitFor(() =>
@@ -289,9 +289,11 @@ describe("DiscoverScreen", () => {
     // 相似作品区块
     expect(screen.getByText("相似作品 · にている")).toBeInTheDocument();
 
-    // 点音轨 → 全部 audio 轨建 stream 会话,startIndex=该轨;当前轨高亮 ♪
+    // 点音轨 → 全部 audio 轨建 stream 会话,startIndex=该轨;当前轨行高亮(is-on)
     fireEvent.click(screen.getByText(/02 耳语/));
-    expect(await screen.findByText("♪")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /02 耳语/ }).className).toContain("is-on"),
+    );
   });
 
   it("零结果 → 空态 + 重置钮", async () => {

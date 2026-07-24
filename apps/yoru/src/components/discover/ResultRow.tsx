@@ -1,3 +1,4 @@
+import { Check, MusicNote, Play, Star } from "@phosphor-icons/react";
 import type { DiscoverWorkSummary, WorkStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatCount, formatDate, formatRate } from "@/lib/format";
@@ -65,7 +66,7 @@ export function ResultRow({
           if (!unavailable) onToggleSelect();
         }}
       >
-        {selected ? "✓" : ""}
+        {selected ? <Check size={11} weight="bold" /> : ""}
       </button>
 
       <div className="y-disc-row__cover">
@@ -109,7 +110,9 @@ export function ResultRow({
       </div>
 
       <div className={cn("y-disc-row__side", owned && "is-owned")}>
-        <span>★ {formatRate(work.rate)}</span>
+        <span className="y-disc-row__rate">
+          <Star size={11} weight="fill" /> {formatRate(work.rate)}
+        </span>
         <span>DL {formatCount(work.dl_count)}</span>
       </div>
 
@@ -122,7 +125,17 @@ export function ResultRow({
           onPreview();
         }}
       >
-        {previewing ? "… 加载中" : isPlaying ? "♪ 播放中" : "▶ 试听"}
+        {previewing ? (
+          "… 加载中"
+        ) : isPlaying ? (
+          <>
+            <MusicNote size={12} weight="fill" /> 播放中
+          </>
+        ) : (
+          <>
+            <Play size={12} weight="fill" /> 试听
+          </>
+        )}
       </button>
 
       <span onClick={(e) => e.stopPropagation()}>

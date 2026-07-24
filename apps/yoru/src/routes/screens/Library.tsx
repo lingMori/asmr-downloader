@@ -3,6 +3,7 @@ import "@/styles/pages/library.css";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { Heart, Moon } from "@phosphor-icons/react";
 import { apiClient } from "@/lib/api";
 import { keys } from "@/lib/keys";
 import { useCollections } from "@/hooks/useCollections";
@@ -120,7 +121,7 @@ export function LibraryScreen() {
       ) : (
         <div className="y-lib-hero--empty">
           <span className="y-lib-hero__moon" aria-hidden="true">
-            ☾
+            <Moon size={22} />
           </span>
           <p>还没有收听记录 — 去发现或在线挑一部作品吧</p>
           <div className="y-lib-hero__empty-actions">
@@ -158,7 +159,8 @@ export function LibraryScreen() {
         </div>
       ) : collections.length === 0 ? (
         <div className="y-lib-collect-empty">
-          还没有收藏作品 — 在发现或在线点 ♡,收藏即入库
+          还没有收藏作品 — 在发现或在线点 <Heart size={11} className="y-lib-collect-empty__heart" />
+          ,收藏即入库
         </div>
       ) : (
         <div className="y-lib-grid">

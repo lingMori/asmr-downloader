@@ -1,3 +1,4 @@
+import { Heart } from "@phosphor-icons/react";
 import { toCollectionInput } from "@/lib/api";
 import { useToggleCollection } from "@/hooks/useCollections";
 import { cn } from "@/lib/utils";
@@ -35,7 +36,7 @@ export function CollectButton({ work, collected, size, className }: CollectButto
         if (!toggle.isPending) toggle.mutate({ work, collected });
       }}
     >
-      {collected ? "♥" : "♡"}
+      {collected ? <Heart size={15} weight="fill" /> : <Heart size={15} />}
     </span>
   );
 }

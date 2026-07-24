@@ -205,8 +205,9 @@
   margin-top: 12px;
 }
 .y-tr-hint__mark {
+  display: inline-flex;
+  align-items: center;
   color: var(--pink);
-  font-size: 13px;
 }
 .y-tr-link {
   margin-left: auto;

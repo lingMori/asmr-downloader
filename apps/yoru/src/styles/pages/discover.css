@@ -77,6 +77,9 @@
   /* 筛选/工具/重置 描边钮(dc.html:108-110) */
   .y-disc-barbtn {
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     border: 1px solid var(--line);
     background: transparent;
     color: var(--mut);
@@ -332,11 +335,17 @@
   }
   .y-disc-row__side {
     display: flex;
+    align-items: center;
     gap: 16px;
     font: 500 10.5px ui-monospace, monospace;
     color: var(--mut);
     flex: none;
     white-space: nowrap;
+  }
+  .y-disc-row__rate {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
   }
   .y-disc-row__side.is-owned {
     color: var(--dim);
@@ -346,6 +355,7 @@
     cursor: pointer;
     display: inline-flex;
     align-items: center;
+    gap: 5px;
     background: transparent;
     border: 1px solid var(--line);
     color: var(--mut);
@@ -453,6 +463,8 @@
     color: var(--dim);
     width: 16px;
     flex: none;
+    display: inline-flex;
+    align-items: center;
   }
   .y-disc-track.is-on .y-disc-track__num {
     color: var(--pink);
@@ -482,6 +494,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 6px;
     background: linear-gradient(135deg, var(--lav), var(--pink));
     color: var(--accentInk);
     font-weight: 700;
@@ -549,6 +562,9 @@
     overflow: hidden;
   }
   .y-disc-neighbor__rate {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
     font: 500 9.5px ui-monospace, monospace;
     color: var(--dim);
   }

@@ -224,17 +224,26 @@
   .y-wd-tree__arrow {
     width: 14px;
     flex: none;
-    font-size: 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     color: var(--dim);
-    text-align: center;
   }
   .y-wd-tree__icon {
     width: 16px;
     flex: none;
-    font-family: ui-monospace, monospace;
-    font-size: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     color: var(--mut);
-    text-align: center;
+  }
+  /* 播放中行用 EQ 五柱替代静态图标:缩小适配 16px 槽位 */
+  .y-wd-tree__icon .y-eq {
+    height: 12px;
+    gap: 2px;
+  }
+  .y-wd-tree__icon .y-eq__bar {
+    width: 2.5px;
   }
   .y-wd-tree__icon.is-on {
     color: var(--pink);
@@ -262,8 +271,9 @@
   }
   .y-wd-tree__open {
     flex: none;
+    display: inline-flex;
+    align-items: center;
     color: var(--dim);
-    font-size: 11px;
   }
 
   /* ── 相似作品网格(同 y-disc-neighbor 范式,discover.css:505) ── */
@@ -325,6 +335,75 @@
     flex-direction: column;
     gap: 8px;
   }
+
+  /* ── 文件预览弹窗(非音频应用内预览) ── */
+  .y-preview-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .y-preview-head__name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .y-preview-head__open {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--dim);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--lineStrong);
+    padding-bottom: 1px;
+  }
+  .y-preview-media {
+    display: flex;
+    justify-content: center;
+  }
+  .y-preview-media img,
+  .y-preview-media video {
+    max-width: 100%;
+    max-height: 72dvh;
+    border-radius: 12px;
+  }
+  .y-preview-media video {
+    width: 100%;
+    background: #000; /* 播放器底色,非色板色值:纯黑视频底 */
+  }
+  .y-preview-text {
+    margin: 0;
+    max-height: 70dvh;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font: 400 12px/1.7 ui-monospace, monospace;
+    color: var(--ink);
+  }
+  .y-preview-textload {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .y-preview-fallback {
+    font-size: 12px;
+    color: var(--mut);
+    line-height: 1.7;
+  }
+
+  /* 行内 svg 对齐(评分/外链) */
+  .y-wd-neighbor__rate,
+  .y-wd-source {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
 }
 
 /* hover 体系:仅精确指针设备 */
@@ -340,6 +419,9 @@
     transform: translateY(-2px);
   }
   .y-wd-source:hover {
+    color: var(--ink);
+  }
+  .y-preview-head__open:hover {
     color: var(--ink);
   }
   .y-wd-link:hover {

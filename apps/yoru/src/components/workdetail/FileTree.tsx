@@ -1,23 +1,39 @@
 import { useState } from "react";
+import {
+  ArrowSquareOut,
+  CaretDown,
+  CaretRight,
+  File,
+  FileText,
+  Folder,
+  FolderOpen,
+  Image,
+  MusicNote,
+  Subtitles,
+  Video,
+} from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/format";
-import { formatSize, type FileTreeNode } from "./tree";
+import { EQ } from "@/components/ui";
+import { formatSize, type FileTreeKind, type FileTreeNode } from "./tree";
 
 export type FileTreeProps = {
   nodes: FileTreeNode[];
-  /** 当前播放中的叶 id(行高亮 + ♪) */
+  /** 当前播放中的叶 id(行高亮 + EQ) */
   activeId?: string;
-  /** 默认展开深度:1 = 第一层文件夹展开、更深层折叠 */
+  /** 默认展开深度:0 = 全部折叠(详情页默认收起,避免长树一次铺开) */
   defaultExpandDepth?: number;
+  /** 可预览叶(image/text/subtitle/video)点击 → 应用内预览 */
+  onPreview?: (node: FileTreeNode) => void;
 };
 
 /**
  * 文件层级树(通用,递归渲染):文件夹行可折叠/展开;
  * 行 = 折叠箭头 / 类型图标 / 名称 / 右侧时长或大小 / 操作。
- * audio 叶=按钮(整作会话);image 叶=新窗口打开;subtitle 叶=「字幕」badge;
- * text/other 灰显静态行。
+ * audio 叶=按钮(整作会话);image/text/subtitle/video 叶=应用内预览;
+ * other 有 url=新窗口打开,无 url 灰显静态行。
  */
-export function FileTree({ nodes, activeId, defaultExpandDepth = 1 }: FileTreeProps) {
+export function FileTree({ nodes, activeId, defaultExpandDepth = 0, onPreview }: FileTreeProps) {
   return (
     <div className="y-wd-tree">
       {nodes.map((node) => (
@@ -27,31 +43,38 @@ export function FileTree({ nodes, activeId, defaultExpandDepth = 1 }: FileTreePr
           depth={0}
           activeId={activeId}
           defaultExpandDepth={defaultExpandDepth}
+          onPreview={onPreview}
         />
       ))}
     </div>
   );
 }
 
-const KIND_ICON: Record<Exclude<FileTreeNode["kind"], "folder">, string> = {
-  audio: "♪",
-  subtitle: "字",
-  image: "图",
-  text: "文",
-  other: "·",
+const KIND_ICON: Record<Exclude<FileTreeKind, "folder">, typeof MusicNote> = {
+  audio: MusicNote,
+  subtitle: Subtitles,
+  image: Image,
+  text: FileText,
+  video: Video,
+  other: File,
 };
+
+const PREVIEWABLE: ReadonlySet<FileTreeKind> = new Set(["image", "text", "subtitle", "video"]);
 
 type TreeRowProps = {
   node: FileTreeNode;
   depth: number;
   activeId?: string;
   defaultExpandDepth: number;
+  onPreview?: (node: FileTreeNode) => void;
 };
 
-function TreeRow({ node, depth, activeId, defaultExpandDepth }: TreeRowProps) {
+function TreeRow({ node, depth, activeId, defaultExpandDepth, onPreview }: TreeRowProps) {
   const [open, setOpen] = useState(depth < defaultExpandDepth);
 
   if (node.kind === "folder") {
+    const FolderIcon = open ? FolderOpen : Folder;
+    const ArrowIcon = open ? CaretDown : CaretRight;
     return (
       <div className="y-wd-tree__branch">
         <button
@@ -61,7 +84,10 @@ function TreeRow({ node, depth, activeId, defaultExpandDepth }: TreeRowProps) {
           onClick={() => setOpen((v) => !v)}
         >
           <span className="y-wd-tree__arrow" aria-hidden="true">
-            {open ? "▾" : "▸"}
+            <ArrowIcon size={12} weight="bold" />
+          </span>
+          <span className="y-wd-tree__icon" aria-hidden="true">
+            <FolderIcon size={15} />
           </span>
           <span className="y-wd-tree__name">{node.name}</span>
         </button>
@@ -74,6 +100,7 @@ function TreeRow({ node, depth, activeId, defaultExpandDepth }: TreeRowProps) {
                 depth={depth + 1}
                 activeId={activeId}
                 defaultExpandDepth={defaultExpandDepth}
+                onPreview={onPreview}
               />
             ))}
           </div>
@@ -83,20 +110,22 @@ function TreeRow({ node, depth, activeId, defaultExpandDepth }: TreeRowProps) {
   }
 
   const active = node.kind === "audio" && activeId === node.id;
+  const LeafIcon = KIND_ICON[node.kind];
   const meta =
     node.duration != null ? formatDuration(node.duration) : formatSize(node.size);
+  const external = node.kind === "other" && Boolean(node.url);
   const body = (
     <>
       <span className="y-wd-tree__arrow" aria-hidden="true" />
       <span className={cn("y-wd-tree__icon", active && "is-on")} aria-hidden="true">
-        {active ? "♪" : KIND_ICON[node.kind]}
+        {active ? <EQ playing /> : <LeafIcon size={15} />}
       </span>
       <span className="y-wd-tree__name">{node.name}</span>
       {node.kind === "subtitle" && <span className="y-wd-tree__badge">字幕</span>}
       {meta && <span className="y-wd-tree__meta">{meta}</span>}
-      {node.kind === "image" && node.url && (
+      {external && (
         <span className="y-wd-tree__open" aria-hidden="true">
-          ↗
+          <ArrowSquareOut size={13} />
         </span>
       )}
     </>
@@ -113,7 +142,14 @@ function TreeRow({ node, depth, activeId, defaultExpandDepth }: TreeRowProps) {
       </button>
     );
   }
-  if (node.kind === "image" && node.url) {
+  if (PREVIEWABLE.has(node.kind) && node.url && onPreview) {
+    return (
+      <button type="button" className="y-wd-tree__row" onClick={() => onPreview(node)}>
+        {body}
+      </button>
+    );
+  }
+  if (external) {
     return (
       <a className="y-wd-tree__row" href={node.url} target="_blank" rel="noreferrer">
         {body}

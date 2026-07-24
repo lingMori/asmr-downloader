@@ -59,6 +59,9 @@
     position: absolute;
     top: -7px;
     z-index: var(--z-sticker);
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
     background: var(--pink);
     color: var(--pinkInk);
     font-weight: 700;
@@ -390,6 +393,13 @@
     color: var(--mut);
     font-size: 11.5px;
   }
+  /* 提示条前导图标(原 ♪ 文本符号,图标化后统一槽位) */
+  .y-hint__icon {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    color: var(--pink);
+  }
 
   /* ── 空状态(dc.html:230) ── */
   .y-empty {
@@ -404,7 +414,8 @@
     line-height: 1.7;
   }
   .y-empty__icon {
-    font-size: 18px;
+    display: inline-flex;
+    align-items: center;
     color: var(--mut);
   }
 
@@ -472,11 +483,25 @@
     font-size: 9px;
   }
 
-  /* ── 骨架屏(原型缺失,同范式补) ── */
+  /* ── 骨架屏(原型缺失,同范式补):扫光 shimmer,替代呼吸闪(观感更稳) ── */
   .y-skeleton {
+    position: relative;
+    overflow: hidden;
     background: var(--card);
     border: 1px solid var(--line);
-    animation: y-pulse 1.6s ease-in-out infinite;
+  }
+  .y-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--ink) 6%, transparent),
+      transparent
+    );
+    animation: y-shimmer 1.8s ease-in-out infinite;
   }
   .y-skeleton--card {
     aspect-ratio: 1;
@@ -765,6 +790,8 @@
   .y-playerbar__step {
     cursor: pointer;
     user-select: none;
+    display: inline-flex;
+    align-items: center;
     background: none;
     border: none;
     color: var(--mut);
@@ -805,6 +832,9 @@
   }
   .y-playerbar__expand {
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
     color: var(--mut);
     font-size: 12px;
     user-select: none;
@@ -1017,6 +1047,8 @@
     color: var(--dim);
     width: 18px;
     flex: none;
+    display: inline-flex;
+    align-items: center;
   }
   .y-trackrow.is-on .y-trackrow__num {
     color: var(--pink);
@@ -1052,6 +1084,8 @@
     min-width: 0;
   }
   .y-stream-dl__mark {
+    display: inline-flex;
+    align-items: center;
     color: var(--pink);
     margin-right: 6px;
   }
@@ -1278,6 +1312,9 @@
 
 /* ===== 作品状态徽章 / 下载钮(共享,WorkBadge) ===== */
 .y-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   border: 1.5px solid var(--lineStrong);
   color: var(--mut);
   font-size: 8.5px;
@@ -1295,6 +1332,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   background: transparent;
   border: 1px solid var(--line);
   color: var(--mut);
@@ -1444,8 +1482,9 @@
   transition: border-color var(--dur-fast) var(--ease-out);
 }
 .y-playerbar__cue-icon {
+  display: inline-flex;
+  align-items: center;
   color: var(--pink);
-  font-size: 11px;
   flex: none;
 }
 .y-playerbar__cue-text {

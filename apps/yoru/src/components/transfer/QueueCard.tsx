@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { MusicNote } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { apiClient, type Task, type TaskListQuery } from "@/lib/api";
 import { keys } from "@/lib/keys";
@@ -131,7 +132,9 @@ export function QueueCard() {
           )}
           {/* 空队列时这条虚线提示即空态(dc.html:349 文案) */}
           <div className="y-hint y-tr-hint">
-            <span className="y-tr-hint__mark">♪</span>
+            <span className="y-tr-hint__mark">
+              <MusicNote size={13} />
+            </span>
             <span>去「发现」检索并批量加入队列,完成后会自动匹配字幕。</span>
             <Link to="/discover" className="y-tr-link">
               去发现 →

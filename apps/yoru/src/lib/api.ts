@@ -503,7 +503,6 @@ function absolutizeTrackNode(track: TrackNode, sourceId: string, trackId: string
     Boolean(track.children?.length);
   const id = track.id || trackId;
   const isAudio = isPlayableAudioTrack(track);
-  const isSubtitle = isSubtitleTrack(track);
   const playUrl =
     track.play_url ||
     (!isFolder && isAudio
@@ -511,7 +510,9 @@ function absolutizeTrackNode(track: TrackNode, sourceId: string, trackId: string
       : undefined);
   const fileUrl =
     track.file_url ||
-    (!isFolder && isSubtitle
+    // 非音频叶(字幕/图片/文本/视频等)统一走 /file 同源代理,避免跨域与上游鉴权问题;
+    // 无 hash 的叶上游没有可解析地址,不造死链(后端同样不下发 file_url)
+    (!isFolder && !isAudio && track.hash
       ? `/api/discover/works/${encodeURIComponent(sourceId)}/tracks/${encodeURIComponent(id)}/file`
       : undefined);
 
@@ -534,15 +535,6 @@ function isPlayableAudioTrack(track: TrackNode) {
   return (
     type.includes("audio") ||
     /\.(mp3|wav|m4a|aac|flac|ogg|opus|webm)$/i.test(title)
-  );
-}
-
-function isSubtitleTrack(track: TrackNode) {
-  const type = track.type.toLowerCase();
-  const title = track.title.toLowerCase();
-  return (
-    type.includes("subtitle") ||
-    /\.(lrc|srt|vtt|ass|ssa)$/i.test(title)
   );
 }
 

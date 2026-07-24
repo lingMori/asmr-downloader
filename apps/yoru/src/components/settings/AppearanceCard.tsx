@@ -1,3 +1,4 @@
+import { CircleHalf, Moon, Sun } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { useSettings, type Palette, type ThemeSetting } from "@/lib/settings";
 import { Toggle } from "@/components/ui";
@@ -5,10 +6,10 @@ import { SettingsCard } from "./SettingsCard";
 import { FieldRow } from "./FieldRow";
 import { cn } from "@/lib/utils";
 
-const THEME_OPTS: { id: ThemeSetting; label: string; sym: string }[] = [
-  { id: "dark", label: "夜間モード", sym: "☾" },
-  { id: "light", label: "デイモード", sym: "☀" },
-  { id: "system", label: "跟随系统", sym: "◐" },
+const THEME_OPTS: { id: ThemeSetting; label: string; sym: typeof Moon }[] = [
+  { id: "dark", label: "夜間モード", sym: Moon },
+  { id: "light", label: "デイモード", sym: Sun },
+  { id: "system", label: "跟随系统", sym: CircleHalf },
 ];
 
 /** 4 组 palette(原型 data-props,值同 tokens.css 的 [data-palette] 注入) */
@@ -40,7 +41,9 @@ export function AppearanceCard() {
               className={cn("y-set-theme-opt", settings.theme === t.id && "is-on")}
               onClick={() => update({ theme: t.id })}
             >
-              <span className="sym">{t.sym}</span>
+              <span className="sym">
+                <t.sym size={14} />
+              </span>
               {t.label}
             </button>
           ))}

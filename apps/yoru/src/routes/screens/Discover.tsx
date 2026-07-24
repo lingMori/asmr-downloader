@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
+import { X } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { apiClient, type DiscoverWorkSummary } from "@/lib/api";
 import { keys } from "@/lib/keys";
@@ -409,7 +410,7 @@ export function DiscoverScreen() {
                 aria-label="返回结果列表"
                 onClick={() => setUrl({ work: undefined })}
               >
-                ✕
+                <X size={14} weight="bold" />
               </button>
               <span className="y-disc-overlay__title">作品详情 · しょうさい</span>
             </div>

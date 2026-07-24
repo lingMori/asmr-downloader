@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
+import { DownloadSimple } from "@phosphor-icons/react";
 import { Sticker } from "@/components/ui";
 import { SPRING_SOFT } from "@/lib/motion";
 
@@ -30,7 +31,7 @@ export function BatchBar({ count, onClear, onEnqueue }: BatchBarProps) {
             清空选择
           </button>
           <button type="button" className="y-btn-primary" onClick={onEnqueue}>
-            ↓ 批量加入传输队列
+            <DownloadSimple size={14} weight="bold" /> 批量加入传输队列
           </button>
         </motion.div>
       )}

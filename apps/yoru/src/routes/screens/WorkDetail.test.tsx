@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createMemoryHistory,
@@ -155,8 +155,8 @@ describe("WorkDetailScreen · 仅本地(远端失败容错)", () => {
 
     // 贴纸行 + 仅本地指标格 + 下载钮三态(已拥有)
     expect(screen.getByText("字幕あり")).toBeInTheDocument();
-    expect(screen.getByText("已下载 ✓")).toBeInTheDocument();
-    expect(screen.getByText("已收藏 ♡")).toBeInTheDocument();
+    expect(screen.getByText("已下载")).toBeInTheDocument();
+    expect(screen.getByText("已收藏")).toBeInTheDocument();
     expect(screen.getByText("文件数")).toBeInTheDocument();
     expect(screen.getByText("字幕数")).toBeInTheDocument();
     expect(screen.getByText("已拥有")).toBeInTheDocument();
@@ -165,9 +165,9 @@ describe("WorkDetailScreen · 仅本地(远端失败容错)", () => {
     expect(mockedNeighbors).not.toHaveBeenCalled();
   });
 
-  it("▶ 播放:全部本地音频轨建会话 stream:false 并匹配字幕", async () => {
+  it("播放:全部本地音频轨建会话 stream:false 并匹配字幕", async () => {
     renderRoute("/works/RJ1");
-    fireEvent.click(await screen.findByRole("button", { name: "▶ 播放" }));
+    fireEvent.click(await screen.findByRole("button", { name: "播放" }));
     expect(playSessionMock).toHaveBeenCalledWith({
       sourceId: "RJ1",
       workTitle: "本地の夜",
@@ -195,17 +195,31 @@ describe("WorkDetailScreen · 仅本地(远端失败容错)", () => {
     }, { resumeWork: true });
   });
 
-  it("树:第一层文件夹默认展开,深层可点开,audio 叶点击=startIndex 播放", async () => {
+  it("树:文件夹默认全部折叠,逐层点开,audio 叶点击=startIndex 播放", async () => {
     renderRoute("/works/RJ1");
     await screen.findByText("本地の夜");
-    // 第一层 RJ1 展开,第二层 SE 默认折叠
-    expect(screen.getByRole("button", { name: "SE" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /02 ささやき/ })).toBeNull();
+    // 默认全折叠:只见根文件夹 RJ1,第二层 SE 收起
+    expect(screen.getByRole("button", { name: "RJ1" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "SE" })).toBeNull();
 
+    fireEvent.click(screen.getByRole("button", { name: "RJ1" }));
     fireEvent.click(screen.getByRole("button", { name: "SE" }));
     fireEvent.click(screen.getByRole("button", { name: /02 ささやき\.mp3/ }));
     expect(playSessionMock).toHaveBeenCalledWith(
       expect.objectContaining({ startIndex: 1, stream: false }),
+    );
+  });
+
+  it("图片叶点击 → 应用内预览弹窗(灯箱)", async () => {
+    renderRoute("/works/RJ1");
+    await screen.findByText("本地の夜");
+    fireEvent.click(screen.getByRole("button", { name: "RJ1" }));
+    fireEvent.click(screen.getByRole("button", { name: "cover.jpg" }));
+    const dialog = await screen.findByRole("dialog", { name: "预览 cover.jpg" });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByRole("img", { name: "cover.jpg" })).toHaveAttribute(
+      "src",
+      "/media/RJ1/cover.jpg",
     );
   });
 });
@@ -267,16 +281,17 @@ describe("WorkDetailScreen · 仅远端", () => {
     // 分级徽章(general → 全年龄)
     expect(screen.getByText("全年龄")).toBeInTheDocument();
 
-    // 在线音轨区:第一层文件夹「本編」默认展开,audio 叶直接可见
+    // 在线音轨区:默认折叠,点开第一层文件夹「本編」后 audio 叶可见
     expect(screen.getByRole("region", { name: "在线音轨" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "本編" }));
     expect(screen.getByRole("button", { name: /01 耳かき\.mp3/ })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "本地文件" })).toBeNull();
 
     // 源站外链(新窗口)+ 无「已下载」贴纸
-    const source = screen.getByRole("link", { name: "源站链接 ↗" });
+    const source = screen.getByRole("link", { name: "源站链接" });
     expect(source).toHaveAttribute("href", "https://asmr.one/work/RJ1");
     expect(source).toHaveAttribute("target", "_blank");
-    expect(screen.queryByText("已下载 ✓")).toBeNull();
+    expect(screen.queryByText("已下载")).toBeNull();
 
     // 相似作品:小卡指向 /works/$id
     expect(await screen.findByRole("link", { name: /隣の作品/ })).toHaveAttribute(
@@ -285,9 +300,9 @@ describe("WorkDetailScreen · 仅远端", () => {
     );
   });
 
-  it("▶ 播放:远端 audio 轨会话 stream:true + 字幕匹配;叶点击=startIndex", async () => {
+  it("播放:远端 audio 轨会话 stream:true + 字幕匹配;叶点击=startIndex", async () => {
     renderRoute("/works/RJ1");
-    fireEvent.click(await screen.findByRole("button", { name: "▶ 播放" }));
+    fireEvent.click(await screen.findByRole("button", { name: "播放" }));
     expect(playSessionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         sourceId: "RJ1",
@@ -316,6 +331,7 @@ describe("WorkDetailScreen · 仅远端", () => {
     );
 
     playSessionMock.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "本編" }));
     fireEvent.click(screen.getByRole("button", { name: /02 ささやき\.mp3/ }));
     expect(playSessionMock).toHaveBeenCalledWith(
       expect.objectContaining({ startIndex: 1, stream: true }),
@@ -332,7 +348,7 @@ describe("WorkDetailScreen · 双有(本地+远端)", () => {
     mockedNeighbors.mockResolvedValue({ items: [], page: 1, page_size: 6, total: 0 });
   });
 
-  it("两个文件层级区都渲染,▶ 播放本地优先(stream:false)", async () => {
+  it("两个文件层级区都渲染,播放本地优先(stream:false)", async () => {
     renderRoute("/works/RJ1");
     // 标题取远端元数据
     expect(await screen.findByText("遠端の夜")).toBeInTheDocument();
@@ -340,7 +356,7 @@ describe("WorkDetailScreen · 双有(本地+远端)", () => {
     expect(screen.getByRole("region", { name: "在线音轨" })).toBeInTheDocument();
     expect(screen.queryByText(/在线信息暂时不可用/)).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "▶ 播放" }));
+    fireEvent.click(screen.getByRole("button", { name: "播放" }));
     expect(playSessionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         workTitle: "遠端の夜",

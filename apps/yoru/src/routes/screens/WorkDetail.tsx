@@ -3,6 +3,7 @@ import "@/styles/pages/workdetail.css";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { ArrowSquareOut, CaretLeft, Check, Heart, Play, Star } from "@phosphor-icons/react";
 import { apiClient, type LibraryFile } from "@/lib/api";
 import { keys } from "@/lib/keys";
 import { findSubtitleForAudio } from "@/lib/playback";
@@ -15,6 +16,7 @@ import { DownloadButton } from "@/components/WorkBadge";
 import { DownloadReviewDialog } from "@/components/DownloadReviewDialog";
 import { coverColorFor } from "@/components/library/coverColor";
 import { FileTree } from "@/components/workdetail/FileTree";
+import { FilePreviewDialog } from "@/components/workdetail/FilePreviewDialog";
 import {
   attachPlayHandlers,
   buildLocalFileTree,
@@ -38,6 +40,7 @@ export function WorkDetailScreen() {
   const navigate = useNavigate();
   const player = useGlobalPlayer();
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [preview, setPreview] = useState<FileTreeNode | null>(null);
 
   // 1) 本地状态:in_library?library_id?collected?
   const statusQuery = useWorksStatus(sourceId ? [sourceId] : []);
@@ -150,7 +153,7 @@ export function WorkDetailScreen() {
   };
   const backLink = (
     <button type="button" className="y-wd__back" onClick={goBack}>
-      ‹ 返回
+      <CaretLeft size={13} weight="bold" /> 返回
     </button>
   );
 
@@ -253,8 +256,16 @@ export function WorkDetailScreen() {
                 字幕あり
               </Sticker>
             )}
-            {inLibrary && <span className="y-status-badge">已下载 ✓</span>}
-            {status?.collected && <span className="y-status-badge">已收藏 ♡</span>}
+            {inLibrary && (
+              <span className="y-status-badge">
+                已下载 <Check size={11} weight="bold" />
+              </span>
+            )}
+            {status?.collected && (
+              <span className="y-status-badge">
+                已收藏 <Heart size={11} weight="fill" />
+              </span>
+            )}
           </div>
           <h1 className="y-wd-title">{title}</h1>
           {(circle || release) && (
@@ -312,7 +323,7 @@ export function WorkDetailScreen() {
               disabled={!canPlay}
               onClick={playMain}
             >
-              ▶ 播放
+              <Play size={14} weight="fill" /> 播放
             </button>
             <CollectButton work={collectWork} collected={Boolean(status?.collected)} />
             <DownloadButton status={status} onDownload={() => setReviewOpen(true)} />
@@ -323,7 +334,7 @@ export function WorkDetailScreen() {
                 target="_blank"
                 rel="noreferrer"
               >
-                源站链接 ↗
+                源站链接 <ArrowSquareOut size={12} />
               </a>
             )}
           </div>
@@ -342,7 +353,7 @@ export function WorkDetailScreen() {
             本地文件 · <span className="y-wd-section__kana">ろーかる</span>
             <span className="y-wd-section__count">{local.files.length} 项</span>
           </h2>
-          <FileTree nodes={localTreeWithPlay} activeId={localActiveId} />
+          <FileTree nodes={localTreeWithPlay} activeId={localActiveId} onPreview={setPreview} />
         </section>
       )}
 
@@ -353,7 +364,7 @@ export function WorkDetailScreen() {
             在线音轨 · <span className="y-wd-section__kana">おんらいん</span>
             <span className="y-wd-section__count">{flattenLeaves(remoteTree).length} 项</span>
           </h2>
-          <FileTree nodes={remoteTreeWithPlay} activeId={remoteActiveId} />
+          <FileTree nodes={remoteTreeWithPlay} activeId={remoteActiveId} onPreview={setPreview} />
         </section>
       )}
 
@@ -380,7 +391,9 @@ export function WorkDetailScreen() {
                   )}
                 </span>
                 <span className="y-wd-neighbor__title">{w.title}</span>
-                <span className="y-wd-neighbor__rate">★ {formatRate(w.rate)}</span>
+                <span className="y-wd-neighbor__rate">
+                  <Star size={11} weight="fill" /> {formatRate(w.rate)}
+                </span>
               </Link>
             ))}
           </div>
@@ -392,6 +405,8 @@ export function WorkDetailScreen() {
         onClose={() => setReviewOpen(false)}
         items={[{ sourceId: workKey, title }]}
       />
+
+      <FilePreviewDialog node={preview} onClose={() => setPreview(null)} />
     </div>
   );
 }

@@ -146,7 +146,7 @@ describe("LibraryScreen", () => {
     expect(screen.getByText("已播 1:01/10:00")).toBeInTheDocument();
     expect(screen.getByText("10%")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "▶ 继续播放" }));
+    fireEvent.click(screen.getByRole("button", { name: "继续播放" }));
     expect(playSessionMock).toHaveBeenCalledWith(
       {
         sourceId: "RJ111",
@@ -172,7 +172,7 @@ describe("LibraryScreen", () => {
     renderRoute("/library");
     expect(await screen.findByText("在线")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "▶ 继续播放" }));
+    fireEvent.click(screen.getByRole("button", { name: "继续播放" }));
     expect(playSessionMock).toHaveBeenCalledWith(
       expect.objectContaining({ stream: true }),
       { resumeFrom: 61 },

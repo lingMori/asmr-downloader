@@ -13,10 +13,12 @@ export type DialogProps = {
   /** 点遮罩关闭,默认 true */
   closeOnOverlay?: boolean;
   className?: string;
+  /** 卡片宽度(默认 min(440px, 100vw-56px));宽版内容(如文件预览)可覆盖 */
+  width?: string;
 };
 
 /** 模态对话框:遮罩 z50 + 居中卡 z51(dc.html:511-512),framer-motion 进出,ESC/点遮罩关闭 */
-export function Dialog({ open, onClose, children, label, closeOnOverlay = true, className }: DialogProps) {
+export function Dialog({ open, onClose, children, label, closeOnOverlay = true, className, width }: DialogProps) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -60,8 +62,10 @@ export function Dialog({ open, onClose, children, label, closeOnOverlay = true, 
               position: "fixed",
               left: "50%",
               top: "50%",
-              transform: "translate(-50%,-50%)",
-              width: "min(440px,calc(100vw - 56px))",
+              // 居中偏移必须走 framer 受管值:动画 scale 会合成并覆盖 style.transform
+              x: "-50%",
+              y: "-50%",
+              width: width ?? "min(440px,calc(100vw - 56px))",
               zIndex: "var(--z-dialog)" as never,
               background: "var(--panel)",
               border: "1px solid var(--glass-line-strong)",

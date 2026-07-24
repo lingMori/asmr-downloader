@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Check, DownloadSimple, MusicNote, X } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { CoverPlaceholder, EQ, Sticker } from "@/components/ui";
@@ -91,7 +92,7 @@ function ExpandedBody() {
         aria-label="收起播放器"
         onClick={() => setExpanded(false)}
       >
-        ✕
+        <X size={14} weight="bold" />
       </button>
       <div className="y-player-expanded__left">
         {session.coverUrl ? (
@@ -126,7 +127,9 @@ function ExpandedBody() {
                 className={cn("y-trackrow", on && "is-on")}
                 onClick={() => playAt(i)}
               >
-                <span className="y-trackrow__num">{on ? "♪" : i + 1}</span>
+                <span className="y-trackrow__num">
+                  {on ? <MusicNote size={12} weight="fill" /> : i + 1}
+                </span>
                 <span className="y-trackrow__name">{track.title}</span>
                 {on && <EQ playing={playing} className="y-trackrow__eq" />}
                 <span className="y-trackrow__dur">
@@ -139,7 +142,10 @@ function ExpandedBody() {
         {session.stream && (
           <div className="y-stream-dl">
             <span className="y-stream-dl__note">
-              <span className="y-stream-dl__mark">♪</span>正在串流播放,喜欢的话可以收进媒体库。
+              <span className="y-stream-dl__mark">
+                <MusicNote size={12} />
+              </span>
+              正在串流播放,喜欢的话可以收进媒体库。
             </span>
             <button
               type="button"
@@ -147,7 +153,15 @@ function ExpandedBody() {
               disabled={queued || !sourceId}
               onClick={downloadThis}
             >
-              {queued ? "已入队 ✓" : "↓ 下载本作"}
+              {queued ? (
+                <>
+                  已入队 <Check size={13} weight="bold" />
+                </>
+              ) : (
+                <>
+                  <DownloadSimple size={14} weight="bold" /> 下载本作
+                </>
+              )}
             </button>
           </div>
         )}

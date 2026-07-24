@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Heart, Moon, MusicNote, Play, Sun } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
   Chip,
@@ -14,10 +15,10 @@ import {
   Toggle,
 } from "@/components/ui";
 
-const THEMES = [
-  ["dark", "夜間 ☾"],
-  ["light", "デイ ☀"],
-] as const;
+const THEMES: [string, string, typeof Moon][] = [
+  ["dark", "夜間", Moon],
+  ["light", "デイ", Sun],
+];
 
 const PALETTES = [
   ["lavender", "薰衣草"],
@@ -54,9 +55,9 @@ export default function StyleLab() {
           <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <strong style={{ fontSize: 12.5 }}>主题</strong>
-              {THEMES.map(([id, label]) => (
+              {THEMES.map(([id, label, Icon]) => (
                 <Chip key={id} active={theme === id} onClick={() => { setTheme(id); setDataset("theme", id); }}>
-                  {label}
+                  <Icon size={12} /> {label}
                 </Chip>
               ))}
             </div>
@@ -85,15 +86,21 @@ export default function StyleLab() {
           <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <button type="button" className="y-btn-primary" onClick={() => toast.success("任务已创建", { description: "sonner 暗紫主题将在 Phase 1 接线" })}>
-                ▶ 继续播放
+                <Play size={14} weight="fill" /> 继续播放
               </button>
               <button type="button" className="y-btn-ghost">曲目列表</button>
               <button type="button" className="y-btn-ghost" disabled>禁用态</button>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              {[["all", "全部 9"], ["sub", "有字幕 4"], ["fav", "收藏 ♡ 2"]].map(([id, label]) => (
+              {[
+                ["all", "全部 9"],
+                ["sub", "有字幕 4"],
+              ].map(([id, label]) => (
                 <Chip key={id} active={tab === id} onClick={() => setTab(id)}>{label}</Chip>
               ))}
+              <Chip active={tab === "fav"} onClick={() => setTab("fav")}>
+                收藏 <Heart size={11} weight="fill" /> 2
+              </Chip>
               <span className="y-tag">#耳语</span>
               <button type="button" className="y-tag y-tag--facet">#催眠 <span className="y-tag__count">3</span></button>
             </div>
@@ -149,7 +156,12 @@ export default function StyleLab() {
         <section className="y-card" style={{ padding: 18, position: "relative" }}>
           <Sticker section color="lav" rotate={-2}>状态 · じょうたい</Sticker>
           <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 14 }}>
-            <div className="y-hint"><span style={{ color: "var(--pink)", fontSize: 13 }}>♪</span>去「发现」检索并批量加入队列,完成后会自动匹配字幕。</div>
+            <div className="y-hint">
+              <span className="y-hint__icon">
+                <MusicNote size={12} />
+              </span>
+              去「发现」检索并批量加入队列,完成后会自动匹配字幕。
+            </div>
             <EmptyState action={<button type="button" className="y-btn-ghost" style={{ padding: "6px 14px", fontSize: 11.5 }}>去发现 →</button>}>
               媒体库还是空的 — 先去发现页找点深夜陪伴吧。
             </EmptyState>

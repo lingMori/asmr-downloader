@@ -40,7 +40,7 @@ go run .
 - `GET /api/discover/works/:sourceId`
 - `GET /api/discover/works/:sourceId/neighbors`
 - `GET /api/discover/works/:sourceId/tracks/:trackId/stream`
-- `GET /api/discover/works/:sourceId/tracks/:trackId/file`
+- `GET /api/discover/works/:sourceId/tracks/:trackId/file`(一切非音频叶:字幕/图片/文本/视频等,音频走 /stream)
 - `GET /api/works/status`
 
 ### Downloads & Tasks

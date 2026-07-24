@@ -1,7 +1,9 @@
+import { Copy, Star } from "@phosphor-icons/react";
+import { toast } from "sonner";
 import type { DiscoverWorkSummary, WorkStatus } from "@/lib/api";
 import { formatCount, formatRate } from "@/lib/format";
-import { cn } from "@/lib/utils";
-import { CoverPlaceholder, Sticker, type CoverColor } from "@/components/ui";
+import { cn, copyText } from "@/lib/utils";
+import { CoverPlaceholder, EQ, Sticker, type CoverColor } from "@/components/ui";
 import { CollectButton } from "@/components/CollectButton";
 import { DownloadButton, WorkStatusBadge } from "@/components/WorkBadge";
 
@@ -41,6 +43,11 @@ export function OnlineCard({
   onDownload,
 }: OnlineCardProps) {
   const coverUrl = work.thumbnail_url || work.main_cover_url;
+  const copyRj = async () => {
+    const ok = await copyText(work.source_id);
+    if (ok) toast.success(`已复制 ${work.source_id}`);
+    else toast.error("复制失败,请手动选择复制");
+  };
   return (
     <div
       className={cn("y-onl-card", playingNow && "is-now")}
@@ -70,12 +77,28 @@ export function OnlineCard({
           className="y-onl-cover__collect"
         />
         <WorkStatusBadge status={status} className="y-onl-cover__status" />
-        <span className="y-onl-cover__rate">★ {formatRate(work.rate)}</span>
+        <span className="y-onl-cover__rate">
+          <Star size={11} weight="fill" /> {formatRate(work.rate)}
+        </span>
         {playingNow && (
           <span className="y-onl-cover__now" role="img" aria-label="正在播放">
-            ♪
+            <EQ playing />
           </span>
         )}
+      </div>
+      <div className="y-onl-card__idrow">
+        <button
+          type="button"
+          className="y-onl-card__rj"
+          title="点击复制 RJ 号"
+          onClick={(e) => {
+            e.stopPropagation();
+            void copyRj();
+          }}
+        >
+          {work.source_id}
+          <Copy size={11} />
+        </button>
       </div>
       <div className="y-onl-card__title">{work.title}</div>
       <div className="y-onl-card__meta">

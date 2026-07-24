@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Check } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { apiClient, type Task } from "@/lib/api";
 import { keys } from "@/lib/keys";
@@ -76,7 +77,9 @@ export function DeleteTaskDialog({ task, onClose }: DeleteTaskDialogProps) {
           className="y-tr-check"
           onClick={() => setWithFiles((value) => !value)}
         >
-          <span className={cn("y-checkbox", withFiles && "is-on")}>{withFiles ? "✓" : ""}</span>
+          <span className={cn("y-checkbox", withFiles && "is-on")}>
+            {withFiles ? <Check size={11} weight="bold" /> : ""}
+          </span>
           同时删除已下载文件
         </button>
       )}

@@ -1,5 +1,15 @@
 import { useRef, useState, type CSSProperties } from "react";
-import { SpeakerHigh, SpeakerSlash } from "@phosphor-icons/react";
+import {
+  CaretDown,
+  CaretUp,
+  MusicNote,
+  Pause,
+  Play,
+  SkipBack,
+  SkipForward,
+  SpeakerHigh,
+  SpeakerSlash,
+} from "@phosphor-icons/react";
 import { CoverPlaceholder, EQ, type CoverColor } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { formatTime } from "./logic";
@@ -60,7 +70,7 @@ function DockedCue() {
       aria-label="展开查看全部字幕"
     >
       <span className="y-playerbar__cue-icon" aria-hidden="true">
-        ♪
+        <MusicNote size={12} />
       </span>
       <span className="y-playerbar__cue-text">{cue.text}</span>
     </button>
@@ -116,7 +126,7 @@ function DesktopBar() {
       </div>
       <div className="y-playerbar__controls">
         <button type="button" className="y-playerbar__step" onClick={prev} aria-label="上一首">
-          ‹‹
+          <SkipBack size={15} weight="fill" />
         </button>
         <button
           type="button"
@@ -124,10 +134,10 @@ function DesktopBar() {
           onClick={toggle}
           aria-label={playing ? "暂停" : "播放"}
         >
-          {playing ? "❚❚" : "▶"}
+          {playing ? <Pause size={17} weight="fill" /> : <Play size={17} weight="fill" />}
         </button>
         <button type="button" className="y-playerbar__step" onClick={next} aria-label="下一首">
-          ››
+          <SkipForward size={15} weight="fill" />
         </button>
       </div>
       <div className="y-playerbar__seekwrap">
@@ -141,7 +151,15 @@ function DesktopBar() {
         className="y-playerbar__expand"
         onClick={() => setExpanded(!expanded)}
       >
-        {expanded ? "收起 ↓" : "展开 ↑"}
+        {expanded ? (
+          <>
+            收起 <CaretDown size={12} weight="bold" />
+          </>
+        ) : (
+          <>
+            展开 <CaretUp size={12} weight="bold" />
+          </>
+        )}
       </button>
       <div className="y-playerbar__volume">
         <button
@@ -210,7 +228,7 @@ function CompactBar() {
         }}
         aria-label={playing ? "暂停" : "播放"}
       >
-        {playing ? "❚❚" : "▶"}
+        {playing ? <Pause size={15} weight="fill" /> : <Play size={15} weight="fill" />}
       </button>
       <div className="y-playerbar__line" aria-hidden="true">
         <div className="y-playerbar__linefill" style={{ width: `${pct}%` }} />

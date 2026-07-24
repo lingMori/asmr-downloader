@@ -1,3 +1,4 @@
+import { Play } from "@phosphor-icons/react";
 import type { PlaybackProgress } from "@/lib/api";
 import { formatDuration } from "@/lib/format";
 import { useGlobalPlayer } from "@/player";
@@ -54,7 +55,7 @@ export function ContinueHero({ item }: { item: PlaybackProgress }) {
         </div>
         <div className="y-lib-hero__actions">
           <button type="button" className="y-btn-primary" onClick={resume}>
-            ▶ 继续播放
+            <Play size={14} weight="fill" /> 继续播放
           </button>
           <div className="y-lib-hero__progress" role="presentation">
             <div className="y-lib-hero__progress-fill" style={{ width: `${pct}%` }} />

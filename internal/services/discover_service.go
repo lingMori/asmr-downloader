@@ -275,7 +275,8 @@ func (s *DiscoverService) OpenTrackFile(ctx context.Context, sourceID string, tr
 		return DiscoverTrackStream{}, ErrDiscoverTrackNotFound
 	}
 	fileURL := s.discoverTrackMediaURL(track)
-	if isDiscoverTrackFolder(track) || !isDiscoverSubtitleTrack(track) || fileURL == "" {
+	// /file 代理面向一切非音频叶(字幕/图片/文本/视频等);音频仍走 /stream
+	if isDiscoverTrackFolder(track) || isDiscoverPlayableAudioTrack(track) || fileURL == "" {
 		return DiscoverTrackStream{}, ErrDiscoverTrackNotPlayable
 	}
 
@@ -323,7 +324,8 @@ func annotateDiscoverTrack(sourceID string, track model.Track, trackID string, r
 			url.PathEscape(trackID),
 		)
 	}
-	if !isDiscoverTrackFolder(track) && isDiscoverSubtitleTrack(track) && streamURL != "" {
+	// /file 代理地址随详情下发给一切非音频叶(字幕/图片/文本/视频等)
+	if !isDiscoverTrackFolder(track) && !isDiscoverPlayableAudioTrack(track) && streamURL != "" {
 		track.FileURL = fmt.Sprintf(
 			"/api/discover/works/%s/tracks/%s/file",
 			url.PathEscape(sourceID),

@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { MusicNote, Play } from "@phosphor-icons/react";
 import type { Collection, WorkStatus } from "@/lib/api";
 import { CoverPlaceholder, Sticker } from "@/components/ui";
 import { CollectButton } from "@/components/CollectButton";
@@ -45,7 +46,7 @@ export function CollectionCard({
       )}
       {nowPlaying && (
         <Sticker color="lav" className="y-lib-card__st-now">
-          ♪ 再生中
+          <MusicNote size={11} weight="fill" /> 再生中
         </Sticker>
       )}
       <Link
@@ -79,7 +80,7 @@ export function CollectionCard({
           disabled={loading}
           onClick={onPlay}
         >
-          {loading ? "…" : "▶"}
+          {loading ? "…" : <Play size={13} weight="fill" />}
         </button>
         <CollectButton work={work} collected size="sm" />
         {!inLibrary && <DownloadButton status={status} size="sm" onDownload={onDownload} />}

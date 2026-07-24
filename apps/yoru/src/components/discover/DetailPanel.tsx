@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { Check, DownloadSimple, MusicNote, Star } from "@phosphor-icons/react";
 import { apiClient } from "@/lib/api";
 import { keys } from "@/lib/keys";
 import { cn } from "@/lib/utils";
@@ -97,7 +98,7 @@ export function DetailPanel({ workId, onDownload, onPickNeighbor }: DetailPanelP
   const status = statusMap.get(summary.source_id);
   const owned = status?.state === "in_library";
   const unavailable = isWorkUnavailable(status);
-  const dlLabel = owned ? "已拥有" : unavailable ? "已入队 ✓" : "↓ 下载当前作品";
+  const dlLabel = owned ? "已拥有" : unavailable ? "已入队" : "下载当前作品";
   const isCurWork = player.session?.sourceId === summary.source_id;
 
   const playFrom = (index: number) => {
@@ -183,7 +184,9 @@ export function DetailPanel({ workId, onDownload, onPickNeighbor }: DetailPanelP
                     className={cn("y-disc-track", on && "is-on")}
                     onClick={() => playFrom(i)}
                   >
-                    <span className="y-disc-track__num">{on ? "♪" : String(i + 1).padStart(2, "0")}</span>
+                    <span className="y-disc-track__num">
+                      {on ? <MusicNote size={12} weight="fill" /> : String(i + 1).padStart(2, "0")}
+                    </span>
                     <span className="y-disc-track__name">{file.name}</span>
                     <span className="y-disc-track__size">{formatSize(sizeByTrackId.get(file.path))}</span>
                   </button>
@@ -200,7 +203,9 @@ export function DetailPanel({ workId, onDownload, onPickNeighbor }: DetailPanelP
               aria-disabled={unavailable}
               onClick={unavailable ? undefined : () => onDownload({ sourceId: summary.source_id, title: summary.title })}
             >
+              {!owned && !unavailable && <DownloadSimple size={13} weight="bold" />}
               {dlLabel}
+              {unavailable && <Check size={12} weight="bold" />}
             </button>
             <Link
               to="/works/$sourceId"
@@ -235,7 +240,9 @@ export function DetailPanel({ workId, onDownload, onPickNeighbor }: DetailPanelP
                   )}
                 </span>
                 <span className="y-disc-neighbor__title">{w.title}</span>
-                <span className="y-disc-neighbor__rate">★ {formatRate(w.rate)}</span>
+                <span className="y-disc-neighbor__rate">
+                  <Star size={11} weight="fill" /> {formatRate(w.rate)}
+                </span>
               </button>
             ))}
           </div>

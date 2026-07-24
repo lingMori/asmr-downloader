@@ -4,6 +4,7 @@ import {
   attachPlayHandlers,
   buildLocalFileTree,
   buildRemoteTrackTree,
+  classifyOther,
   flattenLeaves,
   formatSize,
 } from "./tree";
@@ -21,7 +22,7 @@ describe("buildLocalFileTree(路径 → 树)", () => {
     const tree = buildLocalFileTree(files);
     expect(tree.map((n) => [n.name, n.kind])).toEqual([
       ["RJ1", "folder"],
-      ["readme.txt", "other"],
+      ["readme.txt", "text"],
     ]);
 
     const rj1 = tree[0];
@@ -100,6 +101,29 @@ describe("buildRemoteTrackTree(TrackNode → 树)", () => {
     const [x, y] = flattenLeaves(tree);
     expect(x).toMatchObject({ kind: "audio", size: 2048, duration: 61 });
     expect(y.kind).toBe("other");
+  });
+});
+
+describe("classifyOther(后端 other 按扩展名再分类)", () => {
+  it("视频/文本扩展名识别,其余保持 other", () => {
+    expect(classifyOther("本編.mp4")).toBe("video");
+    expect(classifyOther("特典.MKV")).toBe("video");
+    expect(classifyOther("台本.txt")).toBe("text");
+    expect(classifyOther("readme.md")).toBe("text");
+    expect(classifyOther("扫图.pdf")).toBe("other");
+    expect(classifyOther("无扩展名")).toBe("other");
+  });
+
+  it("本地 other 文件按扩展名入树;远端 type=video 映射 video 叶", () => {
+    const local = buildLocalFileTree([
+      { path: "RJ1/特典.mp4", name: "特典.mp4", kind: "other", url: "/media/RJ1/特典.mp4" },
+    ]);
+    expect(local[0].children![0]).toMatchObject({ kind: "video", url: "/media/RJ1/特典.mp4" });
+
+    const remote = buildRemoteTrackTree([
+      { id: "v", type: "video", title: "特典.mp4", file_url: "/api/works/RJ1/tracks/v/file" },
+    ]);
+    expect(remote[0]).toMatchObject({ kind: "video", url: "/api/works/RJ1/tracks/v/file" });
   });
 });
 

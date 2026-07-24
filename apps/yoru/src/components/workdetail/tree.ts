@@ -7,7 +7,7 @@ import { isSubtitleTrack, isTrackFolder } from "@/lib/playback";
    → 统一的 FileTreeNode 树,供 FileTree.tsx 递归渲染。
    ───────────────────────────────────────────────────────────── */
 
-export type FileTreeKind = "folder" | "audio" | "subtitle" | "image" | "text" | "other";
+export type FileTreeKind = "folder" | "audio" | "subtitle" | "image" | "text" | "video" | "other";
 
 export type FileTreeNode = {
   id: string;
@@ -26,6 +26,22 @@ export type FileTreeNode = {
 
 function looseNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+const VIDEO_EXTS = [".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v"];
+const TEXT_EXTS = [".txt", ".md", ".log", ".cue", ".json", ".nfo"];
+
+function extOf(name: string): string {
+  const i = name.lastIndexOf(".");
+  return i >= 0 ? name.slice(i).toLowerCase() : "";
+}
+
+/** 后端只给 audio/subtitle/image,其余按扩展名再细分(可预览性) */
+export function classifyOther(name: string): FileTreeKind {
+  const ext = extOf(name);
+  if (VIDEO_EXTS.includes(ext)) return "video";
+  if (TEXT_EXTS.includes(ext)) return "text";
+  return "other";
 }
 
 /** 本地文件列表 → 目录树(按 path 分段建文件夹,保持后端顺序) */
@@ -63,7 +79,7 @@ export function buildLocalFileTree(files: LibraryFile[]): FileTreeNode[] {
             ? "subtitle"
             : file.kind === "image"
               ? "image"
-              : "other",
+              : classifyOther(leafName),
       url: file.url,
       size: looseNumber((file as LibraryFile & { size?: unknown }).size),
     });
@@ -105,7 +121,11 @@ export function buildRemoteTrackTree(tracks: TrackNode[]): FileTreeNode[] {
         size,
       };
     }
-    return { id, name: track.title, kind: "other", size };
+    if (type.includes("video")) {
+      return { id, name: track.title, kind: "video", url: track.file_url, size };
+    }
+    // 其余类型按扩展名再分类;file_url 一律带上(other 可外链打开/下载)
+    return { id, name: track.title, kind: classifyOther(track.title), url: track.file_url, size };
   };
 
   return tracks.map((track, index) => toNode(track, String(index)));

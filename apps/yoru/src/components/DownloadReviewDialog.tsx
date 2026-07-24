@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { Warning } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { keys } from "@/lib/keys";
@@ -73,7 +74,9 @@ export function DownloadReviewDialog({ open, onClose, items, outputDir }: Downlo
         </div>
       </div>
       {items.length >= 4 && (
-        <div className="y-warn-strip">⚠ 该操作可能产生较大的网络流量与磁盘占用。</div>
+        <div className="y-warn-strip">
+          <Warning size={13} weight="fill" /> 该操作可能产生较大的网络流量与磁盘占用。
+        </div>
       )}
       <div className="y-dialog-actions">
         <span className="y-btn-ghost" role="button" onClick={onClose}>

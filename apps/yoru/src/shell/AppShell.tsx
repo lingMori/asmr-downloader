@@ -8,6 +8,8 @@ import {
   DownloadSimple,
   GearSix,
   GlobeHemisphereEast,
+  Moon,
+  Sun,
   type Icon,
 } from "@phosphor-icons/react";
 import { apiClient } from "@/lib/api";
@@ -110,7 +112,7 @@ export function AppShell() {
             onClick={cycleTheme}
             aria-label={resolvedTheme === "dark" ? "切换到亮色主题" : "切换到暗色主题"}
           >
-            {resolvedTheme === "dark" ? "☾" : "☀"}
+            {resolvedTheme === "dark" ? <Moon size={16} /> : <Sun size={16} />}
           </button>
         </div>
       </header>

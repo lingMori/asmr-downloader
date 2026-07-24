@@ -97,7 +97,8 @@
     line-height: 1.7;
   }
   .y-lib-hero__moon {
-    font-size: 18px;
+    display: inline-flex;
+    color: var(--mut);
   }
   .y-lib-hero--empty p {
     margin: 0;
@@ -115,6 +116,11 @@
     font-size: 12px;
     text-align: center;
     line-height: 1.7;
+  }
+  .y-lib-collect-empty__heart {
+    display: inline;
+    vertical-align: -1px;
+    color: var(--pink);
   }
   .y-lib-hero__empty-actions {
     display: flex;

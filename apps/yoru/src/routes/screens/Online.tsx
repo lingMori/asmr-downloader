@@ -19,6 +19,19 @@ import { OnlineCard } from "@/components/online/OnlineCard";
 /** 每页 24 件(原型 renderVals 按 24 分页,dc.html:694) */
 const PAGE_SIZE = 24;
 
+/** 骨架卡:结构与 OnlineCard 一致(封面 + RJ + 标题 + meta + 底行),避免加载后布局跳动 */
+function OnlineCardSkeleton() {
+  return (
+    <div className="y-onl-skel" aria-hidden="true">
+      <Skeleton variant="block" className="y-onl-skel__cover" />
+      <Skeleton variant="block" className="y-onl-skel__line y-onl-skel__line--rj" />
+      <Skeleton variant="block" className="y-onl-skel__line" />
+      <Skeleton variant="block" className="y-onl-skel__line y-onl-skel__line--meta" />
+      <Skeleton variant="block" className="y-onl-skel__line y-onl-skel__line--foot" />
+    </div>
+  );
+}
+
 /** 后端仅有 popular/recommend 两个推荐列表端点;原型的「最新/高分」无对应接口,不做 */
 type OnlineSort = "popular" | "recommend";
 
@@ -139,7 +152,9 @@ export function OnlineScreen() {
 
       {listQuery.isPending ? (
         <div className="y-onl-grid">
-          <Skeleton variant="card" count={12} className="y-onl-skeleton" />
+          {Array.from({ length: 12 }, (_, i) => (
+            <OnlineCardSkeleton key={i} />
+          ))}
         </div>
       ) : listQuery.isError ? (
         <div className="y-onl-error">
@@ -183,7 +198,9 @@ export function OnlineScreen() {
             <div ref={sentinelRef} className="y-onl-sentinel" aria-hidden="true">
               {listQuery.isFetchingNextPage && (
                 <div className="y-onl-grid">
-                  <Skeleton variant="card" count={4} className="y-onl-skeleton" />
+                  {Array.from({ length: 4 }, (_, i) => (
+                    <OnlineCardSkeleton key={i} />
+                  ))}
                 </div>
               )}
             </div>

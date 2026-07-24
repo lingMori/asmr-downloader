@@ -236,6 +236,29 @@ func TestDiscoverOpenTrackFileUsesSubtitleURL(t *testing.T) {
 	}
 }
 
+func TestDiscoverOpenTrackFileServesNonSubtitleFiles(t *testing.T) {
+	fake := &fakeDiscoverEngine{
+		tracks: []model.Track{
+			{
+				Type:  "image",
+				Title: "cover.jpg",
+				Hash:  "123/456",
+			},
+		},
+	}
+	svc := NewDiscoverService(nil, fake)
+
+	stream, err := svc.OpenTrackFile(context.Background(), "RJ123456", "0", "")
+	if err != nil {
+		t.Fatalf("OpenTrackFile() error = %v", err)
+	}
+	defer stream.Response.Body.Close()
+
+	if fake.streamURL != "https://media.example/123/456" {
+		t.Fatalf("expected image file url, got %q", fake.streamURL)
+	}
+}
+
 type fakeDiscoverEngine struct {
 	work        model.WorkInfo
 	tracks      []model.Track

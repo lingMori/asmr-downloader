@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { MusicNote } from "@phosphor-icons/react";
 import type { LibraryWorkSummary } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { CoverPlaceholder, Sticker } from "@/components/ui";
@@ -30,7 +31,7 @@ export function WorkCard({ work, nowPlaying, collected, stickerRotate = 3 }: Wor
       )}
       {nowPlaying && (
         <Sticker color="lav" className="y-lib-card__st-now">
-          ♪ 再生中
+          <MusicNote size={11} weight="fill" /> 再生中
         </Sticker>
       )}
       <Link

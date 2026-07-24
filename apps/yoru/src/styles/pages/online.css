@@ -35,8 +35,35 @@
   grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
   gap: 16px;
 }
-.y-onl-skeleton {
+
+/* 骨架卡:与 OnlineCard 同构占位(封面 + RJ + 标题 + meta + 底行),加载后不跳 */
+.y-onl-skel {
+  display: flex;
+  flex-direction: column;
+}
+.y-onl-skel__cover {
   aspect-ratio: 4 / 3;
+  border-radius: var(--r-sm);
+}
+.y-onl-skel__line {
+  height: 12px;
+  margin-top: 7px;
+  border-radius: 6px;
+}
+.y-onl-skel__line--rj {
+  width: 34%;
+  height: 9px;
+  margin-top: 6px;
+}
+.y-onl-skel__line--meta {
+  width: 65%;
+  height: 10px;
+  margin-top: 5px;
+}
+.y-onl-skel__line--foot {
+  width: 40%;
+  height: 10px;
+  margin-top: 6px;
 }
 
 /* ── 卡片(dc.html:297;hover 上浮见下方 hover 媒体查询) ── */
@@ -91,6 +118,9 @@
   position: absolute;
   left: 8px;
   bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   background: rgba(16, 10, 26, 0.7);
   color: var(--lav);
   font: 600 9px ui-monospace, monospace;
@@ -100,7 +130,7 @@
   -webkit-backdrop-filter: blur(4px);
 }
 
-/* 正在播放指示(dc.html:302 圆钮样式沿用,但非交互:点卡已改为进详情页) */
+/* 正在播放指示(dc.html:302 圆钮样式沿用,但非交互:点卡已改为进详情页);内嵌 EQ 五柱 */
 .y-onl-cover__now {
   position: absolute;
   right: 8px;
@@ -113,8 +143,32 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
   user-select: none;
+}
+.y-onl-cover__now .y-eq {
+  height: 12px;
+  gap: 2px;
+}
+.y-onl-cover__now .y-eq__bar {
+  width: 2.5px;
+}
+
+/* RJ 号徽章行(封面下、标题上);点击复制 */
+.y-onl-card__idrow {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+}
+.y-onl-card__rj {
+  cursor: copy;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: 700 10px ui-monospace, monospace;
+  color: var(--lav);
 }
 
 /* 标题两行截断(dc.html:305);标题即 /works/$sourceId 链接 */
@@ -196,6 +250,10 @@
   }
   .y-onl-card__title:hover {
     color: var(--lav);
+  }
+  .y-onl-card__rj:hover {
+    text-decoration: underline dashed;
+    text-underline-offset: 3px;
   }
   .y-onl-filter__label:hover {
     color: var(--ink);

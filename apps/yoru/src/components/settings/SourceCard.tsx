@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { MusicNote } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { apiClient, type ConfigResponse } from "@/lib/api";
 import { keys } from "@/lib/keys";
@@ -237,7 +238,9 @@ export function SourceCard({ config }: { config: ConfigResponse }) {
         </div>
       </div>
       <div className="y-hint">
-        <span style={{ color: "var(--pink)" }}>♪</span>
+        <span className="y-hint__icon">
+          <MusicNote size={12} />
+        </span>
         镜像仅代理检索与元数据,音频文件直连源站下载。
       </div>
       {actionError && <ErrorStrip message={actionError} />}

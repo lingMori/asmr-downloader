@@ -19,6 +19,8 @@ src/
     WorkBadge.tsx             WorkStatusBadge(状态徽章)+ DownloadButton(下载钮三态)
     CollectButton.tsx         收藏(入库)♡ 切换钮(配 hooks/useCollections.ts)
     DownloadReviewDialog.tsx  下载复核对话框(创建 single/batch 任务)
+    workdetail/               FileTree(默认全折叠,phosphor 类型图标)+ tree(纯逻辑)
+                              + FilePreviewDialog(非音频应用内预览:图片灯箱/文本/视频)
   player/      全局播放器:GlobalPlayer(Context)/PlayerBar/ExpandedPlayer/
                usePlaybackPersistence / useSubtitles / logic(纯函数)/ types
   shell/       AppShell(header + 移动 tab bar + 主区)
@@ -29,6 +31,8 @@ src/
 
 - 只用 `y-` 组件类 + tokens(`var(--*)`);**禁止新造色值/字号/圆角字面量**
   (照抄原型 dc.html 的 rgba 组合除外,注释标明出处)。
+- **图标一律 `@phosphor-icons/react`**(尺寸 11–16 按槽位,激活态 `weight="fill"`);
+  禁用文本符号字形(♪ ★ ☾ ▶ ✓ 等),播放中行内指示用 `EQ` 组件而非静态图标。
 - 材质纪律(Apple Music 式):底子是近黑/近白平面色,层级只用 `--surface`/`--surface-2`
   灰度微差;**玻璃(backdrop-filter)只给下面真有内容流过的浮层**——播放条、展开播放器、
   对话框、批量栏、移动 tab bar(及封面图上的徽章);卡片/列表/输入一律平面 + 1px 发丝描边,

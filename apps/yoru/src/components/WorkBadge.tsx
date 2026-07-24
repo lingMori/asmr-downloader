@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { Check, DownloadSimple } from "@phosphor-icons/react";
 import type { WorkStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -10,9 +11,11 @@ export function WorkStatusBadge({ status, className, style }: { status?: WorkSta
   if (!status) return null;
   let text: string | null = null;
   let active = false;
+  let inLibrary = false;
   switch (status.state) {
     case "in_library":
-      text = "已在库 ✓";
+      text = "已在库";
+      inLibrary = true;
       break;
     case "downloading":
       text = "下载中";
@@ -28,6 +31,7 @@ export function WorkStatusBadge({ status, className, style }: { status?: WorkSta
   return (
     <span className={cn("y-status-badge", active && "y-status-badge--active", className)} style={style}>
       {text}
+      {inLibrary && <Check size={10} weight="bold" />}
     </span>
   );
 }
@@ -41,7 +45,7 @@ export type DownloadButtonProps = {
 };
 
 /**
- * 下载钮三态(原型 dc.html:217):↓ 下载 / 已入队 ✓ / 已拥有。
+ * 下载钮三态(原型 dc.html:217):↓ 下载 / 已入队 ✓ / 已拥有(图标化:DownloadSimple/Check)。
  * 不可下载态不响应点击、cursor:default。
  */
 export function DownloadButton({ status, onDownload, size, className }: DownloadButtonProps) {
@@ -49,7 +53,6 @@ export function DownloadButton({ status, onDownload, size, className }: Download
   const queued =
     status?.state === "queued" || status?.state === "downloading" || status?.state === "downloaded";
   const disabled = owned || queued;
-  const label = owned ? "已拥有" : queued ? "已入队 ✓" : "↓ 下载";
   return (
     <span
       role="button"
@@ -57,7 +60,17 @@ export function DownloadButton({ status, onDownload, size, className }: Download
       className={cn("y-dl-btn", disabled && "is-disabled", size === "sm" && "y-dl-btn--sm", className)}
       onClick={disabled ? undefined : onDownload}
     >
-      {label}
+      {owned ? (
+        "已拥有"
+      ) : queued ? (
+        <>
+          已入队 <Check size={12} weight="bold" />
+        </>
+      ) : (
+        <>
+          <DownloadSimple size={13} weight="bold" /> 下载
+        </>
+      )}
     </span>
   );
 }

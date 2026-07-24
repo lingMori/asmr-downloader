@@ -1,3 +1,4 @@
+import { CaretDown, CaretUp } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { isAdvancedQuery } from "./helpers";
 import { useUrlTextParam } from "./hooks";
@@ -44,7 +45,7 @@ export function SearchBar({
         aria-expanded={showFilters}
         onClick={onToggleFilters}
       >
-        筛选 {showFilters ? "▴" : "▾"}
+        筛选 {showFilters ? <CaretUp size={11} weight="bold" /> : <CaretDown size={11} weight="bold" />}
       </button>
       <button
         type="button"
@@ -52,7 +53,7 @@ export function SearchBar({
         aria-expanded={showTools}
         onClick={onToggleTools}
       >
-        工具 {showTools ? "▴" : "▾"}
+        工具 {showTools ? <CaretUp size={11} weight="bold" /> : <CaretDown size={11} weight="bold" />}
       </button>
       <button type="button" className="y-disc-barbtn" onClick={onReset}>
         重置
