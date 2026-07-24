@@ -236,6 +236,24 @@ func TestDiscoverOpenTrackFileUsesSubtitleURL(t *testing.T) {
 	}
 }
 
+func TestDiscoverOpenWorkCover(t *testing.T) {
+	fake := &fakeDiscoverEngine{}
+	svc := NewDiscoverService(nil, fake)
+
+	resp, err := svc.OpenWorkCover(context.Background(), "rj01588205", "240x240")
+	if err != nil {
+		t.Fatalf("OpenWorkCover() error = %v", err)
+	}
+	defer resp.Body.Close()
+
+	if fake.streamURL != "https://api.example/api/cover/1588205.jpg?type=240x240" {
+		t.Fatalf("unexpected cover url: %q", fake.streamURL)
+	}
+	if _, err := svc.OpenWorkCover(context.Background(), "RJ01588205", "huge"); err == nil {
+		t.Fatalf("expected invalid cover type to be rejected")
+	}
+}
+
 func TestDiscoverOpenTrackFileServesNonSubtitleFiles(t *testing.T) {
 	fake := &fakeDiscoverEngine{
 		tracks: []model.Track{
@@ -280,6 +298,10 @@ func (f *fakeDiscoverEngine) GetVoiceTracks(_ string) ([]model.Track, error) {
 
 func (f *fakeDiscoverEngine) BuildTrackMediaURL(hash string) string {
 	return "https://media.example/" + strings.TrimPrefix(hash, "/")
+}
+
+func (f *fakeDiscoverEngine) BuildCoverURL(number string, coverType string) string {
+	return "https://api.example/api/cover/" + number + ".jpg?type=" + coverType
 }
 
 func (f *fakeDiscoverEngine) OpenTrackStream(_ context.Context, streamURL string, rangeHeader string) (*http.Response, error) {

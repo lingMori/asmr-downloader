@@ -27,6 +27,7 @@ func (s *Server) registerDiscoverRoutes(group *gin.RouterGroup) {
 	group.GET("/discover/search", s.handleDiscoverSearch)
 	group.GET("/discover/works/:sourceId/tracks/:trackId/stream", s.handleDiscoverTrackStream)
 	group.GET("/discover/works/:sourceId/tracks/:trackId/file", s.handleDiscoverTrackFile)
+	group.GET("/discover/works/:sourceId/cover", s.handleDiscoverWorkCover)
 	group.GET("/discover/works/:sourceId", s.handleDiscoverWorkDetail)
 }
 
@@ -193,6 +194,30 @@ func copyStreamHeaders(ctx *gin.Context, headers http.Header) {
 			ctx.Writer.Header().Add(key, value)
 		}
 	}
+}
+
+// handleDiscoverWorkCover 同源代理作品封面(?type=main|240x240,默认 240x240)。
+// 封面不可变,客户端长缓存一天。
+func (s *Server) handleDiscoverWorkCover(ctx *gin.Context) {
+	resp, err := s.discoverSvc.OpenWorkCover(ctx.Request.Context(), ctx.Param("sourceId"), ctx.Query("type"))
+	if err != nil {
+		if isClientCanceledError(err) {
+			ctx.AbortWithStatus(statusClientClosedRequest)
+			return
+		}
+		if errors.Is(err, services.ErrInvalidDiscoverRequest) {
+			respondError(ctx, http.StatusBadRequest, "INVALID_SOURCE_ID", err)
+			return
+		}
+		respondError(ctx, http.StatusBadGateway, "DISCOVER_COVER_FAILED", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	copyStreamHeaders(ctx, resp.Header)
+	ctx.Header("Cache-Control", "public, max-age=86400")
+	ctx.Status(resp.StatusCode)
+	_, _ = io.Copy(ctx.Writer, resp.Body)
 }
 
 func (s *Server) handleDiscoverWorkDetail(ctx *gin.Context) {

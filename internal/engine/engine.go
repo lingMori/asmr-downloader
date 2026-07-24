@@ -628,6 +628,19 @@ func (m *EngineManager) BuildTrackMediaURL(hash string) string {
 	return strings.TrimRight(m.ApiUrl, "/") + "/api/media/" + strings.Join(parts, "/")
 }
 
+// BuildCoverURL 拼装上游封面地址(coverType: main / 240x240 等上游支持的档位)
+func (m *EngineManager) BuildCoverURL(number string, coverType string) string {
+	number = strings.TrimSpace(number)
+	if number == "" {
+		return ""
+	}
+	coverType = strings.TrimSpace(coverType)
+	if coverType == "" {
+		coverType = "240x240"
+	}
+	return strings.TrimRight(m.ApiUrl, "/") + "/api/cover/" + url.PathEscape(number) + ".jpg?type=" + url.QueryEscape(coverType)
+}
+
 func (m *EngineManager) OpenTrackStream(ctx context.Context, streamURL string, rangeHeader string) (*http.Response, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err

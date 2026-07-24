@@ -41,6 +41,7 @@ go run .
 - `GET /api/discover/works/:sourceId/neighbors`
 - `GET /api/discover/works/:sourceId/tracks/:trackId/stream`
 - `GET /api/discover/works/:sourceId/tracks/:trackId/file`(一切非音频叶:字幕/图片/文本/视频等,音频走 /stream)
+- `GET /api/discover/works/:sourceId/cover?type=main|240x240`(封面同源代理,前端 canvas 取色用;封面不可变,Cache-Control 一天)
 - `GET /api/works/status`
 
 ### Downloads & Tasks

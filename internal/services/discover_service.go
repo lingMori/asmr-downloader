@@ -32,6 +32,7 @@ type DiscoverEngine interface {
 	GetWorkInfo(id string) (model.WorkInfo, error)
 	GetVoiceTracks(id string) ([]model.Track, error)
 	BuildTrackMediaURL(hash string) string
+	BuildCoverURL(number string, coverType string) string
 	OpenTrackStream(ctx context.Context, streamURL string, rangeHeader string) (*http.Response, error)
 }
 
@@ -289,6 +290,35 @@ func (s *DiscoverService) OpenTrackFile(ctx context.Context, sourceID string, tr
 		Track:    track,
 		Response: resp,
 	}, nil
+}
+
+// OpenWorkCover 同源代理作品封面:前端 canvas 取色需要同源像素,
+// 上游图床 CORS 只放行 www.asmr.one,浏览器直读会被 taint。
+func (s *DiscoverService) OpenWorkCover(ctx context.Context, sourceID string, coverType string) (*http.Response, error) {
+	if s.engine == nil {
+		return nil, errors.New("discover engine is not available")
+	}
+	_, number, err := normalizeDiscoverSourceID(sourceID)
+	if err != nil {
+		return nil, err
+	}
+	// 上游封面地址不带前导零(RJ01588205 → 1588205.jpg)
+	number = strings.TrimLeft(number, "0")
+	if number == "" {
+		return nil, ErrInvalidDiscoverRequest
+	}
+	switch coverType {
+	case "", "240x240":
+		coverType = "240x240"
+	case "main":
+	default:
+		return nil, ErrInvalidDiscoverRequest
+	}
+	coverURL := s.engine.BuildCoverURL(number, coverType)
+	if coverURL == "" {
+		return nil, ErrDiscoverTrackNotFound
+	}
+	return s.engine.OpenTrackStream(ctx, coverURL, "")
 }
 
 func normalizeDiscoverSourceID(sourceID string) (canonicalSourceID string, number string, err error) {
