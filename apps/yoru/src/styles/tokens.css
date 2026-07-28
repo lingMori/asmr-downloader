@@ -87,6 +87,11 @@
   --z-dialog: 51;
   --z-toast: 60;
 
+  /* 移动端底部悬浮层几何(仅 <768px 使用;
+     批量栏等浮层的底偏移以这两个令牌叠加推算,不再写魔法数字) */
+  --tabbar-h: 56px;
+  --compact-player-h: 54px;
+
   /* 动效令牌(克制、物理感;JS 侧 framer-motion 取相同数值,见 lib/motion.ts) */
   --dur-fast: 120ms; /* 微交互:press/hover/描边 */
   --dur-med: 240ms; /* 状态切换:toggle/chip/卡片 */

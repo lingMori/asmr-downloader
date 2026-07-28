@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useDragControls, type PanInfo } from "framer-motion";
-import { Check, DownloadSimple, MusicNote, X } from "@phosphor-icons/react";
+import { CaretDown, Check, DownloadSimple, MusicNote, Pause, Play, SkipBack, SkipForward, X } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { CoverPlaceholder, EQ, Sticker } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { formatTime } from "./logic";
-import { pickCoverColor } from "./PlayerBar";
+import { pickCoverColor, SeekBar } from "./PlayerBar";
 import { useGlobalPlayer } from "./GlobalPlayer";
 import type { PlayerTrack } from "./types";
 import { SPRING_SOFT, EASE_OUT } from "@/lib/motion";
@@ -14,7 +14,8 @@ import { SPRING_SOFT, EASE_OUT } from "@/lib/motion";
 /**
  * 展开播放器(原型 dc.html:475-506):
  * 桌面 = 遮罩 z40 + 底部居中浮层 z41(max 860px,左 190px 封面+字幕卡,右曲目列表);
- * 移动 = 全屏浮层纵向排布。
+ * 移动 = 全屏浮层纵向排布,顶部抓手/下拉手势关闭,自带播放控件
+ * (桌面控件在迷你播放条上,移动端全屏盖住播放条,故控件区内置、桌面端隐藏)。
  */
 export function ExpandedPlayer() {
   const { session, expanded, setExpanded } = useGlobalPlayer();
@@ -70,6 +71,12 @@ function ExpandedBody({ dragControls }: { dragControls: ReturnType<typeof useDra
     currentTrack,
     playAt,
     setExpanded,
+    position,
+    duration,
+    toggle,
+    prev,
+    next,
+    seekTo,
   } = useGlobalPlayer();
   const [queued, setQueued] = useState(false);
   const sourceId = session?.sourceId;
@@ -99,13 +106,21 @@ function ExpandedBody({ dragControls }: { dragControls: ReturnType<typeof useDra
 
   return (
     <>
+      {/* 顶部下拉抓手(仅移动端显示;桌面拖拽把手是封面) */}
+      <div
+        className="y-player-expanded__grabber"
+        aria-hidden="true"
+        style={{ touchAction: "none" }}
+        onPointerDown={(e) => dragControls.start(e)}
+      />
       <button
         type="button"
         className="y-player-expanded__close"
         aria-label="收起播放器"
         onClick={() => setExpanded(false)}
       >
-        <X size={14} weight="bold" />
+        <X size={14} weight="bold" className="y-player-expanded__close-x" />
+        <CaretDown size={16} weight="bold" className="y-player-expanded__close-caret" />
       </button>
       <div className="y-player-expanded__left">
         {session.coverUrl ? (
@@ -138,6 +153,40 @@ function ExpandedBody({ dragControls }: { dragControls: ReturnType<typeof useDra
           {session.rj && <span className="y-player-expanded__rj">{session.rj}</span>}
           {session.rj && " · "}
           {session.cv ? `CV ${session.cv} · ` : ""}共 {session.tracks.length} 曲目
+        </div>
+        {/* 播放控件区:仅移动端显示(桌面控件在迷你播放条上) */}
+        <div className="y-player-expanded__controls">
+          <div className="y-player-expanded__seekrow">
+            <span className="y-playerbar__time">{formatTime(position)}</span>
+            <SeekBar position={position} duration={duration} onSeek={seekTo} />
+            <span className="y-playerbar__time">{formatTime(duration)}</span>
+          </div>
+          <div className="y-player-expanded__transport">
+            <button
+              type="button"
+              className="y-player-expanded__step"
+              onClick={prev}
+              aria-label="上一首"
+            >
+              <SkipBack size={20} weight="fill" />
+            </button>
+            <button
+              type="button"
+              className="y-player-expanded__play"
+              onClick={toggle}
+              aria-label={playing ? "暂停" : "播放"}
+            >
+              {playing ? <Pause size={24} weight="fill" /> : <Play size={24} weight="fill" />}
+            </button>
+            <button
+              type="button"
+              className="y-player-expanded__step"
+              onClick={next}
+              aria-label="下一首"
+            >
+              <SkipForward size={20} weight="fill" />
+            </button>
+          </div>
         </div>
         <div className="y-player-expanded__tracks">
           {session.tracks.map((track, i) => {

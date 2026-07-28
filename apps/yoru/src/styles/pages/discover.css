@@ -771,7 +771,9 @@
     order: 7;
   }
   .y-disc-batchbar {
-    bottom: calc(118px + env(safe-area-inset-bottom)); /* 避开 tab bar + 迷你播放器 */
+    /* 避开悬浮 tab bar + 压缩播放条(几何令牌见 tokens.css;
+       56+54+外边距/间隙 ≈ 底锚点) */
+    bottom: calc(var(--tabbar-h) + var(--compact-player-h) + 28px + env(safe-area-inset-bottom));
     width: calc(100% - 24px);
     padding: 10px 14px;
     gap: 10px;

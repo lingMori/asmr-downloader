@@ -711,11 +711,12 @@
     transition: border-color var(--dur-fast) var(--ease-out);
   }
 
-  /* 主区:壳不滚,内容区滚 */
+  /* 主区:壳不滚,内容区滚;橡皮筋限制在区内,不穿透到壳 */
   .y-shell-main {
     flex: 1;
     min-height: 0;
     overflow: auto;
+    overscroll-behavior-y: contain;
   }
   .y-page {
     padding: 10px 28px 16px;
@@ -930,6 +931,13 @@
     user-select: none;
     transition: border-color var(--dur-fast) var(--ease-out);
   }
+  /* 下拉抓手/内置播放控件/移动端 chevron:桌面形态不显示
+     (桌面拖拽把手是封面,控件在迷你播放条上) */
+  .y-player-expanded__grabber,
+  .y-player-expanded__controls,
+  .y-player-expanded__close-caret {
+    display: none;
+  }
   .y-player-expanded__left {
     width: 300px;
     flex: none;
@@ -1127,7 +1135,8 @@
 /* ── 移动形态(<768px):精简 header + 底部 tab bar + 压缩播放条 + 全屏展开播放器 ── */
 @media (max-width: 767px) {
   .y-shell-header {
-    padding: 12px 16px 8px;
+    /* 顶部安全区:浏览器 env()=0 无感;iOS App(WKWebView 全屏)自动避开刘海/灵动岛 */
+    padding: calc(12px + env(safe-area-inset-top)) 16px 8px;
   }
   .y-nav,
   .y-health {
@@ -1137,17 +1146,22 @@
     padding: 12px 16px 16px;
   }
 
+  /* 悬浮玻璃胶囊 tab bar(iOS 26 范式:不贴边、四边留白、全圆角,
+     与上方压缩播放条叠成两层悬浮玻璃;仍在文档流内,不遮内容) */
   .y-tabbar {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     flex: none;
-    height: calc(56px + env(safe-area-inset-bottom));
-    padding-bottom: env(safe-area-inset-bottom);
+    height: var(--tabbar-h);
+    margin: 0 12px calc(8px + env(safe-area-inset-bottom));
     background: var(--panel);
-    border-top: 1px solid var(--glass-line-strong);
+    border: 1px solid var(--glass-line-strong);
+    border-radius: var(--r-xl);
     backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    box-shadow:
+      var(--glass-highlight),
+      var(--shadow-bar);
   }
   .y-tabbar__item {
     position: relative;
@@ -1184,7 +1198,7 @@
     gap: 10px;
     flex: none;
     position: relative;
-    margin: 8px 12px 6px;
+    margin: 8px 12px;
     padding: 8px 12px;
     background: var(--panel);
     border: 1px solid var(--glass-line-strong);
@@ -1226,7 +1240,7 @@
     background: linear-gradient(90deg, var(--lav), var(--pink));
   }
 
-  /* 展开播放器 → 全屏浮层(封面→标题→字幕卡→曲目列表) */
+  /* 展开播放器 → 全屏浮层(抓手→封面→标题→控件→曲目列表→字幕卡) */
   .y-player-expanded {
     bottom: 0;
     width: 100%;
@@ -1236,18 +1250,36 @@
     border: none;
     flex-direction: column;
     gap: 12px;
-    padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+    padding: 10px 16px calc(18px + env(safe-area-inset-bottom));
     overflow: auto;
   }
   .y-player-expanded__left,
   .y-player-expanded__right {
     display: contents;
   }
+  /* 顶部下拉抓手(iOS 表单页范式;拖拽由 dragControls 接管) */
+  .y-player-expanded__grabber {
+    display: block;
+    order: 0;
+    flex: none;
+    width: 40px;
+    height: 5px;
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--dim) 45%, transparent);
+    margin: 0 auto 2px;
+  }
+  .y-player-expanded__close-x {
+    display: none;
+  }
+  .y-player-expanded__close-caret {
+    display: inline;
+  }
   .y-player-expanded__cover {
     order: 1;
-    width: min(240px, 60vw);
+    width: min(280px, 66vw);
     margin: 0 auto;
     border-radius: var(--r-2xl);
+    box-shadow: var(--shadow-modal);
   }
   .y-player-expanded__badges {
     order: 2;
@@ -1262,16 +1294,64 @@
     order: 4;
     text-align: center;
   }
-  .y-subtitle {
+  /* 内置播放控件(Apple Music Now Playing 范式;桌面端隐藏) */
+  .y-player-expanded__controls {
     order: 5;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 2px;
+  }
+  .y-player-expanded__seekrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .y-player-expanded__transport {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+  }
+  .y-player-expanded__step {
+    cursor: pointer;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: none;
+    color: var(--ink);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+  }
+  .y-player-expanded__play {
+    cursor: pointer;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    /* 同 .y-playerbar__play 的渐变圆 CTA */
+    background: linear-gradient(135deg, var(--lav), var(--pink));
+    color: var(--accentInk);
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-playring);
+    user-select: none;
+    transition: transform var(--dur-fast) var(--ease-spring);
   }
   .y-player-expanded__tracks {
     order: 6;
     flex: 1;
     min-height: 120px;
   }
-  .y-stream-dl {
+  .y-subtitle {
     order: 7;
+  }
+  .y-stream-dl {
+    order: 8;
   }
 }
 
@@ -1370,6 +1450,14 @@
 }
 
 /* ===== 对话框内容(共享,DownloadReviewDialog 等) ===== */
+/* 移动端底部 sheet 抓手(Dialog.tsx 仅 <768px 渲染) */
+.y-dialog__grabber {
+  width: 40px;
+  height: 5px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--dim) 45%, transparent);
+  margin: 0 auto 12px;
+}
 .y-dialog-title {
   margin-top: 10px;
   font-weight: 900;
@@ -1518,6 +1606,25 @@
   }
   .y-playerbar__cue-text {
     font-size: 11px;
+  }
+}
+
+/* 共享小控件移动端触达目标:视觉尺寸不变,::after 透明外扩到 ≥44px 热区
+   (Toggle 40×22 → 44 高;Stepper 钮 26×26 → 44) */
+@media (max-width: 767px) {
+  .y-toggle,
+  .y-stepper__btn {
+    position: relative;
+  }
+  .y-toggle::after {
+    content: "";
+    position: absolute;
+    inset: -11px -2px;
+  }
+  .y-stepper__btn::after {
+    content: "";
+    position: absolute;
+    inset: -9px;
   }
 }
 

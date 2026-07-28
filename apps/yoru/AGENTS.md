@@ -11,6 +11,7 @@ src/
   styles/      tokens.css(设计令牌 + --glass-* 液态玻璃材质)/ base.css / components.css(y- 前缀组件类)
   lib/         纯逻辑:api.ts(apiClient)、keys.ts(查询键)、settings.tsx(客户端设置)、
                platform.ts(桌面模式检测:?desktop=1 → data-platform="desktop")、
+               useMediaQuery.ts(useMediaQuery/useIsMobile,jsdom 安全)、
                glow.ts(封面取色/光晕色板)、subtitles.ts / feedback.ts / playback.ts /
                useTaskEvents.ts / utils.ts(cn + copyText)
   components/
@@ -49,6 +50,9 @@ src/
 - 桌面模式:`:root[data-platform="desktop"]`(Wails 壳 URL 带 `?desktop=1`,见 lib/platform.ts)
   的 `--bg-alpha` 机制保留(当前 100% 不透明;要透出窗口玻璃就把 tokens.css 里两个值调回 <100%)。
 - 组件视觉全部在 `components.css` 的 `@layer components`;断点:**<768 移动 / 768–1100 平板 / >1100 桌面**(CSS 写字面量 `@media (max-width: 767px)`)。
+- 移动端底部是 iOS 26 式双层悬浮玻璃:压缩播放条 + **悬浮胶囊 tab bar**(不贴边、四边留白、
+  `--r-xl` 全圆角,仍在文档流内不遮内容);几何尺寸用 tokens `--tabbar-h`/`--compact-player-h`,
+  浮层(如批量栏)底偏移一律 `calc(var(--tabbar-h) + var(--compact-player-h) + …)`,不写魔法数字。
 - hover 一律包进 `@media (hover:hover)`,移动端不得依赖 hover 才能操作。
 - 贴纸受 `[data-stickers="false"]` 全局降级(去旋转去色),新贴纸沿用 `y-sticker`。
 
@@ -59,7 +63,7 @@ src/
     `MeshGradient` 把封面主色(`lib/glow.ts` canvas 取色 + `useCoverGlow`,失败回退散列色)
     渗透进背景,自带颗粒;lazy 分包 + webgl2 预检,失败回退 CSS 径向渐变,不许白屏。
   - 交互层:`framer-motion`(LayoutGroup/layoutId 共享元素转场、drag 手势、variants);
-    参数统一从 `lib/motion.ts` 取(EASE_OUT/SPRING_SOFT/DIALOG_IN/ENTER),不要自造数值。
+    参数统一从 `lib/motion.ts` 取(EASE_OUT/SPRING_SOFT/DIALOG_IN/SHEET_IN/ENTER),不要自造数值。
   - 列表层:`@formkit/auto-animate` 的 `useAutoAnimate()` 挂容器 ref(FileTree/队列/chips 行),
     默认尊重 reduced-motion。
 - 时长/缓动只用 tokens(`--dur-fast 120ms`/`--dur-med 240ms`/`--dur-slow 400ms`,
@@ -103,8 +107,12 @@ src/
 ## 双端要求
 
 - 每个页面/浮层必须同时有桌面与 <768 移动形态(移动缺失时按 §4 范式补,照抄 tokens)。
-- 壳 100dvh 不滚,内容区滚;底部安全区用 `env(safe-area-inset-bottom)`。
-- 触达目标 ≥44px。
+- 壳 100dvh 不滚,内容区滚;底部安全区用 `env(safe-area-inset-bottom)`;
+  移动 header 顶部同理用 `env(safe-area-inset-top)`(浏览器为 0,iOS App 全屏 WKWebView 下生效)。
+- 触达目标 ≥44px;小图标钮视觉尺寸不变时用 hit-slop(`padding:+Npx; margin:-Npx`)扩热区。
+- 共享 `Dialog` 双形态:桌面居中卡 / 移动端底部 sheet(抓手 + 下拉关闭 + 85dvh 限高,
+  由 `useMediaQuery` 自动切换,调用方无感);展开播放器移动端内置播放控件(seek/transport)
+  与顶部抓手,桌面端控件仍在迷你播放条上。
 
 ## 页面开发约定(并行 Phase 必读)
 

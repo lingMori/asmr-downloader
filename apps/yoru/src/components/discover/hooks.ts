@@ -36,20 +36,5 @@ export function useUrlTextParam(
   return [text, setText];
 }
 
-/** <768px 移动形态判定(详情侧栏 ↔ 全屏浮层切换);jsdom 无 matchMedia 时按桌面处理 */
-export function useIsMobile(): boolean {
-  const [mobile, setMobile] = useState(() =>
-    typeof window.matchMedia === "function"
-      ? window.matchMedia("(max-width: 767px)").matches
-      : false,
-  );
-  useEffect(() => {
-    if (typeof window.matchMedia !== "function") return;
-    const mql = window.matchMedia("(max-width: 767px)");
-    const onChange = () => setMobile(mql.matches);
-    onChange();
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
-  return mobile;
-}
+/** <768px 移动形态判定(详情侧栏 ↔ 全屏浮层切换);实现已上移 lib/useMediaQuery(jsdom 无 matchMedia 时按桌面处理) */
+export { useIsMobile } from "@/lib/useMediaQuery";

@@ -245,8 +245,8 @@ function CompactBar() {
   );
 }
 
-/** 可拖拽 seek 条(y-progress--seek + pointer events) */
-function SeekBar({
+/** 可拖拽 seek 条(y-progress--seek + pointer events);展开播放器移动端控件区复用 */
+export function SeekBar({
   position,
   duration,
   onSeek,

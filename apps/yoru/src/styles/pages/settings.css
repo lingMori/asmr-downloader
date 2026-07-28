@@ -360,4 +360,19 @@
   .y-set-theme-opt {
     flex: 1 1 30%;
   }
+  /* 触达目标 ≥44px(Apple HIG):文本类控件直接提 min-height */
+  .y-set-input {
+    min-height: 44px;
+  }
+  .y-set-mini-btn {
+    min-height: 44px;
+  }
+  /* 镜像三选 chip 同步加高 */
+  .y-set-chips .y-chip {
+    min-height: 44px;
+  }
+  /* 配色色板:宽度保持 40,高度 28 → 44 */
+  .y-set-swatch {
+    height: 44px;
+  }
 }

@@ -21,6 +21,9 @@
     font-size: 13.5px;
     line-height: 1.6;
     color: var(--ink);
+    /* iOS 触控细节:去点按灰闪;manipulation 去双击缩放延迟(捏合缩放保留) */
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
     /* --bg-alpha:浏览器 100%(不透明渐变);data-platform="desktop" 时降低,
        webview 透明 → 窗口原生玻璃(vibrancy)透出,见 tokens.css */
     background: linear-gradient(

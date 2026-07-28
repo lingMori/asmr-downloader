@@ -266,4 +266,20 @@
     grid-template-columns: repeat(2, minmax(150px, 1fr));
     gap: 12px;
   }
+  /* 触达目标 ≥44px:小钮自带描边/毛玻璃底,padding 式 hit-slop 会撑大可见形,
+     改用 ::after 透明热区(视觉尺寸不动;discover.css 复选框为 padding 先例) */
+  .y-onl-cover__collect::after {
+    content: "";
+    position: absolute;
+    /* .y-onl-cover overflow:hidden 把顶/右裁到 6px:-14px 时有效热区 24+14+6=44 */
+    inset: -14px;
+  }
+  .y-onl-card__act .y-dl-btn {
+    position: relative;
+  }
+  .y-onl-card__act .y-dl-btn::after {
+    content: "";
+    position: absolute;
+    inset: -10px;
+  }
 }

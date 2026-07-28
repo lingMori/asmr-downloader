@@ -466,6 +466,26 @@
   .y-wd-tree__row {
     min-height: 44px;
   }
+  /* 声优/标签 chips 均为跳转链接:提到 32px(对齐 discover.css 移动块 .y-tag 先例) */
+  .y-wd-chip {
+    min-height: 32px;
+  }
+  /* 主操作行/返回钮 ≥44px;♡ 视觉 30px 不变,::after 透明外扩热区到 44px */
+  .y-wd__back {
+    min-height: 44px;
+  }
+  .y-wd-actions .y-btn-primary,
+  .y-wd-actions .y-dl-btn {
+    min-height: 44px;
+  }
+  .y-wd-actions .y-collect-btn {
+    position: relative;
+  }
+  .y-wd-actions .y-collect-btn::after {
+    content: "";
+    position: absolute;
+    inset: -7px;
+  }
   .y-wd-neighbors {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;

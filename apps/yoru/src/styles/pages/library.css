@@ -520,4 +520,31 @@
   .y-lib-detail__actions {
     justify-content: center;
   }
+  /* 触达目标 ≥44px:▶/♡/下载 小图标钮自带描边圆/胶囊形,padding 式 hit-slop
+     会撑大可见形,改用 ::after 透明热区(视觉尺寸不动) */
+  .y-lib-card__play,
+  .y-lib-card__collect,
+  .y-lib-card__actions .y-collect-btn,
+  .y-lib-card__actions .y-dl-btn {
+    position: relative;
+  }
+  .y-lib-card__play::after,
+  .y-lib-card__collect::after,
+  .y-lib-card__actions .y-collect-btn::after,
+  .y-lib-card__actions .y-dl-btn::after {
+    content: "";
+    position: absolute;
+    inset: -10px;
+  }
+  /* 文本类控件直接提 min-height:搜索框 / 文件行 / 分页钮 */
+  .y-lib-search {
+    min-height: 44px;
+  }
+  .y-lib-file {
+    min-height: 44px;
+  }
+  .y-lib-pagination .y-pagination__btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }

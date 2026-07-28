@@ -31,3 +31,10 @@ export const DIALOG_IN = {
 } as const;
 
 export const DIALOG_TRANSITION = { duration: 0.24, ease: EASE_OUT } as const;
+
+/** 底部表单(移动端 Dialog sheet):从屏底滑入/滑出,配合 SPRING_SOFT */
+export const SHEET_IN = {
+  initial: { y: "100%" },
+  animate: { y: 0 },
+  exit: { y: "100%" },
+} as const;
