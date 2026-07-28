@@ -9,6 +9,8 @@
 - 后端入口：`main.go`
 - 前端入口：`apps/yoru`(默认);`apps/web` 为旧前端，保留但不再迭代
 - 桌面入口：`apps/desktop`(Wails v3 壳,内嵌后端与前端,产出 macOS .app)
+- iOS 入口：`apps/ios`(SwiftUI 壳 + WKWebView)+ `mobile`(gomobile 绑定包,
+  同一套 Go 后端在 iPhone 进程内运行;`scripts/build-ios.sh` 产出 XCFramework,见 docs/ios-dev.md)
 
 旧的 `cmd/*` Cobra 命令和 `webui/*` 静态页面已经删除。
 
